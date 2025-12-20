@@ -1,0 +1,19 @@
+{
+  "common": {
+    "home": "Home",
+    "settings": "Settings",
+    "search": "Search",
+    "inbox": "Inbox",
+    "calendar": "Calendar",
+    "title_application": "Class Management",
+    "dashboard": "Dashboard",
+    "Class Management": "Class management",
+    "Student Management": "Student management",
+    "Teacher Management": "Teacher management",
+    "Payment Management": "Payment management"
+  },
+  "page": {
+    "title": "Home",
+    "button": "Click me"
+  }
+}

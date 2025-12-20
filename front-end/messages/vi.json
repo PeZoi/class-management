@@ -1,0 +1,19 @@
+{
+  "common": {
+    "home": "Trang chủ",
+    "settings": "Cài đặt",
+    "search": "Tìm kiếm",
+    "inbox": "Hộp thư",
+    "calendar": "Lịch",
+    "title_application": "Quản Lý Lớp Học",
+    "dashboard": "Trang tổng quan",
+    "Class Management": "Quản lý lớp học",
+    "Student Management": "Quản lý học viên",
+    "Teacher Management": "Quản lý giáo viên",
+    "Payment Management": "Quản lý hoá đơn"
+  },
+  "page": {
+    "title": "Trang chủ",
+    "button": "Nhấp vào tôi"
+  }
+}
