@@ -1,5 +1,6 @@
 import { AppSidebar } from '@/components/app-sidebar';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import Header from '@/components/header';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { locales } from '@/i18n';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
@@ -51,9 +52,9 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <SidebarProvider>
             <AppSidebar />
-            <main>
-              <SidebarTrigger />
-              {children}
+            <main className="flex-1 w-full">
+              <Header />
+              <div className="w-full">{children}</div>
             </main>
           </SidebarProvider>
         </NextIntlClientProvider>

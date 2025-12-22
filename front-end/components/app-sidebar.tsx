@@ -15,10 +15,12 @@ import {
 import { Album, CreditCard, GraduationCap, LayoutDashboard, User } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export function AppSidebar() {
   const t = useTranslations('common');
   const locale = useLocale();
+  const pathname = usePathname();
 
   // Menu items.
   const items = [
@@ -29,7 +31,7 @@ export function AppSidebar() {
     },
     {
       title: t('Class Management'),
-      url: `/${locale}/class-management`,
+      url: `/${locale}/classroom-management`,
       icon: Album,
     },
     {
@@ -49,19 +51,27 @@ export function AppSidebar() {
     },
   ];
 
+  // Check if a menu item is active
+  const isActive = (url: string) => {
+    if (url === `/${locale}`) {
+      return pathname === `/${locale}` || pathname === `/${locale}/dashboard`;
+    }
+    return pathname.startsWith(url);
+  };
+
   return (
     <Sidebar>
       <SidebarContent className="flex flex-col justify-between">
         <SidebarGroup>
-          <SidebarGroupLabel>
+          <SidebarGroupLabel className="mb-4 mt-2">
             <div className="text-lg font-bold text-center w-full text-black">{t('title_application')}</div>
           </SidebarGroupLabel>
-          <Separator className="my-2" />
+          <Separator className="mb-4" />
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <Link href={item.url}>
                       <item.icon />
                       <span className="text-sm">{item.title}</span>

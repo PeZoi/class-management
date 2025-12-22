@@ -1,5 +1,5 @@
 import DashboardPage from '@/app/[locale]/dashboard/dashboard-page';
 
-export default function Home() {
+export default function index() {
   return <DashboardPage />;
 }
