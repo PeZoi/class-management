@@ -68,7 +68,7 @@ export function OverduePaymentsAlert({ overduePayments, formatCurrency, classNam
           </div>
         </div>
       </CardHeader>
-      <CardContent className="max-h-[348px] overflow-y-auto overflow-x-hidden">
+      <CardContent className="max-h-[348px] overflow-auto">
         <div className="min-w-full">
           <Table>
             <TableHeader>
