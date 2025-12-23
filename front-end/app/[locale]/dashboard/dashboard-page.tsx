@@ -6,6 +6,7 @@ import { OverduePaymentsAlert } from './_components/overdue-payments-alert';
 import { RecentClassesTable } from './_components/recent-classes-table';
 import { RevenueChart } from './_components/revenue-chart';
 import { StatsCards } from './_components/stats-cards';
+import { formatCurrency } from '@/utils/helper';
 
 // Dữ liệu tĩnh cho dashboard
 const statsData = {
@@ -283,13 +284,6 @@ export default function DashboardPage() {
   const t = useTranslations('dashboard');
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
-  };
-
   const currentRevenueData = revenueData[selectedPeriod];
 
   return (
@@ -316,11 +310,7 @@ export default function DashboardPage() {
           formatCurrency={formatCurrency}
           className="w-full"
         />
-        <OverduePaymentsAlert
-          overduePayments={overduePayments}
-          formatCurrency={formatCurrency}
-          className="w-full"
-        />
+        <OverduePaymentsAlert overduePayments={overduePayments} formatCurrency={formatCurrency} className="w-full" />
       </div>
 
       {/* Recent Classes Table */}
