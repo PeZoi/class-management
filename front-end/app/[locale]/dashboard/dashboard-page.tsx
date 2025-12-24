@@ -2,11 +2,8 @@
 
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
-import { OverduePaymentsAlert } from './_components/overdue-payments-alert';
-import { RecentClassesTable } from './_components/recent-classes-table';
-import { RevenueChart } from './_components/revenue-chart';
-import { StatsCards } from './_components/stats-cards';
 import { formatCurrency } from '@/utils/helper';
+import { OverduePaymentsAlert, RecentClassesTable, RevenueChart, StatsCards } from '@/app/[locale]/dashboard/_components';
 
 // Dữ liệu tĩnh cho dashboard
 const statsData = {
