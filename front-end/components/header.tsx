@@ -43,10 +43,7 @@ export default function Header() {
             // Chưa đăng nhập
             <>
               <Button size="sm" asChild>
-                <Link href={`/${locale}/login`}>{t('login')}</Link>
-              </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={`/${locale}/register`}>{t('register')}</Link>
+                <Link href={`/${locale}/sign-in`}>{t('login')}</Link>
               </Button>
             </>
           ) : (

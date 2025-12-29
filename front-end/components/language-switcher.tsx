@@ -1,20 +1,20 @@
 'use client';
 
-import { useLocale } from 'next-intl';
-import { usePathname, useRouter } from 'next/navigation';
-import { locales, type Locale } from '@/i18n';
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Languages, Check, ChevronDown } from 'lucide-react';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { locales, type Locale } from '@/i18n';
 import { cn } from '@/lib/utils';
-import VNFlag from '@/public/flags/vn-flag.png';
 import UKFlag from '@/public/flags/uk-flag.png';
+import VNFlag from '@/public/flags/vn-flag.png';
+import { Check, ChevronDown } from 'lucide-react';
+import { useLocale } from 'next-intl';
 import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
 
 const localeNames: Record<Locale, string> = {
   vi: 'Tiếng Việt',

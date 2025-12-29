@@ -4,6 +4,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { locales } from '@/i18n';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 export function generateStaticParams() {
@@ -18,6 +19,7 @@ export default async function LocaleLayout({
   params: Promise<{ locale: string }>;
 }>) {
   const { locale } = await params;
+  const pathname = (await headers()).get('x-pathname') || '';
 
   // Validate that the incoming `locale` parameter is valid
   if (!locales.includes(locale as never)) {
@@ -25,9 +27,14 @@ export default async function LocaleLayout({
   }
 
   // Providing all messages to the client
-  // side is the easiest way to get started
   const messages = await getMessages();
 
+  // Pages without sidebar/header
+  if (pathname.includes('/sign-in')) {
+    return <NextIntlClientProvider messages={messages}><SidebarProvider>{children}</SidebarProvider></NextIntlClientProvider>;
+  }
+
+  // Normal pages with sidebar and header
   return (
     <NextIntlClientProvider messages={messages}>
       <SidebarProvider>
