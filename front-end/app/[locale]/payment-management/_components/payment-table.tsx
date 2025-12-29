@@ -180,7 +180,7 @@ export function PaymentTable({
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        <Table className={cn('min-w-[1200px]', showActions && 'min-w-[1300px]')}>
+        <Table className={cn('min-w-[1300px]', showActions && 'min-w-[1400px]')}>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-700">
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
@@ -205,6 +205,12 @@ export function PaymentTable({
                 <div className="flex items-center gap-2">
                   <BookOpen className="size-4" />
                   {t('className')}
+                </div>
+              </TableHead>
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <Calendar className="size-4" />
+                  {t('period')}
                 </div>
               </TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right">
@@ -241,7 +247,7 @@ export function PaymentTable({
           <TableBody>
             {payments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showActions ? 9 : 8} className="h-24 text-center text-slate-500">
+                <TableCell colSpan={showActions ? 10 : 9} className="h-24 text-center text-slate-500">
                   {t('noPaymentsFound')}
                 </TableCell>
               </TableRow>
@@ -287,6 +293,15 @@ export function PaymentTable({
                       {displayClass !== '-' ? (
                         <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-medium">
                           {displayClass}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {payment.period ? (
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-xs font-medium">
+                          {payment.period}
                         </span>
                       ) : (
                         <span className="text-slate-400 text-sm">-</span>

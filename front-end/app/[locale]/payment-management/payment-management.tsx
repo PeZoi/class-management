@@ -13,6 +13,7 @@ export interface PaymentItem {
   studentName?: string; // For income
   teacherName?: string; // For expense
   className?: string;
+  period?: string; // Kỳ thanh toán (VD: "Tháng 12/2024", "Học kỳ 1/2024")
   totalAmount: number; // Tổng số tiền cần thanh toán
   paidAmount: number; // Số tiền đã thanh toán (có thể thanh toán nhiều lần)
   createdDate: string; // ISO datetime string
@@ -128,6 +129,7 @@ const initialPayments: PaymentItem[] = [
     type: 'income',
     studentName: 'Nguyễn Thị Mai',
     className: 'JavaScript Nâng Cao',
+    period: 'Tháng 1/2024',
     totalAmount: 5000000,
     paidAmount: 5000000,
     createdDate: '2024-01-15T14:30:25',
@@ -141,6 +143,7 @@ const initialPayments: PaymentItem[] = [
     type: 'income',
     studentName: 'Trần Văn Nam',
     className: 'React Cơ Bản',
+    period: 'Tháng 2/2024',
     totalAmount: 4500000,
     paidAmount: 2500000,
     createdDate: '2024-02-20T09:15:42',
@@ -154,6 +157,7 @@ const initialPayments: PaymentItem[] = [
     type: 'income',
     studentName: 'Lê Thị Hoa',
     className: 'Python Căn Bản',
+    period: 'Tháng 3/2024',
     totalAmount: 4000000,
     paidAmount: 4000000,
     createdDate: '2024-03-10T16:45:10',
@@ -167,6 +171,7 @@ const initialPayments: PaymentItem[] = [
     type: 'income',
     studentName: 'Phạm Văn Đức',
     className: 'JavaScript Nâng Cao',
+    period: 'Q1/2024 (3 tháng)',
     totalAmount: 15000000,
     paidAmount: 15000000,
     createdDate: '2024-01-05T11:20:33',
@@ -180,6 +185,7 @@ const initialPayments: PaymentItem[] = [
     type: 'income',
     studentName: 'Hoàng Thị Linh',
     className: 'React Cơ Bản',
+    period: 'Tháng 2/2024',
     totalAmount: 4500000,
     paidAmount: 1500000,
     createdDate: '2024-02-15T13:55:18',
@@ -193,6 +199,7 @@ const initialPayments: PaymentItem[] = [
     type: 'income',
     studentName: 'Vũ Văn Hải',
     className: 'Python Căn Bản',
+    period: 'Tháng 12/2023',
     totalAmount: 8000000,
     paidAmount: 8000000,
     createdDate: '2023-12-20T10:30:45',
@@ -206,6 +213,7 @@ const initialPayments: PaymentItem[] = [
     type: 'income',
     studentName: 'Đặng Thị Lan',
     className: 'JavaScript Nâng Cao',
+    period: 'Tháng 1/2024',
     totalAmount: 5000000,
     paidAmount: 3000000,
     createdDate: '2024-01-25T15:10:22',
@@ -219,6 +227,7 @@ const initialPayments: PaymentItem[] = [
     type: 'income',
     studentName: 'Bùi Văn Minh',
     className: 'React Cơ Bản',
+    period: 'Tháng 3/2024',
     totalAmount: 4500000,
     paidAmount: 4500000,
     createdDate: '2024-03-01T08:45:55',
@@ -232,6 +241,7 @@ const initialPayments: PaymentItem[] = [
     invoiceId: 'SAL001201',
     type: 'expense',
     teacherName: 'Nguyễn Văn A',
+    period: 'Tháng 1/2024',
     totalAmount: 15000000,
     paidAmount: 15000000,
     createdDate: '2024-01-31T17:00:00',
@@ -244,6 +254,7 @@ const initialPayments: PaymentItem[] = [
     invoiceId: 'SAL001202',
     type: 'expense',
     teacherName: 'Trần Thị B',
+    period: 'Tháng 1/2024',
     totalAmount: 18000000,
     paidAmount: 18000000,
     createdDate: '2024-01-31T17:15:30',
@@ -256,6 +267,7 @@ const initialPayments: PaymentItem[] = [
     invoiceId: 'SAL001203',
     type: 'expense',
     teacherName: 'Lê Văn C',
+    period: 'Tháng 2/2024',
     totalAmount: 12000000,
     paidAmount: 6000000,
     createdDate: '2024-02-28T16:45:15',
@@ -268,6 +280,7 @@ const initialPayments: PaymentItem[] = [
     invoiceId: 'SAL001204',
     type: 'expense',
     teacherName: 'Phạm Thị D',
+    period: 'Tháng 3/2024',
     totalAmount: 14000000,
     paidAmount: 7000000,
     createdDate: '2024-03-31T18:20:40',

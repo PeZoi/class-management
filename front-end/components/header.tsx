@@ -12,7 +12,7 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -22,10 +22,11 @@ const user = {
   avatar: 'https://github.com/shadcn.png',
   role: 'Admin',
 };
-const isLoggedIn = true;
+const isLoggedIn = false;
 
 export default function Header() {
   const t = useTranslations('common');
+  const locale = useLocale();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
@@ -41,11 +42,11 @@ export default function Header() {
           {!isLoggedIn ? (
             // Chưa đăng nhập
             <>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/login">Đăng nhập</Link>
-              </Button>
               <Button size="sm" asChild>
-                <Link href="/register">Đăng ký</Link>
+                <Link href={`/${locale}/login`}>{t('login')}</Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={`/${locale}/register`}>{t('register')}</Link>
               </Button>
             </>
           ) : (
@@ -94,21 +95,21 @@ export default function Header() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer">
+                    <Link href={`/${locale}/profile`} className="cursor-pointer">
                       <User className="mr-2 size-4" />
-                      Hồ sơ cá nhân
+                      {t('Profile')}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/settings" className="cursor-pointer">
+                    <Link href={`/${locale}/settings`} className="cursor-pointer">
                       <Settings className="mr-2 size-4" />
-                      Cài đặt
+                      {t('settings')}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
                     <LogOut className="mr-2 size-4" />
-                    Đăng xuất
+                    {t('logout')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
