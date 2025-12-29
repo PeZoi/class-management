@@ -14,7 +14,7 @@ export default function SignInPage() {
   
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
   });
 
@@ -47,19 +47,19 @@ export default function SignInPage() {
 
         <CardContent className="space-y-6">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email Field */}
+            {/* Username Field */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
-                {t('email')}
+              <Label htmlFor="username" className="text-sm font-medium">
+                {t('username')}
               </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder={t('emailPlaceholder')}
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  id="username"
+                  type="text"
+                  placeholder={t('usernamePlaceholder')}
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   className="pl-10 h-11"
                   required
                 />

@@ -1,6 +1,6 @@
 package com.example.backend.security;
 
-import com.example.backend.dto.response.ResponseDetail;
+import com.example.backend.dto.ResponseDetail;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

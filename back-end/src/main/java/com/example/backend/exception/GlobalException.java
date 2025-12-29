@@ -1,7 +1,7 @@
 package com.example.backend.exception;
 
 
-import com.example.backend.dto.response.ResponseDetail;
+import com.example.backend.dto.ResponseDetail;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;

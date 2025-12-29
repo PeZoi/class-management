@@ -27,7 +27,6 @@ const isLoggedIn = false;
 export default function Header() {
   const t = useTranslations('common');
   const locale = useLocale();
-
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="flex h-16 items-center justify-between px-4 md:px-6 lg:px-8">
@@ -42,8 +41,8 @@ export default function Header() {
           {!isLoggedIn ? (
             // Chưa đăng nhập
             <>
-              <Button size="sm" asChild>
-                <Link href={`/${locale}/sign-in`}>{t('login')}</Link>
+              <Button size="sm" onClick={() => window.location.href = `/${locale}/sign-in`}>
+                {t('login')}
               </Button>
             </>
           ) : (

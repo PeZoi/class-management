@@ -12,7 +12,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class UserReturnJwt {
-    private Long id;
+    private String id;
     private String fullName;
     private String email;
     private String roleName;

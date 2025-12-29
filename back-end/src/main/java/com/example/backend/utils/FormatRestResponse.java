@@ -1,7 +1,7 @@
 package com.example.backend.utils;
 
 
-import com.example.backend.dto.response.ResponseDetail;
+import com.example.backend.dto.ResponseDetail;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.ServerHttpRequest;
