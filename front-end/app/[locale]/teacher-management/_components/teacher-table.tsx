@@ -11,7 +11,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/helper';
-import { Award, BookOpen, Calendar, CreditCard, DollarSign, Edit, Mail, MoreHorizontal, Phone, Plus, Trash2, User } from 'lucide-react';
+import { Award, BookOpen, Briefcase, Calendar, CreditCard, DollarSign, Edit, Mail, MoreHorizontal, Phone, Plus, Trash2, User } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 interface TeacherItem {
@@ -32,6 +32,7 @@ interface TeacherTableProps {
   onEdit?: (teacher: TeacherItem) => void;
   onDelete?: (id: number) => void;
   onAdd?: () => void;
+  onPaySalary?: (teacher: TeacherItem) => void;
   title?: string;
   description?: string;
   showActions?: boolean;
@@ -43,6 +44,7 @@ export function TeacherTable({
   onEdit,
   onDelete,
   onAdd,
+  onPaySalary,
   title,
   description,
   showActions = true,
@@ -207,6 +209,18 @@ export function TeacherTable({
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
                           <DropdownMenuSeparator />
+                          {onPaySalary && (
+                            <>
+                              <DropdownMenuItem 
+                                className="cursor-pointer text-blue-600 dark:text-blue-400 font-medium" 
+                                onClick={() => onPaySalary(teacher)}
+                              >
+                                <Briefcase className="size-4 mr-2" />
+                                Trả Lương
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
                           {onEdit && (
                             <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(teacher)}>
                               <Edit className="size-4 mr-2" />

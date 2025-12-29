@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { StudentTable } from './_components/student-table';
 import { StudentDialog } from './_components/student-dialog';
 import { StudentFilter, FilterState } from './_components/student-filter';
+import { PaymentActionDialog } from './_components/payment-action-dialog';
 
 export interface StudentItem {
   id: number;
@@ -133,6 +134,8 @@ export default function StudentManagementPage() {
   const [students, setStudents] = useState<StudentItem[]>(initialStudents);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [studentForPayment, setStudentForPayment] = useState<StudentItem | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     searchQuery: '',
     paymentStatus: 'all',
@@ -154,6 +157,58 @@ export default function StudentManagementPage() {
 
   const handleDelete = (id: number) => {
     setStudents((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const handlePayment = (student: StudentItem) => {
+    setStudentForPayment(student);
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handleConfirmPayment = (
+    studentId: number,
+    paymentData: {
+      amount: number;
+      paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
+      paymentDate: string;
+      notes: string;
+    }
+  ) => {
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id === studentId) {
+          const newAmountPaid = s.amountPaid + paymentData.amount;
+          let newPaymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
+          
+          if (newAmountPaid >= s.tuitionFee) {
+            newPaymentStatus = 'paid';
+          } else if (newAmountPaid > 0) {
+            newPaymentStatus = 'partial';
+          }
+
+          // TODO: Tạo hóa đơn tự động ở đây
+          // Có thể gọi API để tạo payment invoice
+          console.log('Tạo hóa đơn cho học viên:', {
+            studentId: s.id,
+            studentName: s.name,
+            className: s.className,
+            amount: paymentData.amount,
+            paymentMethod: paymentData.paymentMethod,
+            paymentDate: paymentData.paymentDate,
+            notes: paymentData.notes,
+          });
+
+          return {
+            ...s,
+            amountPaid: newAmountPaid,
+            paymentStatus: newPaymentStatus,
+          };
+        }
+        return s;
+      })
+    );
+
+    setIsPaymentDialogOpen(false);
+    setStudentForPayment(null);
   };
 
   const handleSave = (studentData: Partial<StudentItem>) => {
@@ -262,6 +317,7 @@ export default function StudentManagementPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onAdd={handleAdd}
+        onPayment={handlePayment}
         showActions={true}
       />
 
@@ -271,6 +327,14 @@ export default function StudentManagementPage() {
         onOpenChange={setIsDialogOpen}
         student={selectedStudent}
         onSave={handleSave}
+      />
+
+      {/* Payment Dialog */}
+      <PaymentActionDialog
+        open={isPaymentDialogOpen}
+        onOpenChange={setIsPaymentDialogOpen}
+        student={studentForPayment}
+        onConfirm={handleConfirmPayment}
       />
     </div>
   );

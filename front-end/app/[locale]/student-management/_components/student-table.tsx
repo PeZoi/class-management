@@ -26,6 +26,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  CreditCard,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { StudentItem } from '../student-management-page';
@@ -35,6 +36,7 @@ interface StudentTableProps {
   onEdit?: (student: StudentItem) => void;
   onDelete?: (id: number) => void;
   onAdd?: () => void;
+  onPayment?: (student: StudentItem) => void;
   title?: string;
   description?: string;
   showActions?: boolean;
@@ -46,6 +48,7 @@ export function StudentTable({
   onEdit,
   onDelete,
   onAdd,
+  onPayment,
   title,
   description,
   showActions = true,
@@ -244,6 +247,18 @@ export function StudentTable({
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
                           <DropdownMenuSeparator />
+                          {onPayment && student.paymentStatus !== 'paid' && (
+                            <>
+                              <DropdownMenuItem 
+                                className="cursor-pointer text-green-600 dark:text-green-400 font-medium" 
+                                onClick={() => onPayment(student)}
+                              >
+                                <CreditCard className="size-4 mr-2" />
+                                Đóng Tiền
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
                           {onEdit && (
                             <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(student)}>
                               <Edit className="size-4 mr-2" />

@@ -11,6 +11,7 @@ import {
   ClassroomTeacherInfo,
   ClassroomUnpaidStudentsList,
 } from './_components';
+import { PaymentActionDialog } from '@/app/[locale]/student-management/_components/payment-action-dialog';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -259,11 +260,80 @@ export default function ClassroomDetailPage() {
   const classId = Number(params.id);
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [studentForPayment, setStudentForPayment] = useState<Student | null>(null);
+  const [studentsState, setStudentsState] = useState<Student[]>([]);
 
   // Get class data (in real app, this would be fetched from API)
   const classData = classDetails[classId as keyof typeof classDetails] || classDetails[1];
-  const students = studentsData[classId] || studentsData[1];
+  const initialStudents = studentsData[classId] || studentsData[1];
+  
+  // Initialize students state
+  useState(() => {
+    setStudentsState(initialStudents);
+  });
+
+  const students = studentsState.length > 0 ? studentsState : initialStudents;
   const revenueData = revenueDataByClass[classId]?.[selectedPeriod] || revenueDataByClass[1][selectedPeriod];
+
+  const handlePayment = (student: Student) => {
+    // Transform Student to match PaymentActionDialog's expected format
+    const studentForDialog = {
+      id: student.id,
+      name: student.studentName,
+      className: classData.name,
+      tuitionFee: student.totalFee,
+      amountPaid: student.amountPaid,
+    };
+    setStudentForPayment(studentForDialog as any);
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handleConfirmPayment = (
+    studentId: number,
+    paymentData: {
+      amount: number;
+      paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
+      paymentDate: string;
+      notes: string;
+    }
+  ) => {
+    setStudentsState((prev) =>
+      prev.map((s) => {
+        if (s.id === studentId) {
+          const newAmountPaid = s.amountPaid + paymentData.amount;
+          let newPaymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
+          
+          if (newAmountPaid >= s.totalFee) {
+            newPaymentStatus = 'paid';
+          } else if (newAmountPaid > 0) {
+            newPaymentStatus = 'partial';
+          }
+
+          // TODO: Tạo hóa đơn tự động ở đây
+          console.log('Tạo hóa đơn cho học viên trong lớp:', {
+            studentId: s.id,
+            studentName: s.studentName,
+            className: classData.name,
+            amount: paymentData.amount,
+            paymentMethod: paymentData.paymentMethod,
+            paymentDate: paymentData.paymentDate,
+            notes: paymentData.notes,
+          });
+
+          return {
+            ...s,
+            amountPaid: newAmountPaid,
+            paymentStatus: newPaymentStatus,
+          };
+        }
+        return s;
+      })
+    );
+
+    setIsPaymentDialogOpen(false);
+    setStudentForPayment(null);
+  };
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
@@ -301,7 +371,15 @@ export default function ClassroomDetailPage() {
       <ClassroomStudentsList students={students} />
 
       {/* Unpaid Students List */}
-      <ClassroomUnpaidStudentsList students={students} />
+      <ClassroomUnpaidStudentsList students={students} onPayment={handlePayment} />
+
+      {/* Payment Dialog */}
+      <PaymentActionDialog
+        open={isPaymentDialogOpen}
+        onOpenChange={setIsPaymentDialogOpen}
+        student={studentForPayment}
+        onConfirm={handleConfirmPayment}
+      />
     </div>
   );
 }

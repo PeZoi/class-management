@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { TeacherTable } from './_components/teacher-table';
 import { TeacherDialog } from './_components/teacher-dialog';
+import { SalaryPaymentDialog } from './_components/salary-payment-dialog';
 
 interface TeacherItem {
   id: number;
@@ -85,6 +86,8 @@ export default function TeacherManagementPage() {
   const [teachers, setTeachers] = useState<TeacherItem[]>(initialTeachers);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherItem | null>(null);
+  const [isSalaryDialogOpen, setIsSalaryDialogOpen] = useState(false);
+  const [teacherForSalary, setTeacherForSalary] = useState<TeacherItem | null>(null);
 
 
   const handleAdd = () => {
@@ -127,6 +130,39 @@ export default function TeacherManagementPage() {
     setSelectedTeacher(null);
   };
 
+  const handlePaySalary = (teacher: TeacherItem) => {
+    setTeacherForSalary(teacher);
+    setIsSalaryDialogOpen(true);
+  };
+
+  const handleConfirmSalaryPayment = (
+    teacherId: number,
+    salaryData: {
+      baseSalary: number;
+      bonus: number;
+      deduction: number;
+      totalAmount: number;
+      paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
+      paymentDate: string;
+      period: string;
+      notes: string;
+    }
+  ) => {
+    // TODO: Tạo hóa đơn chi (lương) tự động ở đây
+    // Có thể gọi API để tạo salary payment invoice
+    console.log('Tạo hóa đơn lương cho giáo viên:', {
+      teacherId,
+      teacherName: teachers.find((t) => t.id === teacherId)?.name,
+      ...salaryData,
+    });
+
+    setIsSalaryDialogOpen(false);
+    setTeacherForSalary(null);
+
+    // Show success message (có thể dùng toast notification)
+    alert(`Đã trả lương cho giáo viên thành công!\nSố tiền: ${salaryData.totalAmount.toLocaleString('vi-VN')} VNĐ`);
+  };
+
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
       {/* Teacher Table */}
@@ -135,6 +171,7 @@ export default function TeacherManagementPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onAdd={handleAdd}
+        onPaySalary={handlePaySalary}
         showActions={true}
       />
 
@@ -144,6 +181,14 @@ export default function TeacherManagementPage() {
         onOpenChange={setIsDialogOpen}
         teacher={selectedTeacher}
         onSave={handleSave}
+      />
+
+      {/* Salary Payment Dialog */}
+      <SalaryPaymentDialog
+        open={isSalaryDialogOpen}
+        onOpenChange={setIsSalaryDialogOpen}
+        teacher={teacherForSalary}
+        onConfirm={handleConfirmSalaryPayment}
       />
     </div>
   );

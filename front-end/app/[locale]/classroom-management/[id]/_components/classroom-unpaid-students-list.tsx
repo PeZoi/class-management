@@ -1,8 +1,9 @@
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/utils/helper';
-import { AlertCircle, DollarSign, Mail, Phone, User2 } from 'lucide-react';
+import { AlertCircle, CreditCard, DollarSign, Mail, Phone, User2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 interface Student {
@@ -22,9 +23,10 @@ interface Student {
 
 interface ClassroomUnpaidStudentsListProps {
   students: Student[];
+  onPayment?: (student: Student) => void;
 }
 
-export function ClassroomUnpaidStudentsList({ students }: ClassroomUnpaidStudentsListProps) {
+export function ClassroomUnpaidStudentsList({ students, onPayment }: ClassroomUnpaidStudentsListProps) {
   const t = useTranslations('classroom-detail');
 
   // Filter students who haven't paid fully
@@ -117,6 +119,11 @@ export function ClassroomUnpaidStudentsList({ students }: ClassroomUnpaidStudent
                   {t('amountUnpaid')}
                 </div>
               </TableHead>
+              {onPayment && (
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
+                  Thao Tác
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -166,6 +173,18 @@ export function ClassroomUnpaidStudentsList({ students }: ClassroomUnpaidStudent
                       {formatCurrency(unpaidAmount)}
                     </div>
                   </TableCell>
+                  {onPayment && (
+                    <TableCell className="text-center">
+                      <Button
+                        size="sm"
+                        onClick={() => onPayment(student)}
+                        className="bg-green-600 hover:bg-green-700 gap-2"
+                      >
+                        <CreditCard className="size-4" />
+                        Đóng Tiền
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
