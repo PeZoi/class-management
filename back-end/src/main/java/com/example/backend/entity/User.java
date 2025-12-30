@@ -1,5 +1,6 @@
 package com.example.backend.entity;
 
+import com.example.backend.enums.Genders;
 import com.example.backend.enums.Status;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -54,6 +55,9 @@ public class User extends Auditable {
 
     @Enumerated(EnumType.STRING)
     private Status status;
+
+    @Enumerated(EnumType.STRING)
+    private Genders gender;
 
     private boolean enabled;
 

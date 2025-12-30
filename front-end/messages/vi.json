@@ -14,7 +14,9 @@
     "Profile": "Hồ sơ cá nhân",
     "logout": "Đăng xuất",
     "login": "Đăng nhập",
-    "register": "Đăng ký"
+    "admin": "Quản trị viên",
+    "teacher": "Giáo viên",
+    "user": "Người dùng"
   },
   "auth": {
     "signIn": "Đăng Nhập",
@@ -25,7 +27,8 @@
     "signInButton": "Đăng Nhập",
     "welcomeBack": "Chào Mừng Trở Lại",
     "welcomeBackDesc": "Nhập thông tin đăng nhập để truy cập tài khoản",
-    "forgotPasswordNote": "Nếu bạn quên mật khẩu, vui lòng liên hệ với quản trị viên để được hỗ trợ."
+    "forgotPasswordNote": "Nếu bạn quên mật khẩu, vui lòng liên hệ với quản trị viên để được hỗ trợ.",
+    "incorrectUsernameOrPassword": "Tài khoản hoặc mật khẩu không chính xác"
   },
   "page": {
     "title": "Trang chủ",

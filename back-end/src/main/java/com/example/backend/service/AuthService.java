@@ -37,7 +37,7 @@ public class AuthService {
         // Lấy ra thông tin cơ bản của user
         User user = userRepository.findByUsername(loginRequest.getUsername()).get();
         UserReturnJwt userReturnJwt = modelMapper.map(user, UserReturnJwt.class);
-        userReturnJwt.setRoleName(user.getRole().getName());
+        userReturnJwt.setRole(user.getRole().getName());
 
         // Tạo access token
         String accessToken = securityUtil.createAccessToken(authentication.getName(), userReturnJwt);

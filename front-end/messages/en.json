@@ -14,7 +14,9 @@
     "Profile": "Profile",
     "logout": "Logout",
     "login": "Sign in",
-    "register": "Sign up"
+    "admin": "Admin",
+    "teacher": "Teacher",
+    "user": "User"
   },
   "auth": {
     "signIn": "Sign In",
@@ -25,7 +27,8 @@
     "signInButton": "Sign In",
     "welcomeBack": "Welcome Back",
     "welcomeBackDesc": "Enter your credentials to access your account",
-    "forgotPasswordNote": "If you forgot your password, please contact the administrator for assistance."
+    "forgotPasswordNote": "If you forgot your password, please contact the administrator for assistance.",
+    "incorrectUsernameOrPassword": "Incorrect username or password"
   },
   "page": {
     "title": "Home",

@@ -22,7 +22,7 @@ public class CustomUserDetailService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         // Tìm user qua username
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User không tồn tại"));
+                .orElseThrow(() -> new UsernameNotFoundException("Tài khoản hoặc mật khẩu không đúng"));
 
         // Kiểm tra trạng thái user
         if (user.getStatus() == Status.DELETED) {

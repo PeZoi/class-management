@@ -11,22 +11,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store';
 import { Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
 
-const user = {
-  name: 'John Doe',
-  email: 'john.doe@example.com',
-  avatar: 'https://github.com/shadcn.png',
-  role: 'Admin',
-};
-const isLoggedIn = false;
-
 export default function Header() {
   const t = useTranslations('common');
   const locale = useLocale();
+  const { user, logout } = useAuthStore();
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="flex h-16 items-center justify-between px-4 md:px-6 lg:px-8">
@@ -38,10 +33,10 @@ export default function Header() {
 
         {/* Right Section - Auth/User Actions */}
         <div className="flex items-center gap-2 lg:gap-3">
-          {!isLoggedIn ? (
+          {!user ? (
             // Chưa đăng nhập
             <>
-              <Button size="sm" onClick={() => window.location.href = `/${locale}/sign-in`}>
+              <Button size="sm" onClick={() => (window.location.href = `/${locale}/sign-in`)}>
                 {t('login')}
               </Button>
             </>
@@ -66,18 +61,20 @@ export default function Header() {
                       {user?.avatar ? (
                         <Image
                           src={user.avatar}
-                          alt={user.name}
+                          alt={user.fullName}
                           width={32}
                           height={32}
                           className="size-8 rounded-full object-cover"
                         />
                       ) : (
-                        <span className="text-sm">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+                        <span className="text-sm">{user?.fullName?.charAt(0).toUpperCase() || 'U'}</span>
                       )}
                     </div>
                     <div className="hidden lg:flex flex-col items-start text-left">
-                      <span className="text-sm font-medium">{user?.name || 'User'}</span>
-                      <span className="text-xs text-muted-foreground capitalize">{user?.role || 'Member'}</span>
+                      <span className="text-sm font-medium">{user?.fullName || t('user')}</span>
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {user?.role === 'ROLE_ADMIN' ? t('admin') : t('teacher')}
+                      </span>
                     </div>
                     <ChevronDown className="hidden lg:block size-4 opacity-50" />
                   </Button>
@@ -85,7 +82,7 @@ export default function Header() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user?.name || 'User'}</p>
+                      <p className="text-sm font-medium leading-none">{user?.fullName || t('user')}</p>
                       <p className="text-xs leading-none text-muted-foreground">{user?.email || ''}</p>
                     </div>
                   </DropdownMenuLabel>
@@ -103,7 +100,12 @@ export default function Header() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
+                  <DropdownMenuItem
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                    onClick={() => {
+                      logout();
+                    }}
+                  >
                     <LogOut className="mr-2 size-4" />
                     {t('logout')}
                   </DropdownMenuItem>

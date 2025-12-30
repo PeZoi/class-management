@@ -6,22 +6,39 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
-import { GraduationCap, Mail, Lock, Eye, EyeOff, Info } from 'lucide-react';
+import { GraduationCap, Mail, Lock, Eye, EyeOff, Info, Loader2 } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { authService } from '@/services';
+import { toast } from 'react-toastify';
+import { useAuthStore } from '@/store';
+import { useRouter } from 'next/navigation';
 
 export default function SignInPage() {
   const t = useTranslations('auth');
+  const router = useRouter();
+  const { handleLoginSuccess } = useAuthStore();
   
+  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle sign in logic here
-    console.log('Sign in with:', formData);
+
+    try {
+      setIsLoading(true);
+      const response = await authService.login(formData);
+      if (response.data) {
+        handleLoginSuccess(response.data.user, response.data.accessToken);
+      }
+    } catch (error) {
+      toast.error(t('incorrectUsernameOrPassword'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -100,7 +117,9 @@ export default function SignInPage() {
             <Button
               type="submit"
               className="w-full h-11 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium shadow-lg hover:shadow-xl transition-all"
+              disabled={isLoading}
             >
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
               {t('signInButton')}
             </Button>
           </form>

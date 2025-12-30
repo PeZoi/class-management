@@ -1,4 +1,5 @@
 import { AppSidebar } from '@/components/app-sidebar';
+import { AuthGuard } from '@/components/auth-guard';
 import Header from '@/components/header';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { locales } from '@/i18n';
@@ -31,18 +32,26 @@ export default async function LocaleLayout({
 
   // Pages without sidebar/header
   if (pathname.includes('/sign-in')) {
-    return <NextIntlClientProvider messages={messages}><SidebarProvider>{children}</SidebarProvider></NextIntlClientProvider>;
+    return (
+      <NextIntlClientProvider messages={messages}>
+        <SidebarProvider>
+          <AuthGuard>{children}</AuthGuard>
+        </SidebarProvider>
+      </NextIntlClientProvider>
+    );
   }
 
   // Normal pages with sidebar and header
   return (
     <NextIntlClientProvider messages={messages}>
       <SidebarProvider>
-        <AppSidebar />
-        <main className="flex-1 w-full">
-          <Header />
-          <div className="w-full">{children}</div>
-        </main>
+        <AuthGuard>
+          <AppSidebar />
+          <main className="flex-1 w-full">
+            <Header />
+            <div className="w-full">{children}</div>
+          </main>
+        </AuthGuard>
       </SidebarProvider>
     </NextIntlClientProvider>
   );
