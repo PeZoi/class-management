@@ -6,12 +6,12 @@ import { useTranslations } from 'next-intl';
 interface ClassroomStatsCardsProps {
   students: number;
   revenue: number;
-  tuitionFee: number;
+  monthlyFee: number;
   collected: number;
   total: number;
 }
 
-export function ClassroomStatsCards({ students, revenue, tuitionFee, collected, total }: ClassroomStatsCardsProps) {
+export function ClassroomStatsCards({ students, revenue, monthlyFee, collected, total }: ClassroomStatsCardsProps) {
   const t = useTranslations('classroom-detail');
 
   const collectionRate = ((collected / total) * 100).toFixed(1);
@@ -49,16 +49,16 @@ export function ClassroomStatsCards({ students, revenue, tuitionFee, collected, 
         </CardContent>
       </Card>
 
-      {/* Tuition Fee */}
+      {/* Monthly Fee */}
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-purple-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('tuitionFee')}</CardTitle>
+          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('monthlyFee')}</CardTitle>
           <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
             <BookOpen className="size-5 text-purple-600 dark:text-purple-400" />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(tuitionFee)}</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(monthlyFee)}</div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{t('perStudent')}</p>
         </CardContent>
       </Card>

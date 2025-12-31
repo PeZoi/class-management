@@ -57,9 +57,9 @@ const recentClasses = [
     revenue: 87500000,
     schedule: 'T2, T4, T6 - 19:00',
     duration: '3 tháng',
-    tuitionFee: 2500000, // Học phí mỗi học viên
+    monthlyFee: 2500000, // Học phí mỗi học viên
     collected: 87500000, // Đã thu
-    total: 87500000, // Tổng cần thu (students * tuitionFee)
+    total: 87500000, // Tổng cần thu (students * monthlyFee)
   },
   {
     id: 2,
@@ -69,7 +69,7 @@ const recentClasses = [
     revenue: 126000000,
     schedule: 'T3, T5, T7 - 18:30',
     duration: '4 tháng',
-    tuitionFee: 3000000,
+    monthlyFee: 3000000,
     collected: 108000000,
     total: 126000000,
   },
@@ -81,7 +81,7 @@ const recentClasses = [
     revenue: 98000000,
     schedule: 'T2, T4 - 20:00',
     duration: '3 tháng',
-    tuitionFee: 3500000,
+    monthlyFee: 3500000,
     collected: 98000000,
     total: 98000000,
   },
@@ -93,7 +93,7 @@ const recentClasses = [
     revenue: 75000000,
     schedule: 'T7, CN - 14:00',
     duration: '2 tháng',
-    tuitionFee: 2500000,
+    monthlyFee: 2500000,
     collected: 62500000,
     total: 75000000,
   },
@@ -105,7 +105,7 @@ const recentClasses = [
     revenue: 112500000,
     schedule: 'T3, T5 - 19:30',
     duration: '5 tháng',
-    tuitionFee: 4500000,
+    monthlyFee: 4500000,
     collected: 90000000,
     total: 112500000,
   },

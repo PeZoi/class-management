@@ -6,6 +6,9 @@ import { ClassroomTable } from './_components/classroom-table';
 import { ClassroomDialog } from './_components/classroom-dialog';
 import { ClassroomRevenueChart } from './_components/classroom-revenue-chart';
 import { useTranslations } from 'next-intl';
+import { ClassRequest } from '@/types/class-type';
+import { classService } from '@/services/class-service';
+import { toast } from 'react-toastify';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -17,7 +20,7 @@ interface ClassItem {
   revenue: number;
   schedule: string;
   duration: string;
-  tuitionFee: number;
+  monthlyFee: number;
   collected: number;
   total: number;
 }
@@ -250,7 +253,7 @@ const initialClasses: ClassItem[] = [
     revenue: 87500000,
     schedule: 'T2, T4, T6 - 19:00',
     duration: '3 tháng',
-    tuitionFee: 2500000,
+    monthlyFee: 2500000,
     collected: 87500000,
     total: 87500000,
   },
@@ -262,7 +265,7 @@ const initialClasses: ClassItem[] = [
     revenue: 126000000,
     schedule: 'T3, T5, T7 - 18:30',
     duration: '4 tháng',
-    tuitionFee: 3000000,
+    monthlyFee: 3000000,
     collected: 108000000,
     total: 126000000,
   },
@@ -274,7 +277,7 @@ const initialClasses: ClassItem[] = [
     revenue: 98000000,
     schedule: 'T2, T4 - 20:00',
     duration: '3 tháng',
-    tuitionFee: 3500000,
+    monthlyFee: 3500000,
     collected: 98000000,
     total: 98000000,
   },
@@ -286,7 +289,7 @@ const initialClasses: ClassItem[] = [
     revenue: 75000000,
     schedule: 'T7, CN - 14:00',
     duration: '2 tháng',
-    tuitionFee: 2500000,
+    monthlyFee: 2500000,
     collected: 62500000,
     total: 75000000,
   },
@@ -298,7 +301,7 @@ const initialClasses: ClassItem[] = [
     revenue: 112500000,
     schedule: 'T3, T5 - 19:30',
     duration: '5 tháng',
-    tuitionFee: 4500000,
+    monthlyFee: 4500000,
     collected: 90000000,
     total: 112500000,
   },
@@ -327,20 +330,45 @@ export default function ClassroomManagementPage() {
     setClasses(classes.filter((c) => c.id !== id));
   };
 
-  const handleSave = (classItem: ClassItem) => {
-    if (selectedClass) {
-      // Edit
-      setClasses(classes.map((c) => (c.id === classItem.id ? classItem : c)));
+  // Type cho form data - chỉ chứa các field có trong form
+  
+
+  const handleSave = async (formData: ClassRequest, id?: number) => {
+    if (id) {
+      // Edit mode - cập nhật class hiện có
+      console.log('=== EDIT CLASS ===');
+      console.log('Class ID:', id);
+      console.log('Form Data:', formData);
+      
+      setClasses(classes.map((c) => {
+        if (c.id === id) {
+          // Giữ lại các field không có trong form, chỉ cập nhật các field từ form
+          return {
+            ...c,
+            name: formData.name,
+            teacherId: formData.teacherId, // Lưu ý: đây là teacher ID, cần map sang tên nếu cần
+            schedule: formData.schedule,
+            monthlyFee: formData.monthlyFee,
+          };
+        }
+        return c;
+      }));
     } else {
-      // Add
-      const newClass = {
-        ...classItem,
-        id: Math.max(...classes.map((c) => c.id), 0) + 1,
-      };
-      setClasses([...classes, newClass]);
+      // Create mode - tạo class mới
+      console.log('=== CREATE NEW CLASS ===');
+      console.log('Form Data:', formData);
+      try {
+        const response = await classService.createClass(formData);
+        if (response.status === 200) {
+          toast.success("Thêm lớp học thành công");
+          setIsDialogOpen(false);
+          setSelectedClass(null);
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Thêm lớp học thất bại");
+      }
     }
-    setIsDialogOpen(false);
-    setSelectedClass(null);
   };
 
   // Get revenue data for chart

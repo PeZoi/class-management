@@ -22,7 +22,7 @@ interface Student {
   id: number;
   name: string;
   className: string;
-  tuitionFee: number;
+  monthlyFee: number;
   amountPaid: number;
 }
 
@@ -58,7 +58,7 @@ export function PaymentActionDialog({
 
   useEffect(() => {
     if (student && open) {
-      const remainingAmount = student.tuitionFee - student.amountPaid;
+      const remainingAmount = student.monthlyFee - student.amountPaid;
       setFormData({
         amount: remainingAmount > 0 ? remainingAmount : 0,
         paymentMethod: 'bank_transfer',
@@ -78,7 +78,7 @@ export function PaymentActionDialog({
 
   if (!student) return null;
 
-  const remainingAmount = student.tuitionFee - student.amountPaid;
+  const remainingAmount = student.monthlyFee - student.amountPaid;
   const isFullPayment = formData.amount >= remainingAmount;
 
   return (
@@ -118,7 +118,7 @@ export function PaymentActionDialog({
                 <div>
                   <span className="text-slate-500">Học phí:</span>
                   <div className="font-medium text-slate-900 dark:text-slate-100">
-                    {formatCurrency(student.tuitionFee)}
+                    {formatCurrency(student.monthlyFee)}
                   </div>
                 </div>
                 <div>

@@ -20,7 +20,7 @@ export interface StudentItem {
   joinedDate: string;
   status: 'active' | 'pending' | 'completed';
   paymentStatus: 'paid' | 'unpaid' | 'partial';
-  tuitionFee: number;
+  monthlyFee: number;
   amountPaid: number;
 }
 
@@ -40,7 +40,7 @@ const initialStudents: StudentItem[] = [
     joinedDate: '2024-01-15',
     status: 'active',
     paymentStatus: 'paid',
-    tuitionFee: 5000000,
+    monthlyFee: 5000000,
     amountPaid: 5000000,
   },
   {
@@ -57,7 +57,7 @@ const initialStudents: StudentItem[] = [
     joinedDate: '2024-02-20',
     status: 'active',
     paymentStatus: 'partial',
-    tuitionFee: 4500000,
+    monthlyFee: 4500000,
     amountPaid: 2000000,
   },
   {
@@ -74,7 +74,7 @@ const initialStudents: StudentItem[] = [
     joinedDate: '2024-03-10',
     status: 'active',
     paymentStatus: 'unpaid',
-    tuitionFee: 4000000,
+    monthlyFee: 4000000,
     amountPaid: 0,
   },
   {
@@ -91,7 +91,7 @@ const initialStudents: StudentItem[] = [
     joinedDate: '2024-01-05',
     status: 'active',
     paymentStatus: 'paid',
-    tuitionFee: 5000000,
+    monthlyFee: 5000000,
     amountPaid: 5000000,
   },
   {
@@ -108,7 +108,7 @@ const initialStudents: StudentItem[] = [
     joinedDate: '2024-02-15',
     status: 'pending',
     paymentStatus: 'unpaid',
-    tuitionFee: 4500000,
+    monthlyFee: 4500000,
     amountPaid: 0,
   },
   {
@@ -125,7 +125,7 @@ const initialStudents: StudentItem[] = [
     joinedDate: '2023-12-20',
     status: 'completed',
     paymentStatus: 'paid',
-    tuitionFee: 4000000,
+    monthlyFee: 4000000,
     amountPaid: 4000000,
   },
 ];
@@ -179,7 +179,7 @@ export default function StudentManagementPage() {
           const newAmountPaid = s.amountPaid + paymentData.amount;
           let newPaymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
           
-          if (newAmountPaid >= s.tuitionFee) {
+          if (newAmountPaid >= s.monthlyFee) {
             newPaymentStatus = 'paid';
           } else if (newAmountPaid > 0) {
             newPaymentStatus = 'partial';
@@ -233,7 +233,7 @@ export default function StudentManagementPage() {
         joinedDate: studentData.joinedDate || new Date().toISOString().split('T')[0],
         status: studentData.status || 'pending',
         paymentStatus: studentData.paymentStatus || 'unpaid',
-        tuitionFee: studentData.tuitionFee || 0,
+        monthlyFee: studentData.monthlyFee || 0,
         amountPaid: studentData.amountPaid || 0,
       };
       setStudents((prev) => [...prev, newStudent]);
@@ -291,8 +291,8 @@ export default function StudentManagementPage() {
         case 'joinedDate':
           comparison = new Date(a.joinedDate).getTime() - new Date(b.joinedDate).getTime();
           break;
-        case 'tuitionFee':
-          comparison = a.tuitionFee - b.tuitionFee;
+        case 'monthlyFee':
+          comparison = a.monthlyFee - b.monthlyFee;
           break;
       }
 

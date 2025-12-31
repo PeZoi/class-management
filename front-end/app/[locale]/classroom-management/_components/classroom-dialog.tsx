@@ -21,6 +21,9 @@ import {
 import { CurrencyInputField } from '@/components/currency-input-field';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { teacherService } from '@/services';
+import { TeacherType } from '@/types';
+import { ClassRequest } from '@/types/class-type';
 
 interface ClassItem {
   id: number;
@@ -30,85 +33,80 @@ interface ClassItem {
   revenue: number;
   schedule: string;
   duration: string;
-  tuitionFee: number;
+  monthlyFee: number;
   collected: number;
   total: number;
-}
-
-interface Teacher {
-  id: number;
-  name: string;
 }
 
 interface ClassroomDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   classItem: ClassItem | null;
-  onSave: (classItem: ClassItem) => void;
-  teachers?: Teacher[]; // Danh sách giáo viên
+  onSave: (formData: ClassRequest, id?: number) => void;
 }
-
-// Mock data giáo viên mẫu - bạn sẽ thay thế bằng data thật từ API
-const MOCK_TEACHERS: Teacher[] = [
-  { id: 1, name: 'Nguyễn Văn A' },
-  { id: 2, name: 'Trần Thị B' },
-  { id: 3, name: 'Lê Văn C' },
-  { id: 4, name: 'Phạm Thị D' },
-  { id: 5, name: 'Hoàng Văn E' },
-];
 
 export function ClassroomDialog({ 
   open, 
   onOpenChange, 
   classItem, 
   onSave,
-  teachers = MOCK_TEACHERS 
 }: ClassroomDialogProps) {
   const t = useTranslations('classroom-management');
-  const [formData, setFormData] = useState<Partial<ClassItem>>({
+  
+  const [teachers, setTeachers] = useState<TeacherType[]>([]);
+  const [formData, setFormData] = useState<ClassRequest>({
     name: '',
-    teacher: '',
-    tuitionFee: 0,
+    teacherId: '',
+    schedule: '',
+    monthlyFee: 0,
   });
 
-
+  // Reset form khi dialog mở/đóng hoặc classItem thay đổi
+  // Note: setState trong useEffect là cần thiết để sync form với props
   useEffect(() => {
     if (classItem) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
-        name: classItem.name,
-        teacher: classItem.teacher,
-        tuitionFee: classItem.tuitionFee,
+        name: classItem.name || '',
+        teacherId: classItem.teacher || '',
+        schedule: classItem.schedule || '',
+        monthlyFee: classItem.monthlyFee || 0,
       });
     } else {
       setFormData({
         name: '',
-        teacher: '',
-        tuitionFee: 0,
+        teacherId: '',
+        schedule: '',
+        monthlyFee: 0,
       });
     }
   }, [classItem, open]);
 
+  // Fetch teachers
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      try {
+        const response = await teacherService.getAllTeachers();
+        if (response.status === 200) {
+          setTeachers(response.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching teachers:', error);
+      }
+    };
+    fetchTeachers();
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Chỉ truyền formData và id (nếu đang edit)
+    onSave(formData, classItem?.id);
 
-    onSave({
-      ...classItem,
-      ...formData,
-      // Giữ lại các giá trị mặc định cho các field không có trong form
-      students: classItem?.students || 0,
-      revenue: classItem?.revenue || 0,
-      schedule: classItem?.schedule || '',
-      duration: classItem?.duration || '',
-      collected: classItem?.collected || 0,
-      total: classItem?.total || 0,
-    } as ClassItem);
-
-    // Reset form
+    // Reset form và đóng dialog
     onOpenChange(false);
   };
 
-  const handleChange = (field: keyof ClassItem, value: string | number) => {
+  const handleChange = (field: keyof ClassRequest, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -135,38 +133,47 @@ export function ClassroomDialog({
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="schedule">
+                {t('schedule')} <span className="text-red-500">{t('required')}</span>
+              </Label>
+              <Input
+                id="schedule"
+                value={formData.schedule}
+                onChange={(e) => handleChange('schedule', e.target.value)}
+                placeholder="VD: T2, T4, T6 - 19:00"
+                required
+              />
+            </div>
+
             {/* Giảng viên - Select */}
-            <div className='flex gap-2 mt-2'>
+            <div className="flex gap-2">
               <div className="space-y-2">
                 <Label htmlFor="teacher">
                   {t('teacher')} <span className="text-red-500">{t('required')}</span>
                 </Label>
-                <Select
-                  value={formData.teacher}
-                  onValueChange={(value) => handleChange('teacher', value)}
-                  required
-                >
+                <Select value={formData.teacherId} onValueChange={(value) => handleChange('teacherId', value)} required>
                   <SelectTrigger>
                     <SelectValue placeholder={t('teacherPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {teachers.map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.name}>
-                        {teacher.name}
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.fullName} ({teacher.gender === "MALE" ? "Nam" : "Nữ"})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-  
+
               {/* Học phí */}
               <div className="flex-1">
                 <CurrencyInputField
-                  id="tuitionFee"
-                  label={t('tuitionFee')}
-                  value={formData.tuitionFee || 0}
-                  onChange={(value) => handleChange('tuitionFee', value)}
-                  placeholder="5,000,000"
+                  id="monthlyFee"
+                  label={t('monthlyFee')}
+                  value={formData.monthlyFee || 0}
+                  onChange={(value) => handleChange('monthlyFee', value)}
+                  placeholder="500,000"
                   required
                   description={t('tuitionFeePerStudent')}
                   className="flex-1"

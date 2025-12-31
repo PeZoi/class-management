@@ -16,7 +16,7 @@ export interface FilterState {
   paymentStatus: 'all' | 'paid' | 'unpaid' | 'partial';
   className: string;
   gender: 'all' | 'male' | 'female' | 'other';
-  sortBy: 'name' | 'joinedDate' | 'tuitionFee';
+  sortBy: 'name' | 'joinedDate' | 'monthlyFee';
   sortOrder: 'asc' | 'desc';
 }
 
@@ -146,7 +146,7 @@ export function StudentFilter({
           <SelectContent>
             <SelectItem value="name">{t('sort_by_name')}</SelectItem>
             <SelectItem value="joinedDate">{t('sort_by_date')}</SelectItem>
-            <SelectItem value="tuitionFee">{t('sort_by_fee')}</SelectItem>
+            <SelectItem value="monthlyFee">{t('sort_by_fee')}</SelectItem>
           </SelectContent>
         </Select>
 

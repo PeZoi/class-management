@@ -43,7 +43,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
     joinedDate: new Date().toISOString().split('T')[0],
     status: 'pending',
     paymentStatus: 'unpaid',
-    tuitionFee: 0,
+    monthlyFee: 0,
     amountPaid: 0,
   });
 
@@ -64,7 +64,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
         joinedDate: new Date().toISOString().split('T')[0],
         status: 'pending',
         paymentStatus: 'unpaid',
-        tuitionFee: 0,
+        monthlyFee: 0,
         amountPaid: 0,
       });
     }
@@ -297,16 +297,16 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                 {t('paymentInfo')}
               </h3>
               <div className="grid gap-4">
-                {/* Tuition Fee */}
+                {/* Monthly Fee */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="tuitionFee" className="text-right">
-                    {t('tuitionFee')} <span className="text-red-500">{t('required')}</span>
+                  <Label htmlFor="monthlyFee" className="text-right">
+                    {t('monthlyFee')} <span className="text-red-500">{t('required')}</span>
                   </Label>
                   <Input
-                    id="tuitionFee"
+                    id="monthlyFee"
                     type="number"
-                    value={formData.tuitionFee}
-                    onChange={(e) => handleChange('tuitionFee', Number(e.target.value))}
+                    value={formData.monthlyFee}
+                    onChange={(e) => handleChange('monthlyFee', Number(e.target.value))}
                     className="col-span-3"
                     placeholder={t('tuitionFeePlaceholder')}
                     min="0"

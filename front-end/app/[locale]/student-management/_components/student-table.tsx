@@ -228,7 +228,7 @@ export function StudentTable({
                     <div className="text-right space-y-1">
                       {getPaymentBadge(student.paymentStatus)}
                       <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {formatCurrency(student.amountPaid)} / {formatCurrency(student.tuitionFee)}
+                        {formatCurrency(student.amountPaid)} / {formatCurrency(student.monthlyFee)}
                       </div>
                     </div>
                   </TableCell>

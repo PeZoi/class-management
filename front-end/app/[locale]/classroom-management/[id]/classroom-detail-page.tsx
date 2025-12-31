@@ -43,7 +43,7 @@ const classDetails = {
     schedule: 'Thứ 2, Thứ 4, Thứ 6',
     time: '19:00 - 21:00',
     duration: '3 tháng',
-    tuitionFee: 2500000,
+    monthlyFee: 2500000,
     collected: 87500000,
     total: 87500000,
     level: 'Intermediate',
@@ -61,7 +61,7 @@ const classDetails = {
     schedule: 'Thứ 3, Thứ 5, Thứ 7',
     time: '18:30 - 20:30',
     duration: '4 tháng',
-    tuitionFee: 3000000,
+    monthlyFee: 3000000,
     collected: 108000000,
     total: 126000000,
     level: 'Advanced',
@@ -282,7 +282,7 @@ export default function ClassroomDetailPage() {
       id: student.id,
       name: student.studentName,
       className: classData.name,
-      tuitionFee: student.totalFee,
+      monthlyFee: student.totalFee,
       amountPaid: student.amountPaid,
     };
     setStudentForPayment(studentForDialog as any);
@@ -344,7 +344,7 @@ export default function ClassroomDetailPage() {
       <ClassroomStatsCards
         students={classData.students}
         revenue={classData.revenue}
-        tuitionFee={classData.tuitionFee}
+        monthlyFee={classData.monthlyFee}
         collected={classData.collected}
         total={classData.total}
       />

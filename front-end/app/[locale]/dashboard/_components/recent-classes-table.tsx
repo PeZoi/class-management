@@ -14,7 +14,7 @@ interface ClassItem {
   revenue: number;
   schedule: string;
   duration: string;
-  tuitionFee: number;
+  monthlyFee: number;
   collected: number;
   total: number;
 }
@@ -78,7 +78,7 @@ export function RecentClassesTable({ recentClasses, formatCurrency, className }:
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
                 <div className="flex items-center gap-2">
                   <Wallet className="size-4" />
-                  {t('tuitionFee')}
+                  {t('monthlyFee')}
                 </div>
               </TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
@@ -123,7 +123,7 @@ export function RecentClassesTable({ recentClasses, formatCurrency, className }:
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="font-bold text-slate-900 dark:text-slate-100">
-                      {formatCurrency(classItem.tuitionFee)}
+                      {formatCurrency(classItem.monthlyFee)}
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">{t('perStudent')}</span>
                   </div>
