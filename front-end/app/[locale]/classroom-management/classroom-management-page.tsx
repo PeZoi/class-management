@@ -1,29 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatCurrency } from '@/utils/helper';
 import { ClassroomTable } from './_components/classroom-table';
 import { ClassroomDialog } from './_components/classroom-dialog';
 import { ClassroomRevenueChart } from './_components/classroom-revenue-chart';
 import { useTranslations } from 'next-intl';
-import { ClassRequest } from '@/types/class-type';
+import { ClassRequest, ClassType } from '@/types/class-type';
 import { classService } from '@/services/class-service';
 import { toast } from 'react-toastify';
 
 type TimePeriod = '3months' | '6months' | '12months';
-
-interface ClassItem {
-  id: number;
-  name: string;
-  teacher: string;
-  students: number;
-  revenue: number;
-  schedule: string;
-  duration: string;
-  monthlyFee: number;
-  collected: number;
-  total: number;
-}
 
 // Màu sắc cho từng lớp học
 const classColors = [
@@ -244,135 +231,94 @@ const revenueComparisonData: Record<
   ],
 };
 
-const initialClasses: ClassItem[] = [
-  {
-    id: 1,
-    name: 'JavaScript Nâng Cao',
-    teacher: 'Nguyễn Văn A',
-    students: 35,
-    revenue: 87500000,
-    schedule: 'T2, T4, T6 - 19:00',
-    duration: '3 tháng',
-    monthlyFee: 2500000,
-    collected: 87500000,
-    total: 87500000,
-  },
-  {
-    id: 2,
-    name: 'React & Next.js',
-    teacher: 'Trần Thị B',
-    students: 42,
-    revenue: 126000000,
-    schedule: 'T3, T5, T7 - 18:30',
-    duration: '4 tháng',
-    monthlyFee: 3000000,
-    collected: 108000000,
-    total: 126000000,
-  },
-  {
-    id: 3,
-    name: 'Python for Data Science',
-    teacher: 'Lê Văn C',
-    students: 28,
-    revenue: 98000000,
-    schedule: 'T2, T4 - 20:00',
-    duration: '3 tháng',
-    monthlyFee: 3500000,
-    collected: 98000000,
-    total: 98000000,
-  },
-  {
-    id: 4,
-    name: 'UI/UX Design Fundamentals',
-    teacher: 'Phạm Thị D',
-    students: 30,
-    revenue: 75000000,
-    schedule: 'T7, CN - 14:00',
-    duration: '2 tháng',
-    monthlyFee: 2500000,
-    collected: 62500000,
-    total: 75000000,
-  },
-  {
-    id: 5,
-    name: 'Machine Learning',
-    teacher: 'Hoàng Văn E',
-    students: 25,
-    revenue: 112500000,
-    schedule: 'T3, T5 - 19:30',
-    duration: '5 tháng',
-    monthlyFee: 4500000,
-    collected: 90000000,
-    total: 112500000,
-  },
-];
-
 export default function ClassroomManagementPage() {
   const t = useTranslations('classroom-management');
-  const [classes, setClasses] = useState<ClassItem[]>(initialClasses);
+  const [classes, setClasses] = useState<ClassType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
+  const [selectedClass, setSelectedClass] = useState<ClassType | null>(null);
 
   // Chart state
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
 
-  const handleAdd = () => {
+  const fetchClasses = useCallback(async () => {
+    try {
+      const response = await classService.getAllClasses();
+      if (response.status === 200) {
+        setClasses(response.data || []);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Không thể tải danh sách lớp học');
+    }
+  }, []);
+
+  // Call API to get all classes
+  useEffect(() => {
+    fetchClasses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleAdd = useCallback(() => {
     setSelectedClass(null);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (classItem: ClassItem) => {
+  const handleEdit = useCallback((classItem: ClassType) => {
     setSelectedClass(classItem);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleDelete = (id: number) => {
-    setClasses(classes.filter((c) => c.id !== id));
-  };
+  const handleDelete = useCallback((id: string) => {
+    setClasses((prevClasses) => prevClasses.filter((c) => c.id !== id));
+  }, []);
 
   // Type cho form data - chỉ chứa các field có trong form
   
 
-  const handleSave = async (formData: ClassRequest, id?: number) => {
+  const handleSave = useCallback(async (formData: ClassRequest, id?: string) => {
     if (id) {
-      // Edit mode - cập nhật class hiện có
-      console.log('=== EDIT CLASS ===');
-      console.log('Class ID:', id);
-      console.log('Form Data:', formData);
-      
-      setClasses(classes.map((c) => {
-        if (c.id === id) {
-          // Giữ lại các field không có trong form, chỉ cập nhật các field từ form
-          return {
-            ...c,
-            name: formData.name,
-            teacherId: formData.teacherId, // Lưu ý: đây là teacher ID, cần map sang tên nếu cần
-            schedule: formData.schedule,
-            monthlyFee: formData.monthlyFee,
-          };
+      try {
+        const response = await classService.updateClass(id, formData);
+        if (response.status === 200 && response.data) {
+          const updatedClass = response.data;
+          toast.success("Cập nhật lớp học thành công");
+          setIsDialogOpen(false);
+          setSelectedClass(null);
+          setClasses((prevClasses) => 
+            prevClasses.map((c) => c.id === id ? updatedClass : c)
+          );
         }
-        return c;
-      }));
+      } catch (error) {
+        console.error(error);
+        toast.error("Cập nhật lớp học thất bại");
+      }
     } else {
-      // Create mode - tạo class mới
-      console.log('=== CREATE NEW CLASS ===');
-      console.log('Form Data:', formData);
       try {
         const response = await classService.createClass(formData);
-        if (response.status === 200) {
+        if (response.status === 201 && response.data) {
+          const newClass = response.data;
           toast.success("Thêm lớp học thành công");
           setIsDialogOpen(false);
           setSelectedClass(null);
+          setClasses((prevClasses) => [...prevClasses, newClass]);
         }
       } catch (error) {
         console.error(error);
         toast.error("Thêm lớp học thất bại");
       }
     }
-  };
+  }, []);
 
-  // Get revenue data for chart
-  const currentRevenueData = revenueComparisonData[selectedPeriod];
+  // Get revenue data for chart - memoized to prevent recalculation
+  const currentRevenueData = useMemo(
+    () => revenueComparisonData[selectedPeriod],
+    [selectedPeriod]
+  );
+
+  // Memoize period change handler
+  const handlePeriodChange = useCallback((period: TimePeriod) => {
+    setSelectedPeriod(period);
+  }, []);
 
   return (
     <div className="space-y-4 md:space-y-6 lg:space-y-8 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
@@ -390,7 +336,7 @@ export default function ClassroomManagementPage() {
       {/* Revenue Chart */}
       <ClassroomRevenueChart
         selectedPeriod={selectedPeriod}
-        onPeriodChange={setSelectedPeriod}
+        onPeriodChange={handlePeriodChange}
         revenueData={currentRevenueData}
         formatCurrency={formatCurrency}
         classNames={classColors}

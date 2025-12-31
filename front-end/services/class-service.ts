@@ -1,7 +1,9 @@
 import http from "@/lib/http";
-import { ClassRequest, ClassResponse } from "@/types/class-type";
+import { ClassRequest, ClassType } from "@/types/class-type";
 import { ResponseType } from "@/types/response-type";
 
 export const classService = {
-  createClass: (data: ClassRequest) => http.post<ResponseType<ClassResponse, ClassResponse>>('/api/class/create', data),
+  getAllClasses: () => http.get<ResponseType<ClassType[], ClassType[]>>('/api/class/get-all'),
+  createClass: (data: ClassRequest) => http.post<ResponseType<ClassType, ClassType>>('/api/class/create', data),
+  updateClass: (id: string, data: ClassRequest) => http.put<ResponseType<ClassType, ClassType>>(`/api/class/update/${id}`, data),
 };

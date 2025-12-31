@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { ClassType } from '@/types/class-type';
 import {
   BookOpen,
   Calendar,
@@ -28,24 +29,11 @@ import {
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 
-interface ClassItem {
-  id: number;
-  name: string;
-  teacher: string;
-  students: number;
-  revenue: number;
-  schedule: string;
-  duration: string;
-  monthlyFee: number;
-  collected: number;
-  total: number;
-}
-
 interface ClassroomTableProps {
-  classes: ClassItem[];
+  classes: ClassType[];
   formatCurrency: (amount: number) => string;
-  onEdit?: (classItem: ClassItem) => void;
-  onDelete?: (id: number) => void;
+  onEdit?: (classItem: ClassType) => void;
+  onDelete?: (id: string) => void;
   onAdd?: () => void;
   title?: string;
   description?: string;
@@ -102,14 +90,14 @@ export function ClassroomTable({
                   {t('className')}
                 </div>
               </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
+                <div className="flex items-center gap-2">
                   <User className="size-4" />
                   {t('teacher')}
                 </div>
               </TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center gap-2">
                   <Users className="size-4" />
                   {t('students')}
                 </div>
@@ -158,12 +146,15 @@ export function ClassroomTable({
                     </Link>
                   </div>
                 </TableCell>
-                <TableCell className="text-center">
-                  <span className="text-slate-700 dark:text-slate-300">{classItem.teacher}</span>
+                <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                  <div className="space-y-0.5">
+                    <div >{classItem.teacher.fullName}</div>
+                    <div className="text-xs text-slate-500">{classItem.teacher.gender === 'MALE' ? 'Nam' : 'Nữ'}</div>
+                  </div>
                 </TableCell>
-                <TableCell className="text-center">
-                  <Badge variant="outline" className="font-semibold">
-                    {classItem.students}
+                <TableCell>
+                  <Badge variant="outline" className="font-semibold ml-8">
+                    {classItem.studentCount}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -184,7 +175,7 @@ export function ClassroomTable({
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-600 dark:text-slate-400">
-                        {((classItem.collected / classItem.total) * 100).toFixed(0)}% (
+                        {(classItem.collected / classItem.total) * 100 || 0}% (
                         {classItem.collected === classItem.total ? t('fullyCollected') : t('notFullyCollected')})
                       </span>
                     </div>

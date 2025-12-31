@@ -33,7 +33,7 @@ public class Class extends Auditable {
 
     private String schedule;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "teacher_id", nullable = false)
     private User teacher;
 }

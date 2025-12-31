@@ -23,26 +23,13 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { teacherService } from '@/services';
 import { TeacherType } from '@/types';
-import { ClassRequest } from '@/types/class-type';
-
-interface ClassItem {
-  id: number;
-  name: string;
-  teacher: string;
-  students: number;
-  revenue: number;
-  schedule: string;
-  duration: string;
-  monthlyFee: number;
-  collected: number;
-  total: number;
-}
+import { ClassRequest, ClassType } from '@/types/class-type';
 
 interface ClassroomDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  classItem: ClassItem | null;
-  onSave: (formData: ClassRequest, id?: number) => void;
+  classItem: ClassType | null;
+  onSave: (formData: ClassRequest, id?: string) => void;
 }
 
 export function ClassroomDialog({ 
@@ -68,7 +55,7 @@ export function ClassroomDialog({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         name: classItem.name || '',
-        teacherId: classItem.teacher || '',
+        teacherId: classItem.teacher.id || '',
         schedule: classItem.schedule || '',
         monthlyFee: classItem.monthlyFee || 0,
       });

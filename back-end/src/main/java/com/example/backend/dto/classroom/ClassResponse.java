@@ -17,5 +17,9 @@ public class ClassResponse {
     private String name;
     private String schedule;
     private int monthlyFee;
+    private int studentCount; // Số lượng học sinh trong lớp hiện tại
+    private int revenue; // Doanh thu
+    private int collected; // Số tiền đã nhận trong tháng này
+    private int total; // Tổng số tiền phải nhận trong tháng này
     private TeacherResponse teacher;
 }

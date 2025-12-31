@@ -11,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class ClassService {
@@ -25,6 +28,29 @@ public class ClassService {
 
         Class classResponse = classRepository.save(classroom);
 
+        return modelMapper.map(classResponse, ClassResponse.class);
+    }
+
+    public List<ClassResponse> getAllClasses() {
+        List<ClassResponse> classResponses = new ArrayList<>();
+        List<Class> classes = classRepository.findAll();
+
+        for (Class c : classes) {
+            ClassResponse classResponse = modelMapper.map(c, ClassResponse.class);
+            classResponses.add(classResponse);
+        }
+
+        return classResponses;
+    }
+
+    public ClassResponse update(String classId, ClassRequest classRequest) {
+        Class classDB = classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+        User TeacherDB = userRepository.findById(classRequest.getTeacherId()).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+        classDB.setName(classRequest.getName());
+        classDB.setSchedule(classRequest.getSchedule());
+        classDB.setMonthlyFee(classRequest.getMonthlyFee());
+        classDB.setTeacher(TeacherDB);
+        Class classResponse = classRepository.save(classDB);
         return modelMapper.map(classResponse, ClassResponse.class);
     }
 }

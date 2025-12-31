@@ -7,11 +7,15 @@ export interface ClassRequest {
   monthlyFee: number;
 }
 
-export interface ClassResponse {
+export interface ClassType {
   id: string;
   name: string;
   teacherId: string;
   schedule: string;
   monthlyFee: number;
+  studentCount: number;
+  revenue: number;
+  collected: number;
+  total: number;
   teacher: TeacherType;
 }
