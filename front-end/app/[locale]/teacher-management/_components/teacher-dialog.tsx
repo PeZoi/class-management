@@ -1,3 +1,4 @@
+import { CurrencyInputField } from '@/components/currency-input-field';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,56 +10,48 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TeacherType } from '@/types';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
-
-interface TeacherItem {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  salary: number;
-  experience: number; // years of experience
-  totalClasses: number;
-  dob: string; // date of birth
-  idCard: string; // ID card number
-  joinedDate: string;
-}
 
 interface TeacherDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  teacher: TeacherItem | null;
-  onSave: (teacher: Partial<TeacherItem>) => void;
+  teacher: TeacherType | null;
+  onSave: (teacher: Partial<TeacherType>) => void;
 }
 
 export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDialogProps) {
   const t = useTranslations('teacher-management');
 
-  const [formData, setFormData] = useState<Partial<TeacherItem>>({
-    name: '',
+  const [formData, setFormData] = useState<Partial<TeacherType>>({
+    fullName: '',
     email: '',
-    phone: '',
-    salary: 0,
-    experience: 0,
+    phoneNumber: '',
+    gender: '',
+    // salary: 0,
+    // experience: 0,
     dob: '',
     idCard: '',
-    joinedDate: new Date().toISOString().split('T')[0],
+    // joinedDate: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
     if (teacher) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData(teacher);
     } else {
       setFormData({
-        name: '',
+        fullName: '',
         email: '',
-        phone: '',
-        salary: 0,
-        experience: 0,
+        phoneNumber: '',
+        gender: '',
+        // salary: 0,
+        // experience: 0,
         dob: '',
         idCard: '',
-        joinedDate: new Date().toISOString().split('T')[0],
+        // joinedDate: new Date().toISOString().split('T')[0],
       });
     }
   }, [teacher, open]);
@@ -68,20 +61,16 @@ export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDi
     onSave(formData);
   };
 
-  const handleChange = (field: keyof TeacherItem, value: string | number) => {
+  const handleChange = (field: keyof TeacherType, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-150">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">
-            {teacher ? t('editTeacher') : t('addNewTeacher')}
-          </DialogTitle>
-          <DialogDescription>
-            {teacher ? t('editTeacherDescription') : t('addTeacherDescription')}
-          </DialogDescription>
+          <DialogTitle className="text-xl font-bold">{teacher ? t('editTeacher') : t('addNewTeacher')}</DialogTitle>
+          <DialogDescription>{teacher ? t('editTeacherDescription') : t('addTeacherDescription')}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -92,8 +81,8 @@ export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDi
               </Label>
               <Input
                 id="name"
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
+                value={formData.fullName}
+                onChange={(e) => handleChange('fullName', e.target.value)}
                 className="col-span-3"
                 placeholder={t('namePlaceholder')}
                 required
@@ -123,59 +112,10 @@ export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDi
               </Label>
               <Input
                 id="phone"
-                value={formData.phone}
-                onChange={(e) => handleChange('phone', e.target.value)}
+                value={formData.phoneNumber}
+                onChange={(e) => handleChange('phoneNumber', e.target.value)}
                 className="col-span-3"
                 placeholder={t('phonePlaceholder')}
-                required
-              />
-            </div>
-
-            {/* Salary */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="salary" className="text-right">
-                {t('salary')} <span className="text-red-500">{t('required')}</span>
-              </Label>
-              <Input
-                id="salary"
-                type="number"
-                value={formData.salary}
-                onChange={(e) => handleChange('salary', Number(e.target.value))}
-                className="col-span-3"
-                placeholder={t('salaryPlaceholder')}
-                min="0"
-                required
-              />
-            </div>
-
-            {/* Experience */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="experience" className="text-right">
-                {t('experience')} <span className="text-red-500">{t('required')}</span>
-              </Label>
-              <Input
-                id="experience"
-                type="number"
-                value={formData.experience}
-                onChange={(e) => handleChange('experience', Number(e.target.value))}
-                className="col-span-3"
-                placeholder={t('experiencePlaceholder')}
-                min="0"
-                required
-              />
-            </div>
-
-            {/* Date of Birth */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dob" className="text-right">
-                {t('dob')} <span className="text-red-500">{t('required')}</span>
-              </Label>
-              <Input
-                id="dob"
-                type="date"
-                value={formData.dob}
-                onChange={(e) => handleChange('dob', e.target.value)}
-                className="col-span-3"
                 required
               />
             </div>
@@ -195,8 +135,78 @@ export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDi
               />
             </div>
 
-            {/* Joined Date */}
+            {/* Date of Birth */}
             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dob" className="text-right">
+                {t('dob')} <span className="text-red-500">{t('required')}</span>
+              </Label>
+              <Input
+                id="dob"
+                type="date"
+                value={formData.dob}
+                onChange={(e) => handleChange('dob', e.target.value)}
+                className="col-span-3"
+                required
+              />
+            </div>
+
+            {/* Gender */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="gender" className="text-right">
+                {t('gender')} <span className="text-red-500">{t('required')}</span>
+              </Label>
+              <div className="col-span-3">
+                <Select value={String(formData.gender ?? '')} onValueChange={(val) => handleChange('gender', val)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t('selectGender')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MALE">{t('male')}</SelectItem>
+                    <SelectItem value="FEMALE">{t('female')}</SelectItem>
+                    <SelectItem value="OTHER">{t('other')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Salary */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="salary" className="text-right">
+                {t('salary')} <span className="text-red-500">{t('required')}</span>
+              </Label>
+              <div className="flex items-center gap-2 col-span-3">
+                <CurrencyInputField
+                  id="salary"
+                  value={9999999}
+                  onChange={() => {}}
+                  className="flex-1"
+                  placeholder="5,000,000"
+                  min="0"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">VNĐ</p>
+              </div>
+            </div>
+
+            {/* Experience */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="experience" className="text-right">
+                {t('experience')} <span className="text-red-500">{t('required')}</span>
+              </Label>
+              <Input
+                id="experience"
+                type="number"
+                value={999}
+                onChange={(e) => {}}
+                className="col-span-3"
+                placeholder={t('experiencePlaceholder')}
+                min="0"
+                required
+              />
+            </div>
+
+            {/* Joined Date */}
+            {/* <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="joinedDate" className="text-right">
                 {t('joinedDate')}
               </Label>
@@ -207,7 +217,7 @@ export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDi
                 onChange={(e) => handleChange('joinedDate', e.target.value)}
                 className="col-span-3"
               />
-            </div>
+            </div> */}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
@@ -220,4 +230,3 @@ export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDi
     </Dialog>
   );
 }
-

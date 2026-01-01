@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +47,8 @@ public class User extends Auditable {
 
     @Column(nullable = false, unique = true, length = 30)
     private String phoneNumber;
+
+    private Instant dob;
 
     @Column(name = "id_card", length = 45, nullable = false, unique = true)
     private String idCard;

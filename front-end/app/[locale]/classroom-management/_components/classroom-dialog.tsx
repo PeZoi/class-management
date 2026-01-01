@@ -1,5 +1,6 @@
 'use client';
 
+import { CurrencyInputField } from '@/components/currency-input-field';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,19 +12,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { CurrencyInputField } from '@/components/currency-input-field';
-import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { teacherService } from '@/services';
 import { TeacherType } from '@/types';
 import { ClassRequest, ClassType } from '@/types/class-type';
+import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 
 interface ClassroomDialogProps {
   open: boolean;
@@ -32,14 +26,9 @@ interface ClassroomDialogProps {
   onSave: (formData: ClassRequest, id?: string) => void;
 }
 
-export function ClassroomDialog({ 
-  open, 
-  onOpenChange, 
-  classItem, 
-  onSave,
-}: ClassroomDialogProps) {
+export function ClassroomDialog({ open, onOpenChange, classItem, onSave }: ClassroomDialogProps) {
   const t = useTranslations('classroom-management');
-  
+
   const [teachers, setTeachers] = useState<TeacherType[]>([]);
   const [formData, setFormData] = useState<ClassRequest>({
     name: '',
@@ -146,7 +135,7 @@ export function ClassroomDialog({
                   <SelectContent>
                     {teachers.map((teacher) => (
                       <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.fullName} ({teacher.gender === "MALE" ? "Nam" : "Nữ"})
+                        {teacher.fullName} ({teacher.gender === 'MALE' ? 'Nam' : 'Nữ'})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -154,17 +143,24 @@ export function ClassroomDialog({
               </div>
 
               {/* Học phí */}
-              <div className="flex-1">
-                <CurrencyInputField
-                  id="monthlyFee"
-                  label={t('monthlyFee')}
-                  value={formData.monthlyFee || 0}
-                  onChange={(value) => handleChange('monthlyFee', value)}
-                  placeholder="500,000"
-                  required
-                  description={t('tuitionFeePerStudent')}
-                  className="flex-1"
-                />
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="monthlyFee">
+                  {t('monthlyFee')} <span className="text-red-500">*</span>
+                </Label>
+
+                <div className="flex items-center gap-2 mb-2">
+                  <CurrencyInputField
+                    id="monthlyFee"
+                    type="text"
+                    value={formData.monthlyFee || 0}
+                    onChange={(value) => handleChange('monthlyFee', value)}
+                    className="flex-1"
+                    placeholder="500,000"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">VNĐ</p>
+                </div>
+                <p className="text-xs text-muted-foreground">{t('tuitionFeePerStudent')}</p>
               </div>
             </div>
           </div>

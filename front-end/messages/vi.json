@@ -204,7 +204,7 @@
     "experience": "Kinh Nghiệm",
     "totalClasses": "Lớp Học",
     "dob": "Ngày Sinh",
-    "idCard": "Căn Cước Công Dân",
+    "idCard": "CCCD",
     "joinedDate": "Ngày Tham Gia",
     "actions": "Hành Động",
     "edit": "Sửa",
@@ -230,7 +230,12 @@
     "update": "Cập Nhật",
     "addNew": "Thêm Mới",
     "perMonth": "/tháng",
-    "years": "năm"
+    "years": "năm",
+    "gender": "Giới tính",
+    "selectGender": "Chọn giới tính",
+    "male": "Nam",
+    "female": "Nữ",
+    "other": "Khác"
   },
   "student-management": {
     "title": "Quản Lý Học Viên",

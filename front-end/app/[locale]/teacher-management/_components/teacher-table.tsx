@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -10,29 +11,31 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { TeacherType } from '@/types';
 import { formatCurrency } from '@/utils/helper';
-import { Award, BookOpen, Briefcase, Calendar, CreditCard, DollarSign, Edit, Mail, MoreHorizontal, Phone, Plus, Trash2, User } from 'lucide-react';
+import {
+  Award,
+  BookOpen,
+  Briefcase,
+  Calendar,
+  CreditCard,
+  DollarSign,
+  Edit,
+  Mail,
+  MoreHorizontal,
+  Phone,
+  Plus,
+  Trash2,
+  User,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-interface TeacherItem {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  salary: number;
-  experience: number; // years of experience
-  totalClasses: number;
-  dob: string; // date of birth
-  idCard: string; // ID card number
-  joinedDate: string;
-}
-
 interface TeacherTableProps {
-  teachers: TeacherItem[];
-  onEdit?: (teacher: TeacherItem) => void;
-  onDelete?: (id: number) => void;
+  teachers: TeacherType[];
+  onEdit?: (teacher: TeacherType) => void;
+  onDelete?: (id: string) => void;
   onAdd?: () => void;
-  onPaySalary?: (teacher: TeacherItem) => void;
+  onPaySalary?: (teacher: TeacherType) => void;
   title?: string;
   description?: string;
   showActions?: boolean;
@@ -86,7 +89,7 @@ export function TeacherTable({
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        <Table className={cn('min-w-[900px]', showActions && 'min-w-[1000px]')}>
+        <Table className={cn('min-w-225', showActions && 'min-w-250')}>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-700">
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
@@ -107,12 +110,12 @@ export function TeacherTable({
                   {t('salary')}
                 </div>
               </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
+              {/* <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
                 <div className="flex items-center justify-center gap-2">
                   <Award className="size-4" />
                   {t('experience')}
                 </div>
-              </TableHead>
+              </TableHead> */}
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
                 <div className="flex items-center justify-center gap-2">
                   <BookOpen className="size-4" />
@@ -153,11 +156,13 @@ export function TeacherTable({
               </TableRow>
             ) : (
               teachers.map((teacher) => (
-                <TableRow
-                  key={teacher.id}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                >
-                  <TableCell className="font-medium text-slate-900 dark:text-slate-100">{teacher.name}</TableCell>
+                <TableRow key={teacher.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                    <div className="space-y-0.5">
+                      <div>{teacher.fullName}</div>
+                      <div className="text-xs text-slate-500">{teacher.gender === 'MALE' ? 'Nam' : 'Nữ'}</div>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
@@ -166,28 +171,28 @@ export function TeacherTable({
                       </div>
                       <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                         <Phone className="size-3.5 text-slate-500" />
-                        <span className="text-xs">{teacher.phone}</span>
+                        <span className="text-xs">{teacher.phoneNumber}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="text-base font-bold text-green-600 dark:text-green-400">
-                      {formatCurrency(teacher.salary)}
+                      {formatCurrency(9999999)}
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">{t('perMonth')}</div>
                   </TableCell>
-                  <TableCell className="text-center">
+                  {/* <TableCell className="text-center">
                     <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-sm font-medium">
-                      {teacher.experience} {t('years')}
+                      {999} {t('years')}
                     </span>
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-sm font-medium">
-                      {teacher.totalClasses}
-                    </span>
+                    <Badge variant="outline" className="font-semibold ml-8">
+                      {teacher.classList.length}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
-                    {formatDate(teacher.dob)}
+                    {formatDate(teacher.dob.toString())}
                   </TableCell>
                   <TableCell className="text-center">
                     <span className="font-mono text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded">
@@ -195,7 +200,7 @@ export function TeacherTable({
                     </span>
                   </TableCell>
                   <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
-                    {formatDate(teacher.joinedDate)}
+                    {formatDate(teacher.createdAt.toString())}
                   </TableCell>
                   {showActions && (
                     <TableCell className="text-center">
@@ -211,8 +216,8 @@ export function TeacherTable({
                           <DropdownMenuSeparator />
                           {onPaySalary && (
                             <>
-                              <DropdownMenuItem 
-                                className="cursor-pointer text-blue-600 dark:text-blue-400 font-medium" 
+                              <DropdownMenuItem
+                                className="cursor-pointer text-blue-600 dark:text-blue-400 font-medium"
                                 onClick={() => onPaySalary(teacher)}
                               >
                                 <Briefcase className="size-4 mr-2" />
@@ -253,4 +258,3 @@ export function TeacherTable({
     </Card>
   );
 }
-

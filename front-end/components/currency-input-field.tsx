@@ -1,7 +1,6 @@
 'use client';
 
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import React from 'react';
 
 interface CurrencyInputFieldProps extends Omit<React.ComponentProps<'input'>, 'value' | 'onChange'> {
@@ -13,16 +12,7 @@ interface CurrencyInputFieldProps extends Omit<React.ComponentProps<'input'>, 'v
   required?: boolean;
 }
 
-export function CurrencyInputField({
-  label,
-  value,
-  onChange,
-  currencyLabel = 'VNĐ',
-  description,
-  required,
-  className,
-  ...props
-}: CurrencyInputFieldProps) {
+export function CurrencyInputField({ value, onChange, required, className, ...props }: CurrencyInputFieldProps) {
   // Format number with thousand separators
   const formatNumber = (num: string | number | undefined): string => {
     if (!num) return '';
@@ -41,32 +31,13 @@ export function CurrencyInputField({
   };
 
   return (
-    <div className="space-y-2">
-      {label && (
-        <Label htmlFor={props.id}>
-          {label} {required && <span className="text-red-500">*</span>}
-        </Label>
-      )}
-      <div className="flex items-center gap-2 mb-2">
-        <Input
-          
-          type="text"
-          value={formatNumber(value)}
-          onChange={handleChange}
-          className={className}
-          required={required}
-          {...props}
-        />
-        <p className="text-xs text-muted-foreground">
-          {currencyLabel}
-        </p>
-      </div>
-      {description && (
-        <p className="text-xs text-muted-foreground">
-          {description}
-        </p>
-      )}
-    </div>
+    <Input
+      type="text"
+      value={formatNumber(value)}
+      onChange={handleChange}
+      className={className}
+      required={required}
+      {...props}
+    />
   );
 }
-

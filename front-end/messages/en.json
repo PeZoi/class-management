@@ -230,7 +230,12 @@
     "update": "Update",
     "addNew": "Add New",
     "perMonth": "/month",
-    "years": "years"
+    "years": "years",
+    "gender": "Gender",
+    "selectGender": "Select Gender",
+    "male": "Male",
+    "female": "Female",
+    "other": "Other"
   },
   "profile": {
     "title": "Profile",
