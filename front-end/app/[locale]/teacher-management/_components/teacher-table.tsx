@@ -14,19 +14,19 @@ import { cn } from '@/lib/utils';
 import { TeacherType } from '@/types';
 import { formatCurrency } from '@/utils/helper';
 import {
-  Award,
   BookOpen,
   Briefcase,
   Calendar,
   CreditCard,
   DollarSign,
   Edit,
+  Eye,
   Mail,
   MoreHorizontal,
   Phone,
   Plus,
   Trash2,
-  User,
+  User
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -36,6 +36,7 @@ interface TeacherTableProps {
   onDelete?: (id: string) => void;
   onAdd?: () => void;
   onPaySalary?: (teacher: TeacherType) => void;
+  onViewDetail?: (teacher: TeacherType) => void;
   title?: string;
   description?: string;
   showActions?: boolean;
@@ -48,6 +49,7 @@ export function TeacherTable({
   onDelete,
   onAdd,
   onPaySalary,
+  onViewDetail,
   title,
   description,
   showActions = true,
@@ -160,7 +162,9 @@ export function TeacherTable({
                   <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                     <div className="space-y-0.5">
                       <div>{teacher.fullName}</div>
-                      <div className="text-xs text-slate-500">{teacher.gender === 'MALE' ? 'Nam' : 'Nữ'}</div>
+                      <div className="text-xs text-slate-500">
+                        {teacher.gender === 'MALE' ? t('male') : teacher.gender === 'FEMALE' ? t('female') : t('other')}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -188,7 +192,7 @@ export function TeacherTable({
                   </TableCell> */}
                   <TableCell className="text-center">
                     <Badge variant="outline" className="font-semibold ml-8">
-                      {teacher.classList.length}
+                      {teacher?.classList?.length || 0}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
@@ -214,17 +218,27 @@ export function TeacherTable({
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
                           <DropdownMenuSeparator />
+
                           {onPaySalary && (
                             <>
                               <DropdownMenuItem
-                                className="cursor-pointer text-blue-600 dark:text-blue-400 font-medium"
+                                className="cursor-pointer text-green-600 dark:text-green-400 font-medium"
                                 onClick={() => onPaySalary(teacher)}
                               >
                                 <Briefcase className="size-4 mr-2" />
-                                Trả Lương
+                                {t('paySalary')}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                             </>
+                          )}
+                          {onViewDetail && (
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              onClick={() => onViewDetail(teacher)}
+                            >
+                              <Eye className="size-4 mr-2" />
+                              {t('viewDetail')}
+                            </DropdownMenuItem>
                           )}
                           {onEdit && (
                             <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(teacher)}>

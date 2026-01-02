@@ -1,101 +1,103 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { TeacherTable } from './_components/teacher-table';
 import { TeacherDialog } from './_components/teacher-dialog';
 import { SalaryPaymentDialog } from './_components/salary-payment-dialog';
 import { teacherService } from '@/services';
 import { toast } from 'react-toastify';
-import { TeacherType } from '@/types';
-
-// Mock data - trong thực tế sẽ fetch từ API
-// const initialTeachers: TeacherType[] = [
-//   {
-//     id: 1,
-//     gender: 'MALE',
-//     name: 'Nguyễn Văn A',
-//     email: 'nguyenvana@example.com',
-//     phone: '0912345678',
-//     salary: 15000000, // 15 triệu/tháng
-//     experience: 5,
-//     totalClasses: 3,
-//     dob: '1990-05-15',
-//     idCard: '001090012345',
-//     joinedDate: '2023-01-15',
-//   },
-//   {
-//     id: 2,
-//     gender: 'FEMALE',
-//     name: 'Trần Thị B',
-//     email: 'tranthib@example.com',
-//     phone: '0987654321',
-//     salary: 18000000, // 18 triệu/tháng
-//     experience: 8,
-//     totalClasses: 2,
-//     dob: '1987-08-22',
-//     idCard: '001087054321',
-//     joinedDate: '2023-03-20',
-//   },
-// ];
+import { TeacherRequest, TeacherType } from '@/types';
+import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 
 export default function TeacherManagementPage() {
+  const router = useRouter();
+  const locale = useLocale();
   const [teachers, setTeachers] = useState<TeacherType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherType | null>(null);
   const [isSalaryDialogOpen, setIsSalaryDialogOpen] = useState(false);
   const [teacherForSalary, setTeacherForSalary] = useState<TeacherType | null>(null);
 
-  useEffect(() => {
-    const fetchTeachers = async () => {
-      try {
-        const response = await teacherService.getAllTeachers();
+  const fetchTeachers = useCallback(async () => {
+    try {
+      const response = await teacherService.getAllTeachers();
+      if (response.status === 200) {
         setTeachers(response.data || []);
-      } catch (error) {
-        toast.error('Không thể tải danh sách giáo viên');
-        console.error('Error fetching teachers:', error);
       }
-    };
-    fetchTeachers();
+    } catch (error) {
+      toast.error('Không thể tải danh sách giáo viên');
+      console.error('Error fetching teachers:', error);
+    }
   }, []);
 
-  const handleAdd = () => {
+  useEffect(() => {
+    fetchTeachers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleAdd = useCallback(() => {
     setSelectedTeacher(null);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (teacher: TeacherType) => {
+  const handleEdit = useCallback((teacher: TeacherType) => {
     setSelectedTeacher(teacher);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     setTeachers((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
-  const handleSave = (teacherData: Partial<TeacherType>) => {
+  const handleSave = useCallback(async (teacherData: TeacherRequest) => {
+    // Convert Partial<TeacherType> to TeacherRequest
+    const teacherRequest: TeacherRequest = {
+      fullName: teacherData.fullName || '',
+      email: teacherData.email || '',
+      phoneNumber: teacherData.phoneNumber || '',
+      idCard: teacherData.idCard || '',
+      dob: teacherData.dob || '',
+      avatar: teacherData.avatar || '',
+      gender: teacherData.gender || '',
+    };
+
     if (selectedTeacher) {
-      // Update existing teacher
-      setTeachers((prev) => prev.map((t) => (t.id === selectedTeacher.id ? { ...t, ...teacherData } : t)));
+      try {
+        const response = await teacherService.updateTeacher(selectedTeacher.id, teacherRequest);
+        if (response.status === 200 && response.data) {
+          const updatedTeacher = response.data;
+          toast.success('Cập nhật giảng viên thành công');
+          setIsDialogOpen(false);
+          setSelectedTeacher(null);
+          setTeachers((prev) => 
+            prev.map((t) => t.id === selectedTeacher.id ? {...t, ...updatedTeacher} : t)
+          );
+        }
+      } catch (error) {
+        console.error('Error updating teacher:', error);
+        toast.error('Cập nhật giảng viên thất bại');
+      }
     } else {
-      // Add new teacher
-      // const newTeacher: TeacherType = {
-      //   id: Math.max(...teachers.map((t) => t.id)) + 1,
-      //   name: teacherData.name || '',
-      //   email: teacherData.email || '',
-      //   phone: teacherData.phone || '',
-      //   gender: teacherData.gender || 'other',
-      //   salary: teacherData.salary || 0,
-      //   experience: teacherData.experience || 0,
-      //   totalClasses: 0,
-      //   dob: teacherData.dob || '',
-      //   idCard: teacherData.idCard || '',
-      //   joinedDate: teacherData.joinedDate || new Date().toISOString().split('T')[0],
-      // };
-      // setTeachers((prev) => [...prev, newTeacher]);
+      try {
+        const response = await teacherService.createTeacher(teacherRequest);
+        if (response.status === 201 && response.data) {
+          const newTeacher = response.data;
+          toast.success('Thêm giảng viên thành công');
+          setIsDialogOpen(false);
+          setSelectedTeacher(null);
+          setTeachers((prev) => [...prev, newTeacher]);
+        }
+      } catch (error) {
+        console.error('Error creating teacher:', error);
+        toast.error('Thêm giảng viên thất bại');
+      }
     }
-    setIsDialogOpen(false);
-    setSelectedTeacher(null);
-  };
+  }, [selectedTeacher]);
+
+  const handleViewDetail = useCallback((teacher: TeacherType) => {
+    router.push(`/${locale}/teacher-management/${teacher.id}`);
+  }, [router, locale]);
 
   const handlePaySalary = (teacher: TeacherType) => {
     setTeacherForSalary(teacher);
@@ -139,6 +141,7 @@ export default function TeacherManagementPage() {
         onDelete={handleDelete}
         onAdd={handleAdd}
         onPaySalary={handlePaySalary}
+        onViewDetail={handleViewDetail}
         showActions={true}
       />
 

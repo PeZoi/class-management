@@ -22,9 +22,21 @@ public class TeacherController {
         return ResponseEntity.ok(teachers);
     }
 
+    @GetMapping("/get/{id}")
+    public ResponseEntity<TeacherResponse> getTeacherById(@PathVariable String id) {
+        TeacherResponse teacherResponse = teacherService.getTeacherById(id);
+        return new ResponseEntity<>(teacherResponse, HttpStatus.OK);
+    }
+
     @PostMapping("/create")
     public ResponseEntity<TeacherResponse> createTeacher(@RequestBody TeacherRequest teacherRequest) {
         TeacherResponse teacherResponse = teacherService.createTeacher(teacherRequest);
         return new ResponseEntity<>(teacherResponse, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/update/{id}")
+    public  ResponseEntity<TeacherResponse> updateTeacher(@RequestBody TeacherRequest teacherRequest, @PathVariable String id) {
+        TeacherResponse teacherResponse = teacherService.updateTeacher(teacherRequest, id);
+        return new ResponseEntity<>(teacherResponse, HttpStatus.OK);
     }
 }

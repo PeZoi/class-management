@@ -5,11 +5,6 @@ import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  Mail, 
-  Phone, 
-  Calendar, 
-  CreditCard, 
-  MapPin, 
   BookOpen, 
   Users, 
   DollarSign,
@@ -18,6 +13,7 @@ import {
 } from 'lucide-react';
 import { EditProfileDialog } from './_components/edit-profile-dialog';
 import { SalaryHistoryTable } from './_components/salary-history-table';
+import { PersonalInfoCard } from '@/components/personal-info-card';
 
 // Mock data - trong thực tế sẽ fetch từ API hoặc authentication context
 interface TeacherProfile {
@@ -165,49 +161,16 @@ export default function ProfilePage() {
       </div>
 
       {/* Profile Header Card */}
-      <Card className="border-2 hover:shadow-xl transition-shadow duration-300">
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Avatar */}
-            <div className="shrink-0">
-              <div className="h-32 w-32 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
-                {teacher.name.charAt(0)}
-              </div>
-            </div>
-
-            {/* Basic Info */}
-            <div className="flex-1 space-y-4">
-              <div>
-                <h2 className="text-2xl font-bold">{teacher.name}</h2>
-                <p className="text-muted-foreground mt-1">{teacher.bio}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="truncate">{teacher.email}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span>{teacher.phone}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span>{t('dob')}: {formatDate(teacher.dob)}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span>{t('idCard')}: {teacher.idCard}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm md:col-span-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span>{teacher.address}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <PersonalInfoCard
+        title={t('personalInfo')}
+        name={teacher.name}
+        avatar={teacher.avatar}
+        email={teacher.email}
+        phone={teacher.phone}
+        dob={formatDate(teacher.dob)}
+        idCard={teacher.idCard}
+        address={teacher.address}
+      />
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

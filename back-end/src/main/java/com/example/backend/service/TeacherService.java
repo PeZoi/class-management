@@ -6,13 +6,16 @@ import com.example.backend.entity.Class;
 import com.example.backend.entity.Role;
 import com.example.backend.entity.User;
 import com.example.backend.enums.Status;
+import com.example.backend.exception.NotFoundException;
 import com.example.backend.repository.ClassRepository;
 import com.example.backend.repository.RoleRoleRepository;
 import com.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,6 +50,18 @@ public class TeacherService {
         return teachers;
     }
 
+    public TeacherResponse getTeacherById(String id) {
+        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+        List<Class> classList = classRepository.findAllByTeacher(user);
+        List<TeacherResponse.TeacherClass> teacherClassList =
+                classList.stream()
+                        .map(clazz -> modelMapper.map(clazz, TeacherResponse.TeacherClass.class))
+                        .toList();
+        TeacherResponse teacherResponse = modelMapper.map(user, TeacherResponse.class);
+        teacherResponse.setClassList(teacherClassList);
+        return teacherResponse;
+    }
+
     public TeacherResponse createTeacher(TeacherRequest teacherRequest) {
         User teacher = modelMapper.map(teacherRequest, User.class);
         Role role = roleRepository.findByName("ROLE_TEACHER");
@@ -57,6 +72,19 @@ public class TeacherService {
         teacher.setRole(role);
         teacher.setStatus(Status.ACTIVE);
         teacher.setEnabled(true);
+
+        User teacherRes = userRepository.save(teacher);
+        return modelMapper.map(teacherRes, TeacherResponse.class);
+    }
+
+    public  TeacherResponse updateTeacher(TeacherRequest teacherRequest, String teacherId) {
+        User teacher = userRepository.findById(teacherId).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+        teacher.setFullName(teacherRequest.getFullName());
+        teacher.setEmail(teacherRequest.getEmail());
+        teacher.setPhoneNumber(teacherRequest.getPhoneNumber());
+        teacher.setIdCard(teacherRequest.getIdCard());
+        teacher.setDob(teacherRequest.getDob());
+        teacher.setGender(teacherRequest.getGender());
 
         User teacherRes = userRepository.save(teacher);
         return modelMapper.map(teacherRes, TeacherResponse.class);

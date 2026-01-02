@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TeacherType } from '@/types';
+import { TeacherRequest, TeacherType } from '@/types';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
@@ -19,7 +19,7 @@ interface TeacherDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   teacher: TeacherType | null;
-  onSave: (teacher: Partial<TeacherType>) => void;
+  onSave: (teacher: TeacherRequest) => void;
 }
 
 export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDialogProps) {
@@ -34,13 +34,15 @@ export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDi
     // experience: 0,
     dob: '',
     idCard: '',
-    // joinedDate: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
     if (teacher) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setFormData(teacher);
+      setFormData({
+        ...teacher,
+        dob: new Date(teacher.dob).toISOString().split('T')[0],
+      });
     } else {
       setFormData({
         fullName: '',
@@ -51,14 +53,13 @@ export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDi
         // experience: 0,
         dob: '',
         idCard: '',
-        // joinedDate: new Date().toISOString().split('T')[0],
       });
     }
   }, [teacher, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    onSave(formData as TeacherRequest);
   };
 
   const handleChange = (field: keyof TeacherType, value: string | number) => {
@@ -197,7 +198,7 @@ export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDi
                 id="experience"
                 type="number"
                 value={999}
-                onChange={(e) => {}}
+                onChange={() => {}}
                 className="col-span-3"
                 placeholder={t('experiencePlaceholder')}
                 min="0"
