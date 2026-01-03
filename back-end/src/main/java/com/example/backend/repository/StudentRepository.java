@@ -1,10 +1,9 @@
 package com.example.backend.repository;
 
-import com.example.backend.entity.Role;
+import com.example.backend.entity.Student;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface RoleRoleRepository extends JpaRepository<Role, Long> {
-    public Role findByName(String name);
+public interface StudentRepository extends JpaRepository<Student, String> {
 }

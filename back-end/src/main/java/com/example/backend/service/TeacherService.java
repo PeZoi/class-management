@@ -8,17 +8,14 @@ import com.example.backend.entity.User;
 import com.example.backend.enums.Status;
 import com.example.backend.exception.NotFoundException;
 import com.example.backend.repository.ClassRepository;
-import com.example.backend.repository.RoleRoleRepository;
+import com.example.backend.repository.RoleRepository;
 import com.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -26,7 +23,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class TeacherService {
     private final UserRepository userRepository;
-    private final RoleRoleRepository roleRepository;
+    private final RoleRepository roleRepository;
     private final ClassRepository classRepository;
     private final ModelMapper modelMapper;
     private final PasswordEncoder passwordEncoder;

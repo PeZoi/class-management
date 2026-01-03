@@ -2,3 +2,4 @@ export * from './user-type';
 export * from './teacher-type';
 export * from './class-type';
 export * from './response-type'
+export * from './student-type'

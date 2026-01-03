@@ -18,54 +18,74 @@ import {
 } from '@/components/ui/select';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
-import { StudentItem } from '../student-management-page';
+import { StudentType, StudentRequest } from '@/types/student-type';
+import { ClassType } from '@/types/class-type';
+import { classService } from '@/services/class-service';
 
 interface StudentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  student: StudentItem | null;
-  onSave: (student: Partial<StudentItem>) => void;
+  student: StudentType | null;
+  onSave: (student: StudentRequest) => void;
 }
 
 export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDialogProps) {
   const t = useTranslations('student-management');
 
-  const [formData, setFormData] = useState<Partial<StudentItem>>({
-    name: '',
+  const [classes, setClasses] = useState<ClassType[]>([]);
+  const [formData, setFormData] = useState<StudentRequest>({
+    fullName: '',
     email: '',
-    phone: '',
+    phoneNumber: '',
     dob: '',
-    gender: 'other',
-    idCard: '',
-    parentName: '',
-    parentPhone: '',
-    className: '',
-    joinedDate: new Date().toISOString().split('T')[0],
-    status: 'pending',
-    paymentStatus: 'unpaid',
-    monthlyFee: 0,
-    amountPaid: 0,
+    gender: 'OTHER',
+    fullNameParent: '',
+    phoneNumberParent: '',
+    classId: '',
   });
 
+  // Fetch classes
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const response = await classService.getAllClasses();
+        if (response.status === 200) {
+          setClasses(response.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching classes:', error);
+      }
+    };
+    if (open) {
+      fetchClasses();
+    }
+  }, [open]);
+
+  // Reset form when dialog opens/closes or student changes
+  // Note: setState in useEffect is necessary to sync form with props
   useEffect(() => {
     if (student) {
-      setFormData(student);
+      // eslint-disable-next-line
+      setFormData({
+        fullName: student.fullName || '',
+        email: student.email || '',
+        phoneNumber: student.phoneNumber || '',
+        dob: student.dob || '',
+        gender: student.gender || 'OTHER',
+        fullNameParent: student.fullNameParent || '',
+        phoneNumberParent: student.phoneNumberParent || '',
+        classId: student.class?.id || '',
+      });
     } else {
       setFormData({
-        name: '',
+        fullName: '',
         email: '',
-        phone: '',
+        phoneNumber: '',
         dob: '',
-        gender: 'other',
-        idCard: '',
-        parentName: '',
-        parentPhone: '',
-        className: '',
-        joinedDate: new Date().toISOString().split('T')[0],
-        status: 'pending',
-        paymentStatus: 'unpaid',
-        monthlyFee: 0,
-        amountPaid: 0,
+        gender: 'OTHER',
+        fullNameParent: '',
+        phoneNumberParent: '',
+        classId: '',
       });
     }
   }, [student, open]);
@@ -75,7 +95,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
     onSave(formData);
   };
 
-  const handleChange = (field: keyof StudentItem, value: string | number) => {
+  const handleChange = (field: keyof StudentRequest, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -98,15 +118,15 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                 {t('studentInfo')}
               </h3>
               <div className="grid gap-4">
-                {/* Name */}
+                {/* Full Name */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
+                  <Label htmlFor="fullName" className="text-right">
                     {t('name')} <span className="text-red-500">{t('required')}</span>
                   </Label>
                   <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
+                    id="fullName"
+                    value={formData.fullName}
+                    onChange={(e) => handleChange('fullName', e.target.value)}
                     className="col-span-3"
                     placeholder={t('namePlaceholder')}
                     required
@@ -129,15 +149,15 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                   />
                 </div>
 
-                {/* Phone */}
+                {/* Phone Number */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="phone" className="text-right">
+                  <Label htmlFor="phoneNumber" className="text-right">
                     {t('phone')} <span className="text-red-500">{t('required')}</span>
                   </Label>
                   <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
+                    id="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={(e) => handleChange('phoneNumber', e.target.value)}
                     className="col-span-3"
                     placeholder={t('phonePlaceholder')}
                     required
@@ -166,32 +186,17 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                   </Label>
                   <Select
                     value={formData.gender}
-                    onValueChange={(value) => handleChange('gender', value)}
+                    onValueChange={(value) => handleChange('gender', value as 'MALE' | 'FEMALE' | 'OTHER')}
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder={t('genderPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="male">{t('gender_male')}</SelectItem>
-                      <SelectItem value="female">{t('gender_female')}</SelectItem>
-                      <SelectItem value="other">{t('gender_other')}</SelectItem>
+                      <SelectItem value="MALE">{t('gender_male')}</SelectItem>
+                      <SelectItem value="FEMALE">{t('gender_female')}</SelectItem>
+                      <SelectItem value="OTHER">{t('gender_other')}</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                {/* ID Card */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="idCard" className="text-right">
-                    {t('idCard')} <span className="text-red-500">{t('required')}</span>
-                  </Label>
-                  <Input
-                    id="idCard"
-                    value={formData.idCard}
-                    onChange={(e) => handleChange('idCard', e.target.value)}
-                    className="col-span-3"
-                    placeholder={t('idCardPlaceholder')}
-                    required
-                  />
                 </div>
               </div>
             </div>
@@ -204,13 +209,13 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
               <div className="grid gap-4">
                 {/* Parent Name */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="parentName" className="text-right">
+                  <Label htmlFor="fullNameParent" className="text-right">
                     {t('parentName')} <span className="text-red-500">{t('required')}</span>
                   </Label>
                   <Input
-                    id="parentName"
-                    value={formData.parentName}
-                    onChange={(e) => handleChange('parentName', e.target.value)}
+                    id="fullNameParent"
+                    value={formData.fullNameParent}
+                    onChange={(e) => handleChange('fullNameParent', e.target.value)}
                     className="col-span-3"
                     placeholder={t('parentNamePlaceholder')}
                     required
@@ -219,13 +224,13 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
 
                 {/* Parent Phone */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="parentPhone" className="text-right">
+                  <Label htmlFor="phoneNumberParent" className="text-right">
                     {t('parentPhone')} <span className="text-red-500">{t('required')}</span>
                   </Label>
                   <Input
-                    id="parentPhone"
-                    value={formData.parentPhone}
-                    onChange={(e) => handleChange('parentPhone', e.target.value)}
+                    id="phoneNumberParent"
+                    value={formData.phoneNumberParent}
+                    onChange={(e) => handleChange('phoneNumberParent', e.target.value)}
                     className="col-span-3"
                     placeholder={t('parentPhonePlaceholder')}
                     required
@@ -240,118 +245,31 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                 {t('classInfo')}
               </h3>
               <div className="grid gap-4">
-                {/* Class Name */}
+                {/* Class Selection */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="className" className="text-right">
+                  <Label htmlFor="classId" className="text-right">
                     {t('class')} <span className="text-red-500">{t('required')}</span>
                   </Label>
-                  <Input
-                    id="className"
-                    value={formData.className}
-                    onChange={(e) => handleChange('className', e.target.value)}
-                    className="col-span-3"
-                    placeholder={t('classPlaceholder')}
-                    required
-                  />
-                </div>
-
-                {/* Joined Date */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="joinedDate" className="text-right">
-                    {t('joinedDate')}
-                  </Label>
-                  <Input
-                    id="joinedDate"
-                    type="date"
-                    value={formData.joinedDate}
-                    onChange={(e) => handleChange('joinedDate', e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-
-                {/* Status */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="status" className="text-right">
-                    {t('status')}
-                  </Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => handleChange('status', value)}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder={t('statusPlaceholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">{t('status_active')}</SelectItem>
-                      <SelectItem value="pending">{t('status_pending')}</SelectItem>
-                      <SelectItem value="completed">{t('status_completed')}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <Select
+                      value={formData.classId}
+                      onValueChange={(value) => handleChange('classId', value)}
+                      required
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder={t('classPlaceholder')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map((cls) => (
+                          <SelectItem key={cls.id} value={cls.id}>
+                            {cls.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Payment Information */}
-            <div className="space-y-2 pt-4 border-t">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                {t('paymentInfo')}
-              </h3>
-              <div className="grid gap-4">
-                {/* Monthly Fee */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="monthlyFee" className="text-right">
-                    {t('monthlyFee')} <span className="text-red-500">{t('required')}</span>
-                  </Label>
-                  <Input
-                    id="monthlyFee"
-                    type="number"
-                    value={formData.monthlyFee}
-                    onChange={(e) => handleChange('monthlyFee', Number(e.target.value))}
-                    className="col-span-3"
-                    placeholder={t('tuitionFeePlaceholder')}
-                    min="0"
-                    required
-                  />
-                </div>
-
-                {/* Amount Paid */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="amountPaid" className="text-right">
-                    {t('amountPaid')}
-                  </Label>
-                  <Input
-                    id="amountPaid"
-                    type="number"
-                    value={formData.amountPaid}
-                    onChange={(e) => handleChange('amountPaid', Number(e.target.value))}
-                    className="col-span-3"
-                    placeholder={t('amountPaidPlaceholder')}
-                    min="0"
-                  />
-                </div>
-
-                {/* Payment Status */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="paymentStatus" className="text-right">
-                    {t('paymentStatus')}
-                  </Label>
-                  <Select
-                    value={formData.paymentStatus}
-                    onValueChange={(value) => handleChange('paymentStatus', value)}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder={t('paymentStatusPlaceholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="paid">{t('payment_paid')}</SelectItem>
-                      <SelectItem value="partial">{t('payment_partial')}</SelectItem>
-                      <SelectItem value="unpaid">{t('payment_unpaid')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('cancel')}

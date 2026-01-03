@@ -5,6 +5,9 @@ import { StudentTable } from './_components/student-table';
 import { StudentDialog } from './_components/student-dialog';
 import { StudentFilter, FilterState } from './_components/student-filter';
 import { PaymentActionDialog } from './_components/payment-action-dialog';
+import { StudentRequest, StudentType } from '@/types/student-type';
+import { studentService } from '@/services';
+import { toast } from 'react-toastify';
 
 export interface StudentItem {
   id: number;
@@ -211,35 +214,24 @@ export default function StudentManagementPage() {
     setStudentForPayment(null);
   };
 
-  const handleSave = (studentData: Partial<StudentItem>) => {
+  const handleSave = async (studentData: StudentRequest) => {
     if (selectedStudent) {
       // Update existing student
-      setStudents((prev) =>
-        prev.map((s) => (s.id === selectedStudent.id ? { ...s, ...studentData } : s))
-      );
     } else {
       // Add new student
-      const newStudent: StudentItem = {
-        id: Math.max(...students.map((s) => s.id)) + 1,
-        name: studentData.name || '',
-        email: studentData.email || '',
-        phone: studentData.phone || '',
-        dob: studentData.dob || '',
-        gender: studentData.gender || 'other',
-        idCard: studentData.idCard || '',
-        parentName: studentData.parentName || '',
-        parentPhone: studentData.parentPhone || '',
-        className: studentData.className || '',
-        joinedDate: studentData.joinedDate || new Date().toISOString().split('T')[0],
-        status: studentData.status || 'pending',
-        paymentStatus: studentData.paymentStatus || 'unpaid',
-        monthlyFee: studentData.monthlyFee || 0,
-        amountPaid: studentData.amountPaid || 0,
-      };
-      setStudents((prev) => [...prev, newStudent]);
+      try {
+        const response = await studentService.createStudent(studentData);
+        if (response.status === 200 && response.data) {
+          // setStudents((prev) => [...prev, response.data]);
+          toast.success('Thêm học viên thành công');
+          setIsDialogOpen(false);
+          setSelectedStudent(null);
+        }
+      } catch (error) {
+        console.error('Error creating student:', error);
+        toast.error('Thêm học viên thất bại');
+      }
     }
-    setIsDialogOpen(false);
-    setSelectedStudent(null);
   };
 
   // Get unique class names for filter
@@ -325,7 +317,7 @@ export default function StudentManagementPage() {
       <StudentDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        student={selectedStudent}
+        student={selectedStudent as StudentType | null}
         onSave={handleSave}
       />
 
