@@ -7,66 +7,12 @@ import {
   TeacherDetailHeader,
   TeacherSalaryHistory,
 } from './_components';
-
-// Mock data - trong thực tế sẽ fetch từ API dựa vào id
-const createMockTeacherData = (): TeacherType => {
-  const teacher: TeacherType = {
-    id: '1',
-    fullName: 'Nguyễn Văn A',
-    email: 'nguyenvana@example.com',
-    phoneNumber: '0912345678',
-    idCard: '123456789012',
-    dob: '1985-05-15',
-    avatar: '',
-    gender: 'MALE',
-    createdAt: '2020-01-15T00:00:00Z',
-    updatedAt: '2024-01-15T00:00:00Z',
-    classList: [],
-  };
-
-  teacher.classList = [
-    {
-      id: '1',
-      name: 'JavaScript Nâng Cao',
-      teacherId: '1',
-      schedule: 'Thứ 2, Thứ 4, Thứ 6',
-      monthlyFee: 2500000,
-      studentCount: 35,
-      revenue: 87500000,
-      collected: 87500000,
-      total: 87500000,
-      teacher,
-    },
-    {
-      id: '2',
-      name: 'React & Next.js',
-      teacherId: '1',
-      schedule: 'Thứ 3, Thứ 5',
-      monthlyFee: 3000000,
-      studentCount: 28,
-      revenue: 84000000,
-      collected: 80000000,
-      total: 84000000,
-      teacher,
-    },
-    {
-      id: '3',
-      name: 'Python for Data Science',
-      teacherId: '1',
-      schedule: 'Thứ 7, Chủ nhật',
-      monthlyFee: 2800000,
-      studentCount: 25,
-      revenue: 70000000,
-      collected: 68000000,
-      total: 70000000,
-      teacher,
-    },
-  ];
-
-  return teacher;
-};
-
-const mockTeacherData = createMockTeacherData();
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { teacherService } from '@/services/teacher-service';
+import { Loader2 } from 'lucide-react';
+import { classService } from '@/services/class-service';
+import { ClassType } from '@/types';
 
 // Mock salary history data
 const mockSalaryHistory = [
@@ -174,7 +120,35 @@ const mockAttendanceRecords = [
 ];
 
 export default function TeacherDetailPage() {
-  const teacherData = mockTeacherData;
+  const params = useParams();
+  const teacherId = params.id;
+
+  const [teacherData, setTeacherData] = useState<TeacherType>();
+  const [classesData, setClassesData] = useState<ClassType[]>();
+
+  useEffect(() => {
+    const fetchTeacherData = async () => {
+      const response = await teacherService.getTeacherById(teacherId as string);
+      if (response.status === 200 && response.data) {
+        setTeacherData(response.data);
+      }
+    }
+
+    const fetchClassesData = async () => {
+      const response = await classService.getClassesByTeacherId(teacherId as string);
+      if (response.status === 200 && response.data) {
+        setClassesData(response.data);
+      }
+    }
+    fetchTeacherData();
+    fetchClassesData();
+  }, [teacherId])
+
+  if (!teacherData || !classesData) {
+    return <div className="flex items-center justify-center h-screen">
+      <Loader2 className="size-10 animate-spin" />
+    </div>;
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
@@ -182,7 +156,7 @@ export default function TeacherDetailPage() {
       <TeacherDetailHeader teacherData={teacherData} />
 
       {/* Classes List - Full Width */}
-      <TeacherClassesList classes={teacherData.classList} />
+      <TeacherClassesList classes={classesData} />
 
       {/* Salary History */}
       <TeacherSalaryHistory salaryHistory={mockSalaryHistory} />

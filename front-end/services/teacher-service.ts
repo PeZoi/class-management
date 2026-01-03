@@ -4,6 +4,7 @@ import { ResponseType } from "@/types/response-type";
 
 export const teacherService = {
   getAllTeachers: () => http.get<ResponseType<TeacherType[], TeacherType[]>>('/api/teacher/get-all'),
+  getTeacherById: (id: string) => http.get<ResponseType<TeacherType, TeacherType>>(`/api/teacher/get/${id}`),
   createTeacher: (data: TeacherRequest) => {
     const payload: unknown = {
       fullName: data.fullName,

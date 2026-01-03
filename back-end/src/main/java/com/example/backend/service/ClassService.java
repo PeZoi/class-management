@@ -53,4 +53,17 @@ public class ClassService {
         Class classResponse = classRepository.save(classDB);
         return modelMapper.map(classResponse, ClassResponse.class);
     }
+
+    public List<ClassResponse> getClassesByTeacherId(String teacherId) {
+        List<ClassResponse> classResponses = new ArrayList<>();
+        User teacherDB = userRepository.findById(teacherId).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+        List<Class> classesDB = classRepository.findAllByTeacher(teacherDB);
+
+        for (Class c : classesDB) {
+            ClassResponse classResponse = modelMapper.map(c, ClassResponse.class);
+            classResponses.add(classResponse);
+        }
+
+        return classResponses;
+    }
 }
