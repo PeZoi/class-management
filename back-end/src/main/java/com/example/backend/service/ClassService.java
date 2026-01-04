@@ -4,8 +4,10 @@ import com.example.backend.dto.classroom.ClassRequest;
 import com.example.backend.dto.classroom.ClassResponse;
 import com.example.backend.entity.Class;
 import com.example.backend.entity.User;
+import com.example.backend.enums.StudentStatus;
 import com.example.backend.exception.NotFoundException;
 import com.example.backend.repository.ClassRepository;
+import com.example.backend.repository.StudentClassRepository;
 import com.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -19,7 +21,16 @@ import java.util.List;
 public class ClassService {
     private final ClassRepository classRepository;
     private final UserRepository userRepository;
+    private final StudentClassRepository studentClassRepository;
     private final ModelMapper modelMapper;
+
+    // Lấy ra số lượng học viên đang học ở trong lớp
+    public int countActiveStudents(String classId) {
+        return studentClassRepository.countActiveStudentsInClass(
+                classId,
+                StudentStatus.ACTIVE
+        );
+    }
 
     public ClassResponse create(ClassRequest classRequest) {
         User teacher = userRepository.findById(classRequest.getTeacherId()).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
@@ -37,6 +48,8 @@ public class ClassService {
 
         for (Class c : classes) {
             ClassResponse classResponse = modelMapper.map(c, ClassResponse.class);
+            int studentCount = countActiveStudents(classResponse.getId());
+            classResponse.setStudentCount(studentCount);
             classResponses.add(classResponse);
         }
 
@@ -65,5 +78,13 @@ public class ClassService {
         }
 
         return classResponses;
+    }
+
+    public ClassResponse getClassById(String classId) {
+        Class classDB = classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy " +
+                "lớp học"));
+        ClassResponse classResponse = modelMapper.map(classDB, ClassResponse.class);
+
+        return classResponse;
     }
 }

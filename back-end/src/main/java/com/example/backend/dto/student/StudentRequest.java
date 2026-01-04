@@ -1,5 +1,6 @@
 package com.example.backend.dto.student;
 
+import com.example.backend.enums.Genders;
 import com.nimbusds.openid.connect.sdk.claims.Gender;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +22,7 @@ public class StudentRequest {
     private String email;
     private String phoneNumber;
     private Instant dob;
-    private Gender gender;
+    private Genders gender;
 
     private String fullNameParent;
     private String phoneNumberParent;

@@ -174,14 +174,14 @@ export default function StudentManagementPage() {
       paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
       paymentDate: string;
       notes: string;
-    }
+    },
   ) => {
     setStudents((prev) =>
       prev.map((s) => {
         if (s.id === studentId) {
           const newAmountPaid = s.amountPaid + paymentData.amount;
           let newPaymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
-          
+
           if (newAmountPaid >= s.monthlyFee) {
             newPaymentStatus = 'paid';
           } else if (newAmountPaid > 0) {
@@ -207,7 +207,7 @@ export default function StudentManagementPage() {
           };
         }
         return s;
-      })
+      }),
     );
 
     setIsPaymentDialogOpen(false);
@@ -221,7 +221,7 @@ export default function StudentManagementPage() {
       // Add new student
       try {
         const response = await studentService.createStudent(studentData);
-        if (response.status === 200 && response.data) {
+        if (response.status === 201 && response.data) {
           // setStudents((prev) => [...prev, response.data]);
           toast.success('Thêm học viên thành công');
           setIsDialogOpen(false);
@@ -253,7 +253,7 @@ export default function StudentManagementPage() {
           student.email.toLowerCase().includes(query) ||
           student.phone.includes(query) ||
           student.parentName.toLowerCase().includes(query) ||
-          student.className.toLowerCase().includes(query)
+          student.className.toLowerCase().includes(query),
       );
     }
 
@@ -275,7 +275,7 @@ export default function StudentManagementPage() {
     // Apply sorting
     result.sort((a, b) => {
       let comparison = 0;
-      
+
       switch (filters.sortBy) {
         case 'name':
           comparison = a.name.localeCompare(b.name, 'vi');
@@ -297,11 +297,7 @@ export default function StudentManagementPage() {
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
       {/* Filter and Search */}
-      <StudentFilter
-        filters={filters}
-        onFilterChange={setFilters}
-        availableClasses={availableClasses}
-      />
+      <StudentFilter filters={filters} onFilterChange={setFilters} availableClasses={availableClasses} />
 
       {/* Student Table */}
       <StudentTable
@@ -331,4 +327,3 @@ export default function StudentManagementPage() {
     </div>
   );
 }
-

@@ -1,6 +1,7 @@
 package com.example.backend.dto.student;
 
 import com.example.backend.dto.classroom.ClassResponse;
+import com.example.backend.enums.Genders;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.openid.connect.sdk.claims.Gender;
 import lombok.AllArgsConstructor;
@@ -23,12 +24,12 @@ public class StudentResponse {
     private String email;
     private String phoneNumber;
     private Instant dob;
-    private Gender gender;
+    private Genders gender;
 
     private String fullNameParent;
     private String phoneNumberParent;
 
-    @JsonProperty(namespace = "class")
+    @JsonProperty("class")
     private StudentClassResponse clazz;
 
     @Getter

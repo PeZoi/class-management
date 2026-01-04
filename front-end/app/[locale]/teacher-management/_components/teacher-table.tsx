@@ -26,7 +26,7 @@ import {
   Phone,
   Plus,
   Trash2,
-  User
+  User,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -232,10 +232,7 @@ export function TeacherTable({
                             </>
                           )}
                           {onViewDetail && (
-                            <DropdownMenuItem
-                              className="cursor-pointer"
-                              onClick={() => onViewDetail(teacher)}
-                            >
+                            <DropdownMenuItem className="cursor-pointer" onClick={() => onViewDetail(teacher)}>
                               <Eye className="size-4 mr-2" />
                               {t('viewDetail')}
                             </DropdownMenuItem>

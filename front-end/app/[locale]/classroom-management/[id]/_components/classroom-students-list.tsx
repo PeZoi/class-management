@@ -1,26 +1,12 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { StudentType } from '@/types';
 import { Calendar, Mail, Phone, User2, UserCircle, Users, UsersRound } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-interface Student {
-  id: number;
-  studentName: string;
-  parentName: string;
-  studentPhoneNumber: string;
-  parentPhoneNumber: string;
-  email: string;
-  dob: string; // Date of Birth
-  gender: 'male' | 'female' | 'other';
-  classJoinedAt: string;
-  paymentStatus: 'paid' | 'unpaid' | 'partial';
-  amountPaid: number;
-  totalFee: number;
-}
-
 interface ClassroomStudentsListProps {
-  students: Student[];
+  students: StudentType[];
 }
 
 export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) {
@@ -28,9 +14,9 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
 
   const getGenderBadge = (gender: string) => {
     const variants: Record<string, string> = {
-      male: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-      female: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
-      other: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400',
+      MALE: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+      FEMALE: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
+      OTHER: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400',
     };
     return variants[gender] || variants.other;
   };
@@ -104,19 +90,14 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
           </TableHeader>
           <TableBody>
             {students.map((student) => (
-              <TableRow
-                key={student.id}
-                className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-              >
-                <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                  {student.studentName}
-                </TableCell>
-                <TableCell className="text-slate-700 dark:text-slate-300">{student.parentName}</TableCell>
+              <TableRow key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <TableCell className="font-medium text-slate-900 dark:text-slate-100">{student.fullName}</TableCell>
+                <TableCell className="text-slate-700 dark:text-slate-300">{student.fullNameParent}</TableCell>
                 <TableCell>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                       <Phone className="size-3.5 text-slate-500" />
-                      <span>{student.studentPhoneNumber}</span>
+                      <span>{student.phoneNumber}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                       <Mail className="size-3.5 text-slate-500" />
@@ -127,17 +108,17 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
                 <TableCell>
                   <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                     <Phone className="size-3.5 text-slate-500" />
-                    <span>{student.parentPhoneNumber}</span>
+                    <span>{student.phoneNumberParent}</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Badge className={getGenderBadge(student.gender)}>{t(`gender_${student.gender}`)}</Badge>
+                  <Badge className={getGenderBadge(student.gender)}>{student.gender === 'MALE' ? 'Nam' : 'Nữ'}</Badge>
                 </TableCell>
                 <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
                   {formatDate(student.dob)}
                 </TableCell>
                 <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
-                  {formatDate(student.classJoinedAt)}
+                  {formatDate(student.class.joinAt)}
                 </TableCell>
               </TableRow>
             ))}
@@ -147,4 +128,3 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
     </Card>
   );
 }
-

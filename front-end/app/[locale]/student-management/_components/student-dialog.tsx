@@ -9,13 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { StudentType, StudentRequest } from '@/types/student-type';
@@ -101,22 +95,16 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-175 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">
-            {student ? t('editStudent') : t('addNewStudent')}
-          </DialogTitle>
-          <DialogDescription>
-            {student ? t('editStudentDescription') : t('addStudentDescription')}
-          </DialogDescription>
+          <DialogTitle className="text-xl font-bold">{student ? t('editStudent') : t('addNewStudent')}</DialogTitle>
+          <DialogDescription>{student ? t('editStudentDescription') : t('addStudentDescription')}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             {/* Student Information */}
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                {t('studentInfo')}
-              </h3>
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('studentInfo')}</h3>
               <div className="grid gap-4">
                 {/* Full Name */}
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -203,9 +191,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
 
             {/* Parent Information */}
             <div className="space-y-2 pt-4 border-t">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                {t('parentInfo')}
-              </h3>
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('parentInfo')}</h3>
               <div className="grid gap-4">
                 {/* Parent Name */}
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -241,35 +227,29 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
 
             {/* Class Information */}
             <div className="space-y-2 pt-4 border-t">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                {t('classInfo')}
-              </h3>
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('classInfo')}</h3>
               <div className="grid gap-4">
                 {/* Class Selection */}
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="classId" className="text-right">
                     {t('class')} <span className="text-red-500">{t('required')}</span>
                   </Label>
-                    <Select
-                      value={formData.classId}
-                      onValueChange={(value) => handleChange('classId', value)}
-                      required
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder={t('classPlaceholder')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes.map((cls) => (
-                          <SelectItem key={cls.id} value={cls.id}>
-                            {cls.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Select value={formData.classId} onValueChange={(value) => handleChange('classId', value)} required>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder={t('classPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes.map((cls) => (
+                        <SelectItem key={cls.id} value={cls.id}>
+                          {cls.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
+          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('cancel')}
@@ -281,4 +261,3 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
     </Dialog>
   );
 }
-

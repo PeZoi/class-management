@@ -40,12 +40,7 @@ interface PaymentActionDialogProps {
   onConfirm: (studentId: number, paymentData: PaymentData) => void;
 }
 
-export function PaymentActionDialog({
-  open,
-  onOpenChange,
-  student,
-  onConfirm,
-}: PaymentActionDialogProps) {
+export function PaymentActionDialog({ open, onOpenChange, student, onConfirm }: PaymentActionDialogProps) {
   const t = useTranslations('student-management');
   const tPayment = useTranslations('payment-management');
 
@@ -89,9 +84,7 @@ export function PaymentActionDialog({
             <DollarSign className="size-6 text-green-600" />
             Ghi Nhận Thanh Toán
           </DialogTitle>
-          <DialogDescription>
-            Ghi nhận khoản thanh toán học phí cho học viên
-          </DialogDescription>
+          <DialogDescription>Ghi nhận khoản thanh toán học phí cho học viên</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
@@ -105,15 +98,11 @@ export function PaymentActionDialog({
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-slate-500">Họ tên:</span>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">
-                    {student.name}
-                  </div>
+                  <div className="font-medium text-slate-900 dark:text-slate-100">{student.name}</div>
                 </div>
                 <div>
                   <span className="text-slate-500">Lớp học:</span>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">
-                    {student.className}
-                  </div>
+                  <div className="font-medium text-slate-900 dark:text-slate-100">{student.className}</div>
                 </div>
                 <div>
                   <span className="text-slate-500">Học phí:</span>
@@ -152,18 +141,14 @@ export function PaymentActionDialog({
                     id="amount"
                     type="number"
                     value={formData.amount}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))
-                    }
+                    onChange={(e) => setFormData((prev) => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
                     placeholder="Nhập số tiền"
                     min="0"
                     max={remainingAmount}
                     step="1000"
                     required
                   />
-                  <p className="text-xs text-slate-500">
-                    Tối đa: {formatCurrency(remainingAmount)}
-                  </p>
+                  <p className="text-xs text-slate-500">Tối đa: {formatCurrency(remainingAmount)}</p>
                 </div>
 
                 <div className="space-y-2">
@@ -174,9 +159,7 @@ export function PaymentActionDialog({
                     id="paymentDate"
                     type="date"
                     value={formData.paymentDate}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, paymentDate: e.target.value }))
-                    }
+                    onChange={(e) => setFormData((prev) => ({ ...prev, paymentDate: e.target.value }))}
                     required
                   />
                 </div>
@@ -187,9 +170,7 @@ export function PaymentActionDialog({
                   </Label>
                   <Select
                     value={formData.paymentMethod}
-                    onValueChange={(value: any) =>
-                      setFormData((prev) => ({ ...prev, paymentMethod: value }))
-                    }
+                    onValueChange={(value: any) => setFormData((prev) => ({ ...prev, paymentMethod: value }))}
                   >
                     <SelectTrigger id="paymentMethod">
                       <SelectValue />
@@ -253,7 +234,9 @@ export function PaymentActionDialog({
                 </div>
                 <div className="flex justify-between items-center text-sm pt-2 border-t border-blue-200 dark:border-blue-800">
                   <span className="text-slate-600 dark:text-slate-400">Còn lại sau thanh toán:</span>
-                  <span className={`font-bold text-lg ${isFullPayment ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                  <span
+                    className={`font-bold text-lg ${isFullPayment ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}
+                  >
                     {formatCurrency(Math.max(0, remainingAmount - formData.amount))}
                   </span>
                 </div>
@@ -282,4 +265,3 @@ export function PaymentActionDialog({
     </Dialog>
   );
 }
-

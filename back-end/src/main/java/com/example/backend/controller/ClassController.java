@@ -40,9 +40,15 @@ public class ClassController {
         return new ResponseEntity<>(classResponse, HttpStatus.OK);
     }
 
-    @GetMapping("/get-by-teacher-id/{teacherId}")
+    @GetMapping("/get-class-by-teacher-id/{teacherId}")
     public ResponseEntity<List<ClassResponse>> getClassesByTeacherId(@PathVariable(value = "teacherId") String teacherId) {
         List<ClassResponse> classResponses = classService.getClassesByTeacherId(teacherId);
         return new ResponseEntity<>(classResponses, HttpStatus.OK);
+    }
+
+    @GetMapping("/get/{classId}")
+    public ResponseEntity<ClassResponse> getClassById(@PathVariable(value = "classId") String classId) {
+        ClassResponse classResponse = classService.getClassById(classId);
+        return new ResponseEntity<>(classResponse, HttpStatus.OK);
     }
 }

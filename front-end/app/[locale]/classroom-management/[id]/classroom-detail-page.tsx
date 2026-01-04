@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ClassroomDetailHeader,
   ClassroomDetailRevenueChart,
@@ -12,6 +12,9 @@ import {
   ClassroomUnpaidStudentsList,
 } from './_components';
 import { PaymentActionDialog } from '@/app/[locale]/student-management/_components/payment-action-dialog';
+import { studentService } from '@/services';
+import { StudentType } from '@/types';
+import { toast } from 'react-toastify';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -257,24 +260,44 @@ const studentsData: Record<number, Student[]> = {
 
 export default function ClassroomDetailPage() {
   const params = useParams();
-  const classId = Number(params.id);
+  const classId = params.id;
+  const classIdTmp = Number(params.id);
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [studentForPayment, setStudentForPayment] = useState<Student | null>(null);
   const [studentsState, setStudentsState] = useState<Student[]>([]);
+  const [students, setStudents] = useState<StudentType[]>([]);
 
   // Get class data (in real app, this would be fetched from API)
-  const classData = classDetails[classId as keyof typeof classDetails] || classDetails[1];
-  const initialStudents = studentsData[classId] || studentsData[1];
-  
-  // Initialize students state
-  useState(() => {
-    setStudentsState(initialStudents);
-  });
+  const classData = classDetails[classIdTmp as keyof typeof classDetails] || classDetails[1];
+  const initialStudents = studentsData[classIdTmp] || studentsData[1];
 
-  const students = studentsState.length > 0 ? studentsState : initialStudents;
-  const revenueData = revenueDataByClass[classId]?.[selectedPeriod] || revenueDataByClass[1][selectedPeriod];
+  // Initialize students state
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const response = await studentService.getStudentsByClass(classId as string);
+        if (response.status === 200 && response.data) {
+          setStudents(response.data);
+        }
+      } catch (error) {
+        console.log('Lỗi fetch danh sách học sinh', error);
+        toast.error('Không thể tải danh sách học sinh.');
+      }
+    };
+    const fetchClass = async () => {
+      try {
+      } catch (error) {
+        console.log('Lỗi fetch thông tin lớp học', error);
+        toast.error('Không thể tải thông tin lớp học.');
+      }
+    };
+    if (classId) fetchStudents();
+  }, [classIdTmp]);
+
+  const _students = studentsState.length > 0 ? studentsState : initialStudents;
+  const revenueData = revenueDataByClass[classIdTmp]?.[selectedPeriod] || revenueDataByClass[1][selectedPeriod];
 
   const handlePayment = (student: Student) => {
     // Transform Student to match PaymentActionDialog's expected format
@@ -296,14 +319,14 @@ export default function ClassroomDetailPage() {
       paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
       paymentDate: string;
       notes: string;
-    }
+    },
   ) => {
     setStudentsState((prev) =>
       prev.map((s) => {
         if (s.id === studentId) {
           const newAmountPaid = s.amountPaid + paymentData.amount;
           let newPaymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
-          
+
           if (newAmountPaid >= s.totalFee) {
             newPaymentStatus = 'paid';
           } else if (newAmountPaid > 0) {
@@ -328,7 +351,7 @@ export default function ClassroomDetailPage() {
           };
         }
         return s;
-      })
+      }),
     );
 
     setIsPaymentDialogOpen(false);
@@ -371,7 +394,7 @@ export default function ClassroomDetailPage() {
       <ClassroomStudentsList students={students} />
 
       {/* Unpaid Students List */}
-      <ClassroomUnpaidStudentsList students={students} onPayment={handlePayment} />
+      <ClassroomUnpaidStudentsList students={_students} onPayment={handlePayment} />
 
       {/* Payment Dialog */}
       <PaymentActionDialog
