@@ -1,4 +1,5 @@
 import { PersonalInfoCard } from '@/components/personal-info-card';
+import { formatDate } from '@/utils/helper';
 import { useTranslations } from 'next-intl';
 
 interface TeacherPersonalInfoProps {
@@ -17,15 +18,6 @@ interface TeacherPersonalInfoProps {
 
 export function TeacherPersonalInfo({ teacherData }: TeacherPersonalInfoProps) {
   const t = useTranslations('teacher-detail');
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
 
   const formatDOB = (dob: string) => {
     const date = new Date(dob);

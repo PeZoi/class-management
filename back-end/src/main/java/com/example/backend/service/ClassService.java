@@ -49,6 +49,7 @@ public class ClassService {
         for (Class c : classes) {
             ClassResponse classResponse = modelMapper.map(c, ClassResponse.class);
             int studentCount = countActiveStudents(classResponse.getId());
+            classResponse.setTotal(studentCount * classResponse.getMonthlyFee());
             classResponse.setStudentCount(studentCount);
             classResponses.add(classResponse);
         }
@@ -74,6 +75,8 @@ public class ClassService {
 
         for (Class c : classesDB) {
             ClassResponse classResponse = modelMapper.map(c, ClassResponse.class);
+            int studentCount = countActiveStudents(classResponse.getId());
+            classResponse.setTotal(classResponse.getMonthlyFee() * studentCount);
             classResponses.add(classResponse);
         }
 
@@ -84,6 +87,8 @@ public class ClassService {
         Class classDB = classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy " +
                 "lớp học"));
         ClassResponse classResponse = modelMapper.map(classDB, ClassResponse.class);
+        int studentCount = countActiveStudents(classResponse.getId());
+        classResponse.setStudentCount(studentCount);
 
         return classResponse;
     }

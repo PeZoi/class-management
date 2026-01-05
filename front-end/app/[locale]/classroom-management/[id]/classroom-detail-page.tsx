@@ -12,8 +12,8 @@ import {
   ClassroomUnpaidStudentsList,
 } from './_components';
 import { PaymentActionDialog } from '@/app/[locale]/student-management/_components/payment-action-dialog';
-import { studentService } from '@/services';
-import { StudentType } from '@/types';
+import { classService, studentService } from '@/services';
+import { ClassType, StudentType, TeacherType } from '@/types';
 import { toast } from 'react-toastify';
 
 type TimePeriod = '3months' | '6months' | '12months';
@@ -265,12 +265,17 @@ export default function ClassroomDetailPage() {
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [studentForPayment, setStudentForPayment] = useState<Student | null>(null);
+  const [studentForPayment, setStudentForPayment] = useState<{
+    id: number;
+    name: string;
+    className: string;
+    monthlyFee: number;
+    amountPaid: number;
+  } | null>(null);
   const [studentsState, setStudentsState] = useState<Student[]>([]);
   const [students, setStudents] = useState<StudentType[]>([]);
+  const [classData, setClassData] = useState<ClassType | null>(null);
 
-  // Get class data (in real app, this would be fetched from API)
-  const classData = classDetails[classIdTmp as keyof typeof classDetails] || classDetails[1];
   const initialStudents = studentsData[classIdTmp] || studentsData[1];
 
   // Initialize students state
@@ -288,27 +293,67 @@ export default function ClassroomDetailPage() {
     };
     const fetchClass = async () => {
       try {
+        const response = await classService.getClassById(classId as string);
+        if (response.status === 200 && response.data) {
+          setClassData(response.data);
+        }
       } catch (error) {
         console.log('Lỗi fetch thông tin lớp học', error);
         toast.error('Không thể tải thông tin lớp học.');
       }
     };
-    if (classId) fetchStudents();
-  }, [classIdTmp]);
+    if (classId) {
+      fetchClass();
+      fetchStudents();
+    }
+  }, [classId, classIdTmp]);
 
   const _students = studentsState.length > 0 ? studentsState : initialStudents;
   const revenueData = revenueDataByClass[classIdTmp]?.[selectedPeriod] || revenueDataByClass[1][selectedPeriod];
 
+  // Transform ClassType to UI format with additional static fields
+  const getClassDataForUI = (data: ClassType | null) => {
+    if (!data) {
+      const fallback = classDetails[classIdTmp as keyof typeof classDetails] || classDetails[1];
+      return fallback;
+    }
+    return {
+      id: Number(data.id) || classIdTmp,
+      name: data.name || 'Chưa có tên',
+      teacher: data.teacher?.fullName || 'Chưa có giáo viên',
+      teacherEmail: data.teacher?.email || '',
+      teacherPhone: data.teacher?.phoneNumber || '',
+      students: data.studentCount || 0,
+      revenue: data.revenue || 0,
+      schedule: data.schedule || 'Chưa có lịch học',
+      time: '19:00 - 21:00', // Dữ liệu tĩnh
+      duration: '3 tháng', // Dữ liệu tĩnh
+      monthlyFee: data.monthlyFee || 0,
+      collected: data.collected || 0,
+      total: data.total || 0,
+      description: data.name || '', // Dùng name làm description
+      color: '#3b82f6', // Dữ liệu tĩnh
+    };
+  };
+
+  const currentClassData = getClassDataForUI(classData);
+
   const handlePayment = (student: Student) => {
     // Transform Student to match PaymentActionDialog's expected format
-    const studentForDialog = {
+    const studentForDialog: {
+      id: number;
+      name: string;
+      className: string;
+      monthlyFee: number;
+      amountPaid: number;
+    } = {
       id: student.id,
       name: student.studentName,
-      className: classData.name,
+      className: currentClassData.name,
       monthlyFee: student.totalFee,
       amountPaid: student.amountPaid,
     };
-    setStudentForPayment(studentForDialog as any);
+    setStudentForPayment(studentForDialog);
     setIsPaymentDialogOpen(true);
   };
 
@@ -337,7 +382,7 @@ export default function ClassroomDetailPage() {
           console.log('Tạo hóa đơn cho học viên trong lớp:', {
             studentId: s.id,
             studentName: s.studentName,
-            className: classData.name,
+            className: currentClassData.name,
             amount: paymentData.amount,
             paymentMethod: paymentData.paymentMethod,
             paymentDate: paymentData.paymentDate,
@@ -361,25 +406,17 @@ export default function ClassroomDetailPage() {
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
       {/* Header with Breadcrumb */}
-      <ClassroomDetailHeader classData={classData} />
+      <ClassroomDetailHeader classData={currentClassData} />
 
       {/* Stats Cards */}
-      <ClassroomStatsCards
-        students={classData.students}
-        revenue={classData.revenue}
-        monthlyFee={classData.monthlyFee}
-        collected={classData.collected}
-        total={classData.total}
-      />
+      <ClassroomStatsCards classData={classData} />
 
       {/* Class Info & Schedule */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ClassroomTeacherInfo
-          teacher={classData.teacher}
-          teacherEmail={classData.teacherEmail}
-          teacherPhone={classData.teacherPhone}
+          teacher={classData?.teacher as TeacherType}
         />
-        <ClassroomScheduleInfo schedule={classData.schedule} time={classData.time} duration={classData.duration} />
+        <ClassroomScheduleInfo schedule={currentClassData.schedule} time={currentClassData.time} duration={currentClassData.duration} />
       </div>
 
       {/* Revenue Chart */}
@@ -387,7 +424,7 @@ export default function ClassroomDetailPage() {
         selectedPeriod={selectedPeriod}
         onPeriodChange={setSelectedPeriod}
         revenueData={revenueData}
-        color={classData.color}
+        color={currentClassData.color}
       />
 
       {/* Students List */}

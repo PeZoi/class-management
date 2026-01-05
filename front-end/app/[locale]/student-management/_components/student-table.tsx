@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/utils/helper';
+import { formatCurrency, formatDate } from '@/utils/helper';
 import {
   BookOpen,
   Calendar,
@@ -58,14 +58,6 @@ export function StudentTable({
 
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-  };
 
   const getPaymentBadge = (paymentStatus: StudentItem['paymentStatus']) => {
     const paymentConfig = {

@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StudentType } from '@/types';
+import { formatDate } from '@/utils/helper';
 import { Calendar, Mail, Phone, User2, UserCircle, Users, UsersRound } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -19,14 +20,6 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
       OTHER: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400',
     };
     return variants[gender] || variants.other;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
   };
 
   return (

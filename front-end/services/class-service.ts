@@ -7,4 +7,5 @@ export const classService = {
   createClass: (data: ClassRequest) => http.post<ResponseType<ClassType, ClassType>>('/api/class/create', data),
   updateClass: (id: string, data: ClassRequest) => http.put<ResponseType<ClassType, ClassType>>(`/api/class/update/${id}`, data),
   getClassesByTeacherId: (teacherId: string) => http.get<ResponseType<ClassType[], ClassType[]>>(`/api/class/get-class-by-teacher-id/${teacherId}`),
+  getClassById: (id: string) => http.get<ResponseType<ClassType, ClassType>>(`/api/class/get/${id}`),
 };

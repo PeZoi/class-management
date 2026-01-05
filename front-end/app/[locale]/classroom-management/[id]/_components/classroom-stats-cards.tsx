@@ -1,20 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ClassType } from '@/types';
 import { formatCurrency } from '@/utils/helper';
 import { BookOpen, DollarSign, TrendingUp, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 interface ClassroomStatsCardsProps {
-  students: number;
-  revenue: number;
-  monthlyFee: number;
-  collected: number;
-  total: number;
+  classData: ClassType | null;
 }
 
-export function ClassroomStatsCards({ students, revenue, monthlyFee, collected, total }: ClassroomStatsCardsProps) {
+export function ClassroomStatsCards({ classData }: ClassroomStatsCardsProps) {
   const t = useTranslations('classroom-detail');
 
-  const collectionRate = ((collected / total) * 100).toFixed(1);
+  const collectionRate = ((classData?.collected || 0) / (classData?.total || 0) * 100).toFixed(1);
+  if (!classData) return null;
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -27,7 +25,7 @@ export function ClassroomStatsCards({ students, revenue, monthlyFee, collected, 
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{students}</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{classData?.studentCount}</div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{t('enrolledStudents')}</p>
         </CardContent>
       </Card>
@@ -41,7 +39,7 @@ export function ClassroomStatsCards({ students, revenue, monthlyFee, collected, 
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(revenue)}</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(classData?.revenue || 0)}</div>
           <div className="flex items-center gap-1 mt-2">
             <TrendingUp className="size-4 text-green-600" />
             <span className="text-xs text-slate-500 dark:text-slate-400">{t('thisMonth')}</span>
@@ -58,7 +56,7 @@ export function ClassroomStatsCards({ students, revenue, monthlyFee, collected, 
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(monthlyFee)}</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(classData?.monthlyFee || 0)}</div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{t('perStudent')}</p>
         </CardContent>
       </Card>
@@ -86,7 +84,7 @@ export function ClassroomStatsCards({ students, revenue, monthlyFee, collected, 
               </div>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {formatCurrency(collected)} / {formatCurrency(total)}
+              {formatCurrency(classData?.collected || 0)} / {formatCurrency(classData?.total || 0)}
             </p>
           </div>
         </CardContent>

@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatDateLong } from '@/utils/helper';
 import { Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -20,16 +21,6 @@ interface TeacherAttendanceProps {
 
 export function TeacherAttendance({ attendanceRecords }: TeacherAttendanceProps) {
   const t = useTranslations('teacher-detail');
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
 
   const formatTime = (timeString?: string) => {
     if (!timeString) return '-';
@@ -168,7 +159,7 @@ export function TeacherAttendance({ attendanceRecords }: TeacherAttendanceProps)
                   className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                 >
                   <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                    {formatDate(record.date)}
+                    {formatDateLong(record.date)}
                   </TableCell>
                   <TableCell className="text-slate-600 dark:text-slate-400">{record.className}</TableCell>
                   <TableCell className="text-center text-slate-600 dark:text-slate-400">

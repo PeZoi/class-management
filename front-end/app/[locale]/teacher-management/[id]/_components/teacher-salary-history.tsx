@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatCurrency } from '@/utils/helper';
+import { formatCurrency, formatDate } from '@/utils/helper';
 import { Calendar, DollarSign, FileText } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -24,15 +24,6 @@ interface TeacherSalaryHistoryProps {
 
 export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProps) {
   const t = useTranslations('teacher-detail');
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-  };
 
   const getPaymentMethodLabel = (method: string) => {
     const methods: Record<string, string> = {
