@@ -59,12 +59,12 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
   // Note: setState in useEffect is necessary to sync form with props
   useEffect(() => {
     if (student) {
-      // eslint-disable-next-line
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         fullName: student.fullName || '',
         email: student.email || '',
         phoneNumber: student.phoneNumber || '',
-        dob: student.dob || '',
+        dob: new Date(student.dob).toISOString().split('T')[0],
         gender: student.gender || 'OTHER',
         fullNameParent: student.fullNameParent || '',
         phoneNumberParent: student.phoneNumberParent || '',

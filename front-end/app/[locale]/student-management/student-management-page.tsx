@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { StudentTable } from './_components/student-table';
 import { StudentDialog } from './_components/student-dialog';
 import { StudentFilter, FilterState } from './_components/student-filter';
@@ -9,132 +9,47 @@ import { StudentRequest, StudentType } from '@/types/student-type';
 import { studentService } from '@/services';
 import { toast } from 'react-toastify';
 
-export interface StudentItem {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  dob: string; // date of birth
-  gender: 'male' | 'female' | 'other';
-  idCard: string; // ID card number
-  parentName: string;
-  parentPhone: string;
-  className: string; // enrolled class
-  joinedDate: string;
+export interface StudentItem extends StudentType {
+  idCard?: string; // ID card number (optional, not in API)
   status: 'active' | 'pending' | 'completed';
   paymentStatus: 'paid' | 'unpaid' | 'partial';
   monthlyFee: number;
   amountPaid: number;
 }
 
-// Mock data - trong thực tế sẽ fetch từ API
-const initialStudents: StudentItem[] = [
-  {
-    id: 1,
-    name: 'Nguyễn Thị Mai',
-    email: 'mainguyen@example.com',
-    phone: '0912345678',
-    dob: '2005-03-15',
-    gender: 'female',
-    idCard: '001205012345',
-    parentName: 'Nguyễn Văn Hùng',
-    parentPhone: '0987654321',
-    className: 'JavaScript Nâng Cao',
-    joinedDate: '2024-01-15',
-    status: 'active',
-    paymentStatus: 'paid',
-    monthlyFee: 5000000,
-    amountPaid: 5000000,
-  },
-  {
-    id: 2,
-    name: 'Trần Văn Nam',
-    email: 'namtran@example.com',
-    phone: '0923456789',
-    dob: '2006-07-22',
-    gender: 'male',
-    idCard: '001206054321',
-    parentName: 'Trần Thị Lan',
-    parentPhone: '0976543210',
-    className: 'React Cơ Bản',
-    joinedDate: '2024-02-20',
-    status: 'active',
-    paymentStatus: 'partial',
-    monthlyFee: 4500000,
-    amountPaid: 2000000,
-  },
-  {
-    id: 3,
-    name: 'Lê Thị Hoa',
-    email: 'hoale@example.com',
-    phone: '0934567890',
-    dob: '2005-11-10',
-    gender: 'female',
-    idCard: '001205067890',
-    parentName: 'Lê Văn Minh',
-    parentPhone: '0965432109',
-    className: 'Python Căn Bản',
-    joinedDate: '2024-03-10',
-    status: 'active',
-    paymentStatus: 'unpaid',
-    monthlyFee: 4000000,
-    amountPaid: 0,
-  },
-  {
-    id: 4,
-    name: 'Phạm Văn Đức',
-    email: 'ducpham@example.com',
-    phone: '0945678901',
-    dob: '2004-05-18',
-    gender: 'male',
-    idCard: '001204023456',
-    parentName: 'Phạm Thị Hương',
-    parentPhone: '0954321098',
-    className: 'JavaScript Nâng Cao',
-    joinedDate: '2024-01-05',
-    status: 'active',
-    paymentStatus: 'paid',
-    monthlyFee: 5000000,
-    amountPaid: 5000000,
-  },
-  {
-    id: 5,
-    name: 'Hoàng Thị Linh',
-    email: 'linhhoang@example.com',
-    phone: '0956789012',
-    dob: '2006-12-05',
-    gender: 'female',
-    idCard: '001206034567',
-    parentName: 'Hoàng Văn Tùng',
-    parentPhone: '0943210987',
-    className: 'React Cơ Bản',
-    joinedDate: '2024-02-15',
-    status: 'pending',
-    paymentStatus: 'unpaid',
-    monthlyFee: 4500000,
-    amountPaid: 0,
-  },
-  {
-    id: 6,
-    name: 'Vũ Văn Hải',
-    email: 'haivu@example.com',
-    phone: '0967890123',
-    dob: '2005-08-25',
-    gender: 'male',
-    idCard: '001205045678',
-    parentName: 'Vũ Thị Nga',
-    parentPhone: '0932109876',
-    className: 'Python Căn Bản',
-    joinedDate: '2023-12-20',
-    status: 'completed',
-    paymentStatus: 'paid',
-    monthlyFee: 4000000,
-    amountPaid: 4000000,
-  },
-];
+// Helper function to map API StudentType to StudentItem
+const mapStudentTypeToStudentItem = (student: StudentType, index: number): StudentItem => {
+  // Set payment status statically (random for demo, you can change this)
+  const paymentStatuses: Array<'paid' | 'unpaid' | 'partial'> = ['paid', 'unpaid', 'partial'];
+  const randomPaymentStatus = paymentStatuses[index % 3];
+  
+  // Set monthly fee statically (random between 4M - 5M VND)
+  const monthlyFee = 4000000 + (index % 2) * 500000;
+  
+  // Set amount paid based on payment status
+  let amountPaid = 0;
+  if (randomPaymentStatus === 'paid') {
+    amountPaid = monthlyFee;
+  } else if (randomPaymentStatus === 'partial') {
+    amountPaid = Math.floor(monthlyFee * 0.5);
+  }
+
+  // Set status statically (mostly active)
+  const status: 'active' | 'pending' | 'completed' = index % 10 === 0 ? 'pending' : index % 20 === 0 ? 'completed' : 'active';
+
+  return {
+    ...student,
+    idCard: '', // Not available in API, set empty
+    status,
+    paymentStatus: randomPaymentStatus,
+    monthlyFee,
+    amountPaid,
+  };
+};
 
 export default function StudentManagementPage() {
-  const [students, setStudents] = useState<StudentItem[]>(initialStudents);
+  const [students, setStudents] = useState<StudentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -148,6 +63,32 @@ export default function StudentManagementPage() {
     sortOrder: 'asc',
   });
 
+  // Fetch students from API
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setIsLoading(true);
+        const response = await studentService.getStudents();
+        
+        if (response.status === 200 && response.data) {
+          const mappedStudents = response.data.map((student: StudentType, index: number) =>
+            mapStudentTypeToStudentItem(student, index)
+          );
+          setStudents(mappedStudents);
+        } else {
+          toast.error('Không thể tải danh sách học viên');
+        }
+      } catch (error) {
+        console.error('Error fetching students:', error);
+        toast.error('Lỗi khi tải danh sách học viên');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, []);
+
   const handleAdd = () => {
     setSelectedStudent(null);
     setIsDialogOpen(true);
@@ -158,7 +99,7 @@ export default function StudentManagementPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     setStudents((prev) => prev.filter((s) => s.id !== id));
   };
 
@@ -168,7 +109,7 @@ export default function StudentManagementPage() {
   };
 
   const handleConfirmPayment = (
-    studentId: number,
+    studentId: string,
     paymentData: {
       amount: number;
       paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
@@ -192,8 +133,8 @@ export default function StudentManagementPage() {
           // Có thể gọi API để tạo payment invoice
           console.log('Tạo hóa đơn cho học viên:', {
             studentId: s.id,
-            studentName: s.name,
-            className: s.className,
+            studentName: s.fullName,
+            className: s.class?.name || 'Chưa có lớp',
             amount: paymentData.amount,
             paymentMethod: paymentData.paymentMethod,
             paymentDate: paymentData.paymentDate,
@@ -215,28 +156,56 @@ export default function StudentManagementPage() {
   };
 
   const handleSave = async (studentData: StudentRequest) => {
-    if (selectedStudent) {
-      // Update existing student
-    } else {
-      // Add new student
+    // Helper: reload list after create/update
+    const reloadStudents = async () => {
       try {
-        const response = await studentService.createStudent(studentData);
-        if (response.status === 201 && response.data) {
-          // setStudents((prev) => [...prev, response.data]);
-          toast.success('Thêm học viên thành công');
+        const refreshResponse = await studentService.getStudents();
+        if (refreshResponse.status === 200 && refreshResponse.data) {
+          const mappedStudents = refreshResponse.data.map(
+            (student: StudentType, index: number) => mapStudentTypeToStudentItem(student, index),
+          );
+          setStudents(mappedStudents);
+        }
+      } catch (error) {
+        console.error('Error refreshing students:', error);
+      }
+    };
+
+    // Update existing student
+    if (selectedStudent) {
+      try {
+        const response = await studentService.updateStudent(studentData, selectedStudent.id);
+        if (response.status === 200 && response.data) {
+          await reloadStudents();
+          toast.success('Cập nhật học viên thành công');
           setIsDialogOpen(false);
           setSelectedStudent(null);
         }
       } catch (error) {
-        console.error('Error creating student:', error);
-        toast.error('Thêm học viên thất bại');
+        console.error('Error updating student:', error);
+        toast.error('Cập nhật học viên thất bại');
       }
+      return;
+    }
+
+    // Add new student
+    try {
+      const response = await studentService.createStudent(studentData);
+      if (response.status === 201 && response.data) {
+        await reloadStudents();
+        toast.success('Thêm học viên thành công');
+        setIsDialogOpen(false);
+        setSelectedStudent(null);
+      }
+    } catch (error) {
+      console.error('Error creating student:', error);
+      toast.error('Thêm học viên thất bại');
     }
   };
 
   // Get unique class names for filter
   const availableClasses = useMemo(() => {
-    const classes = [...new Set(students.map((s) => s.className))];
+    const classes = [...new Set(students.map((s) => s.class?.name || 'Chưa có lớp'))];
     return classes.sort();
   }, [students]);
 
@@ -249,11 +218,11 @@ export default function StudentManagementPage() {
       const query = filters.searchQuery.toLowerCase();
       result = result.filter(
         (student) =>
-          student.name.toLowerCase().includes(query) ||
+          student.fullName.toLowerCase().includes(query) ||
           student.email.toLowerCase().includes(query) ||
-          student.phone.includes(query) ||
-          student.parentName.toLowerCase().includes(query) ||
-          student.className.toLowerCase().includes(query),
+          student.phoneNumber.includes(query) ||
+          student.fullNameParent.toLowerCase().includes(query) ||
+          (student.class?.name || '').toLowerCase().includes(query),
       );
     }
 
@@ -264,12 +233,17 @@ export default function StudentManagementPage() {
 
     // Apply class filter
     if (filters.className !== 'all') {
-      result = result.filter((student) => student.className === filters.className);
+      result = result.filter((student) => (student.class?.name || 'Chưa có lớp') === filters.className);
     }
 
     // Apply gender filter
     if (filters.gender !== 'all') {
-      result = result.filter((student) => student.gender === filters.gender);
+      const genderMap: Record<'male' | 'female' | 'other', 'MALE' | 'FEMALE' | 'OTHER'> = {
+        male: 'MALE',
+        female: 'FEMALE',
+        other: 'OTHER',
+      };
+      result = result.filter((student) => student.gender === genderMap[filters.gender as 'male' | 'female' | 'other']);
     }
 
     // Apply sorting
@@ -278,10 +252,10 @@ export default function StudentManagementPage() {
 
       switch (filters.sortBy) {
         case 'name':
-          comparison = a.name.localeCompare(b.name, 'vi');
+          comparison = a.fullName.localeCompare(b.fullName, 'vi');
           break;
         case 'joinedDate':
-          comparison = new Date(a.joinedDate).getTime() - new Date(b.joinedDate).getTime();
+          comparison = new Date(a.class?.joinAt || '').getTime() - new Date(b.class?.joinAt || '').getTime();
           break;
         case 'monthlyFee':
           comparison = a.monthlyFee - b.monthlyFee;
@@ -293,6 +267,17 @@ export default function StudentManagementPage() {
 
     return result;
   }, [students, filters]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 dark:border-slate-100 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Đang tải danh sách học viên...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
@@ -313,7 +298,7 @@ export default function StudentManagementPage() {
       <StudentDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        student={selectedStudent as StudentType | null}
+        student={selectedStudent}
         onSave={handleSave}
       />
 

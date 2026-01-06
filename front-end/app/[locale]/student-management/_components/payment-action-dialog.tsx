@@ -18,13 +18,7 @@ import { CreditCard, DollarSign, FileText, User } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
-interface Student {
-  id: number;
-  name: string;
-  className: string;
-  monthlyFee: number;
-  amountPaid: number;
-}
+import { StudentItem } from '../student-management-page';
 
 interface PaymentData {
   amount: number;
@@ -36,8 +30,8 @@ interface PaymentData {
 interface PaymentActionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  student: Student | null;
-  onConfirm: (studentId: number, paymentData: PaymentData) => void;
+  student: StudentItem | null;
+  onConfirm: (studentId: string, paymentData: PaymentData) => void;
 }
 
 export function PaymentActionDialog({ open, onOpenChange, student, onConfirm }: PaymentActionDialogProps) {
@@ -98,11 +92,11 @@ export function PaymentActionDialog({ open, onOpenChange, student, onConfirm }: 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-slate-500">Họ tên:</span>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{student.name}</div>
+                  <div className="font-medium text-slate-900 dark:text-slate-100">{student.fullName}</div>
                 </div>
                 <div>
                   <span className="text-slate-500">Lớp học:</span>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{student.className}</div>
+                  <div className="font-medium text-slate-900 dark:text-slate-100">{student.class?.name || 'Chưa có lớp'}</div>
                 </div>
                 <div>
                   <span className="text-slate-500">Học phí:</span>

@@ -34,7 +34,7 @@ import { StudentItem } from '../student-management-page';
 interface StudentTableProps {
   students: StudentItem[];
   onEdit?: (student: StudentItem) => void;
-  onDelete?: (id: number) => void;
+  onDelete?: (id: string) => void;
   onAdd?: () => void;
   onPayment?: (student: StudentItem) => void;
   title?: string;
@@ -179,9 +179,9 @@ export function StudentTable({
                 >
                   <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                     <div className="space-y-0.5">
-                      <div>{student.name}</div>
+                      <div>{student.fullName}</div>
                       <div className="text-xs text-slate-500">
-                        {t(`gender_${student.gender}`)}
+                        {t(`gender_${student.gender.toLowerCase()}`)}
                       </div>
                     </div>
                   </TableCell>
@@ -193,24 +193,24 @@ export function StudentTable({
                       </div>
                       <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                         <Phone className="size-3.5 text-slate-500" />
-                        <span className="text-xs">{student.phone}</span>
+                        <span className="text-xs">{student.phoneNumber}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {student.parentName}
+                        {student.fullNameParent}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-500">
                         <Phone className="size-3 text-slate-500" />
-                        {student.parentPhone}
+                        {student.phoneNumberParent}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
                     <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-medium">
-                      {student.className}
+                      {student.class?.name || 'Chưa có lớp'}
                     </span>
                   </TableCell>
                   <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
@@ -225,7 +225,7 @@ export function StudentTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
-                    {formatDate(student.joinedDate)}
+                    {formatDate(student?.class?.joinAt || '')}
                   </TableCell>
                   {showActions && (
                     <TableCell className="text-center">

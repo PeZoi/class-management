@@ -80,6 +80,7 @@ public class StudentService {
         return studentResponseList;
     }
 
+    @Transactional
     public StudentResponse create(StudentRequest studentRequest) {
         Class classDB = classRepository.findById(studentRequest.getClassId()).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
         Student studentReq = modelMapper.map(studentRequest, Student.class);
@@ -100,6 +101,45 @@ public class StudentService {
         studentClassResponse.setId(classDB.getId());
         studentClassResponse.setName(classDB.getName());
         studentClassResponse.setJoinAt(studentClassDB.getJoinedAt());
+        studentResponse.setClazz(studentClassResponse);
+        return studentResponse;
+    }
+
+    @Transactional
+    public StudentResponse update(StudentRequest studentRequest, String studentId) {
+        Student studentDB = studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
+        studentDB.setFullName(studentRequest.getFullName());
+        studentDB.setEmail(studentRequest.getEmail());
+        studentDB.setPhoneNumber(studentRequest.getPhoneNumber());
+        studentDB.setDob(studentRequest.getDob());
+        studentDB.setGender(studentRequest.getGender());
+        studentDB.setFullNameParent(studentRequest.getFullNameParent());
+        studentDB.setPhoneNumberParent(studentRequest.getPhoneNumberParent());
+
+        Student student = studentRepository.save(studentDB);
+        StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
+
+        StudentClass studentClassDB = studentClassRepository.findCurrentClassByStudent(studentId, StudentClassStatus.STUDYING);
+        if (!studentId.equals(studentClassDB.getClazz().getId())) {
+            studentClassDB.setLeftAt(Instant.now());
+            studentClassDB.setStatus(StudentClassStatus.CHANGING);
+            studentClassRepository.save(studentClassDB);
+
+            StudentClass studentClass = new StudentClass();
+            Class classDB = classRepository.findById(studentRequest.getClassId()).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+            studentClass.setJoinedAt(Instant.now());
+            studentClass.setStatus(StudentClassStatus.STUDYING);
+            studentClass.setClazz(classDB);
+            studentClass.setStudent(studentDB);
+            StudentClass studentClassResponseDB = studentClassRepository.save(studentClass);
+
+            StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
+            studentClassResponse.setId(classDB.getId());
+            studentClassResponse.setName(classDB.getName());
+            studentClassResponse.setJoinAt(studentClassDB.getJoinedAt());
+            studentResponse.setClazz(studentClassResponse);
+        }
+
         return studentResponse;
     }
 }
