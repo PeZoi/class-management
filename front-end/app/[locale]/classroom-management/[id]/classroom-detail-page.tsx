@@ -10,6 +10,7 @@ import {
   ClassroomStudentsList,
   ClassroomTeacherInfo,
   ClassroomUnpaidStudentsList,
+  ClassroomStudentAttendance,
 } from './_components';
 import { PaymentActionDialog } from '@/app/[locale]/student-management/_components/payment-action-dialog';
 import { classService, studentService } from '@/services';
@@ -429,6 +430,9 @@ export default function ClassroomDetailPage() {
 
       {/* Students List */}
       <ClassroomStudentsList students={students} />
+
+      {/* Student Attendance */}
+      <ClassroomStudentAttendance students={students} />
 
       {/* Unpaid Students List */}
       <ClassroomUnpaidStudentsList students={_students} onPayment={handlePayment} />
