@@ -1,0 +1,12 @@
+export { StudentDetailHeader } from './student-detail-header';
+export { StudentPersonalInfo } from './student-personal-info';
+export { StudentParentInfo } from './student-parent-info';
+export { StudentClassInfo } from './student-class-info';
+export { StudentClassHistory } from './student-class-history';
+export { StudentPaymentHistory } from './student-payment-history';
+export { StudentAttendance } from './student-attendance';
+export { PaymentStatusCalendar } from './payment-status-calendar';
+export type { ClassHistoryItem } from './student-class-history';
+export type { PaymentHistoryItem } from './student-payment-history';
+export type { AttendanceSession } from './student-attendance';
+export type { PaymentMonthStatus } from './payment-status-calendar';

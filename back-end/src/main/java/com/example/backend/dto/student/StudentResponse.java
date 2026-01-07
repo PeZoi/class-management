@@ -1,17 +1,16 @@
 package com.example.backend.dto.student;
 
-import com.example.backend.dto.classroom.ClassResponse;
 import com.example.backend.enums.Genders;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.nimbusds.openid.connect.sdk.claims.Gender;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.ToString;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -32,6 +31,14 @@ public class StudentResponse {
     @JsonProperty("class")
     private StudentClassResponse clazz;
 
+    // Danh sách các tháng chưa đóng tiền (deprecated - dùng monthPaymentStatuses thay thế)
+    @Builder.Default
+    private List<UnpaidMonthInfo> unpaidMonths = new ArrayList<>();
+    
+    // Danh sách trạng thái thanh toán của tất cả các tháng từ joinAt đến hiện tại
+    @Builder.Default
+    private List<MonthPaymentStatus> monthPaymentStatuses = new ArrayList<>();
+
     @Getter
     @Setter
     @NoArgsConstructor
@@ -39,6 +46,7 @@ public class StudentResponse {
     public static class StudentClassResponse {
         private String id;
         private String name;
+        private int monthlyFee;
         private Instant joinAt;
     }
 }

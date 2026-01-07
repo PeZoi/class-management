@@ -27,9 +27,11 @@ import {
   XCircle,
   Clock,
   CreditCard,
+  Eye,
 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { StudentItem } from '../student-management-page';
+import Link from 'next/link';
 
 interface StudentTableProps {
   students: StudentItem[];
@@ -55,6 +57,7 @@ export function StudentTable({
   className,
 }: StudentTableProps) {
   const t = useTranslations('student-management');
+  const locale = useLocale();
 
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
@@ -173,16 +176,11 @@ export function StudentTable({
               </TableRow>
             ) : (
               students.map((student) => (
-                <TableRow
-                  key={student.id}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                >
+                <TableRow key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                     <div className="space-y-0.5">
                       <div>{student.fullName}</div>
-                      <div className="text-xs text-slate-500">
-                        {t(`gender_${student.gender.toLowerCase()}`)}
-                      </div>
+                      <div className="text-xs text-slate-500">{t(`gender_${student.gender.toLowerCase()}`)}</div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -238,19 +236,25 @@ export function StudentTable({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
                           {onPayment && student.paymentStatus !== 'paid' && (
                             <>
-                              <DropdownMenuItem 
-                                className="cursor-pointer text-green-600 dark:text-green-400 font-medium" 
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="cursor-pointer text-green-600 dark:text-green-400 font-medium"
                                 onClick={() => onPayment(student)}
                               >
                                 <CreditCard className="size-4 mr-2" />
                                 Đóng Tiền
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
                             </>
                           )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="cursor-pointer" asChild>
+                            <Link href={`/${locale}/student-management/${student.id}`} className="flex items-center">
+                              <Eye className="size-4 mr-2" />
+                              {t('viewDetail')}
+                            </Link>
+                          </DropdownMenuItem>
                           {onEdit && (
                             <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(student)}>
                               <Edit className="size-4 mr-2" />

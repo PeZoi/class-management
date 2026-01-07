@@ -18,4 +18,5 @@ export const studentService = {
   },
   getStudents: () => http.get<ResponseType<StudentType[], StudentType[]>>('/api/student/get-all'),
   getStudentsByClass: (classId: string) => http.get<ResponseType<StudentType[], StudentType[]>>(`/api/student/get-students-by-class/${classId}`),
+  getStudentById: (studentId: string) => http.get<ResponseType<StudentType, StudentType>>(`/api/student/get/${studentId}`),
 };

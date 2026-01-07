@@ -1,7 +1,16 @@
 export interface StudentClassResponse {
   id: string;
   name: string;
+  monthlyFee: number;
   joinAt: string;
+}
+
+export interface MonthPaymentStatus {
+  month: string; // ISO date string (e.g., "2025-09-01T00:00:00Z")
+  expectedAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status: 'PAID' | 'PARTIAL' | 'UNPAID';
 }
 
 export interface StudentType {
@@ -14,6 +23,7 @@ export interface StudentType {
   fullNameParent: string;
   phoneNumberParent: string;
   class: StudentClassResponse;
+  monthPaymentStatuses?: MonthPaymentStatus[];
 }
 
 export interface StudentRequest {
