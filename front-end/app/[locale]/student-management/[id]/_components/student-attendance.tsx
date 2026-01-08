@@ -4,9 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, CheckCircle2, Clock, XCircle, TrendingUp, User } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 import { formatDate } from '@/utils/helper';
+import { Calendar, CheckCircle2, Clock, User, XCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 export interface AttendanceSession {

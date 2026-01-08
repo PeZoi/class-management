@@ -16,11 +16,12 @@ import {
   AttendanceSession,
   PaymentMonthStatus,
 } from './_components';
-import { studentService } from '@/services';
-import { StudentType, MonthPaymentStatus } from '@/types';
+import { studentService, paymentService } from '@/services';
+import { StudentType, MonthPaymentStatus, CreateStudentPaymentData, PaymentResponse } from '@/types';
 import { toast } from 'react-toastify';
 import { Loader2 } from 'lucide-react';
 import { useMemo } from 'react';
+import { formatCurrency } from '@/utils/helper';
 
 // Mock data for class history
 const generateMockClassHistory = (): ClassHistoryItem[] => {
@@ -49,104 +50,6 @@ const generateMockClassHistory = (): ClassHistoryItem[] => {
       classId: '3',
       joinedAt: '2024-09-16T00:00:00Z',
       status: 'studying',
-    },
-  ];
-};
-
-// Mock data for payment history
-const generateMockPaymentHistory = (): PaymentHistoryItem[] => {
-  return [
-    {
-      id: '1',
-      invoiceId: 'INV-2024-001',
-      paymentDate: '2024-01-15T00:00:00Z',
-      amount: 2500000,
-      paymentMethod: 'bank_transfer',
-      status: 'paid',
-      period: 'Tháng 1/2024',
-      notes: 'Thanh toán đầy đủ',
-    },
-    {
-      id: '2',
-      invoiceId: 'INV-2024-002',
-      paymentDate: '2024-02-15T00:00:00Z',
-      amount: 2500000,
-      paymentMethod: 'cash',
-      status: 'paid',
-      period: 'Tháng 2/2024',
-    },
-    {
-      id: '3',
-      invoiceId: 'INV-2024-003',
-      paymentDate: '2024-03-20T00:00:00Z',
-      amount: 1500000,
-      paymentMethod: 'bank_transfer',
-      status: 'paid',
-      period: 'Tháng 3/2024',
-      notes: 'Thanh toán một phần',
-    },
-    {
-      id: '4',
-      invoiceId: 'INV-2024-004',
-      paymentDate: '2024-04-15T00:00:00Z',
-      amount: 2500000,
-      paymentMethod: 'e_wallet',
-      status: 'paid',
-      period: 'Tháng 4/2024',
-    },
-    {
-      id: '5',
-      invoiceId: 'INV-2024-005',
-      paymentDate: '2024-05-15T00:00:00Z',
-      amount: 2500000,
-      paymentMethod: 'bank_transfer',
-      status: 'paid',
-      period: 'Tháng 5/2024',
-    },
-    {
-      id: '6',
-      invoiceId: 'INV-2024-006',
-      paymentDate: '2024-06-15T00:00:00Z',
-      amount: 2500000,
-      paymentMethod: 'cash',
-      status: 'paid',
-      period: 'Tháng 6/2024',
-    },
-    {
-      id: '7',
-      invoiceId: 'INV-2024-007',
-      paymentDate: '2024-07-15T00:00:00Z',
-      amount: 2500000,
-      paymentMethod: 'bank_transfer',
-      status: 'paid',
-      period: 'Tháng 7/2024',
-    },
-    {
-      id: '8',
-      invoiceId: 'INV-2024-008',
-      paymentDate: '2024-08-15T00:00:00Z',
-      amount: 2500000,
-      paymentMethod: 'credit_card',
-      status: 'paid',
-      period: 'Tháng 8/2024',
-    },
-    {
-      id: '9',
-      invoiceId: 'INV-2024-009',
-      paymentDate: '2024-09-15T00:00:00Z',
-      amount: 2500000,
-      paymentMethod: 'bank_transfer',
-      status: 'paid',
-      period: 'Tháng 9/2024',
-    },
-    {
-      id: '10',
-      invoiceId: 'INV-2024-010',
-      paymentDate: '2024-10-15T00:00:00Z',
-      amount: 2500000,
-      paymentMethod: 'e_wallet',
-      status: 'paid',
-      period: 'Tháng 10/2024',
     },
   ];
 };
@@ -221,6 +124,37 @@ const convertToPaymentMonthStatus = (apiPayments: MonthPaymentStatus[]): Payment
   });
 };
 
+// Convert PaymentResponse from API to PaymentHistoryItem for component
+const convertToPaymentHistoryItem = (apiPayment: PaymentResponse): PaymentHistoryItem => {
+  const billingDate = new Date(apiPayment.billingMonth);
+  const month = billingDate.getMonth() + 1;
+  const year = billingDate.getFullYear();
+  const period = `Tháng ${month}/${year}`;
+  
+  // Convert payment method
+  const paymentMethodMap: Record<string, 'cash' | 'bank_transfer'> = {
+    CASH: 'cash',
+    BANK_TRANSFER: 'bank_transfer',
+  };
+  
+  // Convert payment status
+  const statusMap: Record<string, 'paid' | 'pending' | 'failed'> = {
+    COMPLETED: 'paid',
+    INCOMPLETE: 'pending',
+  };
+  
+  return {
+    id: apiPayment.id || apiPayment.paymentId,
+    invoiceId: apiPayment.paymentId || `PAY-${apiPayment.id}`,
+    paymentDate: apiPayment.createdAt || new Date().toISOString(),
+    amount: apiPayment.paid || 0,
+    paymentMethod: paymentMethodMap[apiPayment.paymentMethod] || 'bank_transfer',
+    status: statusMap[apiPayment.paymentStatus] || 'pending',
+    period,
+    notes: apiPayment.note,
+  };
+};
+
 export default function StudentDetailPage() {
   const params = useParams();
   const studentId = params.id;
@@ -230,7 +164,8 @@ export default function StudentDetailPage() {
   
   // Mock data states (for features not yet implemented)
   const [classHistory] = useState<ClassHistoryItem[]>(() => generateMockClassHistory());
-  const [paymentHistory] = useState<PaymentHistoryItem[]>(() => generateMockPaymentHistory());
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+  const [loadingPaymentHistory, setLoadingPaymentHistory] = useState(false);
   const [attendanceSessions] = useState<AttendanceSession[]>(() => generateMockAttendance());
   
   // Convert API monthPaymentStatuses to component format
@@ -265,6 +200,64 @@ export default function StudentDetailPage() {
     fetchStudentData();
   }, [studentId]);
 
+  // Fetch payment history
+  useEffect(() => {
+    const fetchPaymentHistory = async () => {
+      if (!studentId) return;
+
+      setLoadingPaymentHistory(true);
+      try {
+        const response = await paymentService.getPaymentsByStudentId(studentId as string);
+        if (response.status === 200 && response.data) {
+          const convertedHistory = response.data.map(convertToPaymentHistoryItem);
+          setPaymentHistory(convertedHistory);
+        }
+      } catch (error) {
+        console.error('Lỗi fetch lịch sử thanh toán', error);
+        // Don't show error toast, just log it
+      } finally {
+        setLoadingPaymentHistory(false);
+      }
+    };
+
+    fetchPaymentHistory();
+  }, [studentId]);
+
+  // Handle payment submit from calendar
+  const handlePaymentSubmit = async (data: CreateStudentPaymentData) => {
+    try {
+      if (!studentData?.class?.monthlyFee) {
+        toast.error('Không thể lấy thông tin học phí.');
+        return;
+      }
+
+      // Call API to create payment
+      const response = await paymentService.createStudentPayment(data, studentData.class.monthlyFee);
+      
+      if (response.status === 201 && response.data) {
+        toast.success(`Đã ghi nhận thanh toán ${formatCurrency(data.amount)} cho tháng ${data.month}/${data.year}`);
+        
+        // Refresh student data to update payment status
+        const studentResponse = await studentService.getStudentById(data.studentId);
+        if (studentResponse.status === 200 && studentResponse.data) {
+          setStudentData(studentResponse.data);
+        }
+        
+        // Refresh payment history
+        const paymentHistoryResponse = await paymentService.getPaymentsByStudentId(data.studentId);
+        if (paymentHistoryResponse.status === 200 && paymentHistoryResponse.data) {
+          const convertedHistory = paymentHistoryResponse.data.map(convertToPaymentHistoryItem);
+          setPaymentHistory(convertedHistory);
+        }
+      } else {
+        toast.error('Không thể ghi nhận thanh toán.');
+      }
+    } catch (error) {
+      console.error('Lỗi khi ghi nhận thanh toán', error);
+      toast.error('Không thể ghi nhận thanh toán.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -298,7 +291,9 @@ export default function StudentDetailPage() {
       {/* Payment Status Calendar - Quick Overview */}
       <PaymentStatusCalendar 
         monthlyPayments={monthlyPayments} 
-        monthlyFee={studentData?.class?.monthlyFee || 0} 
+        monthlyFee={studentData?.class?.monthlyFee || 0}
+        studentId={studentData?.id}
+        onPaymentSubmit={handlePaymentSubmit}
       />
 
       <StudentPaymentHistory paymentHistory={paymentHistory} />

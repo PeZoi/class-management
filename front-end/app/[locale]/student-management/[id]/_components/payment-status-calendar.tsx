@@ -2,11 +2,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, CheckCircle, XCircle, DollarSign } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/utils/helper';
 import { useState } from 'react';
+import { MonthlyPaymentDialog } from './monthly-payment-dialog';
 
 export interface PaymentMonthStatus {
   month: number; // 1-12
@@ -20,9 +22,24 @@ export interface PaymentMonthStatus {
 interface PaymentStatusCalendarProps {
   monthlyPayments: PaymentMonthStatus[];
   monthlyFee: number;
+  studentId?: string;
+  onPaymentSubmit?: (data: {
+    studentId: string;
+    month: number;
+    year: number;
+    amount: number;
+    paymentMethod: 'cash' | 'bank_transfer';
+    paymentDate: string;
+    notes: string;
+  }) => void;
 }
 
-export function PaymentStatusCalendar({ monthlyPayments, monthlyFee }: PaymentStatusCalendarProps) {
+export function PaymentStatusCalendar({ 
+  monthlyPayments, 
+  monthlyFee,
+  studentId,
+  onPaymentSubmit 
+}: PaymentStatusCalendarProps) {
   const t = useTranslations('student-detail');
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
@@ -36,6 +53,10 @@ export function PaymentStatusCalendar({ monthlyPayments, monthlyFee }: PaymentSt
   // Default to current year if available, otherwise use the most recent year
   const defaultYear = availableYears.includes(currentYear) ? currentYear : availableYears[0] || currentYear;
   const [selectedYear, setSelectedYear] = useState(defaultYear);
+  
+  // Payment dialog state
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMonthStatus | null>(null);
 
   const getStatusBadge = (status: string, amount?: number, paidAmount?: number) => {
     const variants: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
@@ -94,6 +115,31 @@ export function PaymentStatusCalendar({ monthlyPayments, monthlyFee }: PaymentSt
   const yearPaid = filteredPayments.filter((p) => p.status === 'paid').length;
   const yearUnpaid = filteredPayments.filter((p) => p.status === 'unpaid').length;
   const yearPartial = filteredPayments.filter((p) => p.status === 'partial').length;
+
+  // Handle payment button click
+  const handlePaymentClick = (payment: PaymentMonthStatus) => {
+    setSelectedPayment(payment);
+    setPaymentDialogOpen(true);
+  };
+
+  // Handle payment submit from dialog
+  const handleDialogSubmit = (data: {
+    month: number;
+    year: number;
+    amount: number;
+    paymentMethod: 'cash' | 'bank_transfer';
+    paymentDate: string;
+    notes: string;
+  }) => {
+    if (studentId && onPaymentSubmit) {
+      onPaymentSubmit({
+        studentId,
+        ...data,
+      });
+      setPaymentDialogOpen(false);
+      setSelectedPayment(null);
+    }
+  };
 
   return (
     <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg">
@@ -179,7 +225,20 @@ export function PaymentStatusCalendar({ monthlyPayments, monthlyFee }: PaymentSt
                       </div>
                     </div>
                     {payment ? (
-                      getStatusBadge(payment.status, payment.amount, payment.paidAmount)
+                      <div className="flex flex-col items-center gap-2">
+                        {getStatusBadge(payment.status, payment.amount, payment.paidAmount)}
+                        {(payment.status === 'unpaid' || payment.status === 'partial') && studentId && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full text-xs mt-1"
+                            onClick={() => handlePaymentClick(payment)}
+                          >
+                            <DollarSign className="size-3 mr-1" />
+                            Đóng tiền
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <div className="text-center">
                         <Badge variant="outline" className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
@@ -194,6 +253,16 @@ export function PaymentStatusCalendar({ monthlyPayments, monthlyFee }: PaymentSt
           </div>
         )}
       </CardContent>
+
+      {/* Payment Dialog */}
+      <MonthlyPaymentDialog
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        payment={selectedPayment}
+        monthlyFee={monthlyFee}
+        monthNames={monthNames}
+        onSubmit={handleDialogSubmit}
+      />
     </Card>
   );
 }

@@ -218,22 +218,37 @@ public class StudentService {
             LocalDate firstDayOfMonth = month.atDay(1);
             Instant billingMonthInstant = firstDayOfMonth.atStartOfDay(ZoneId.systemDefault()).toInstant();
             
-            // Kiểm tra xem có payment cho tháng này không
-            Optional<Payment> paymentOpt = paymentRepository.findByStudentIdAndBillingMonth(studentId, billingMonthInstant);
+            // Lấy tất cả payments của tháng này để tổng hợp
+            List<Payment> paymentsForMonth = paymentRepository.findAllByStudentIdAndBillingMonth(studentId, billingMonthInstant);
             
             UnpaidMonthInfo unpaidMonthInfo;
-            if (paymentOpt.isPresent()) {
-                Payment payment = paymentOpt.get();
-                Long expectedAmount = payment.getFeeSnapshot();
-                Long paidAmount = payment.getPaid() != null ? payment.getPaid() : 0L;
-                Long remainingAmount = expectedAmount - paidAmount;
+            if (!paymentsForMonth.isEmpty()) {
+                // Tổng hợp tất cả payments trong tháng
+                Long expectedAmount = null;
+                Long totalPaidAmount = 0L;
+                
+                for (Payment payment : paymentsForMonth) {
+                    // Lấy feeSnapshot từ payment đầu tiên (tất cả payments trong tháng có cùng feeSnapshot)
+                    if (expectedAmount == null) {
+                        expectedAmount = payment.getFeeSnapshot();
+                    }
+                    // Tổng hợp số tiền đã đóng từ tất cả payments
+                    totalPaidAmount += payment.getPaid() != null ? payment.getPaid() : 0L;
+                }
+                
+                // Nếu không có feeSnapshot từ payments, dùng monthlyFee
+                if (expectedAmount == null) {
+                    expectedAmount = Long.valueOf((long) monthlyFee);
+                }
+                
+                Long remainingAmount = expectedAmount - totalPaidAmount;
                 
                 // Chỉ thêm vào danh sách nếu chưa đóng đủ (remainingAmount > 0)
-                if (remainingAmount > 0 || payment.getPaymentStatus() == PaymentStatus.INCOMPLETE) {
+                if (remainingAmount > 0) {
                     unpaidMonthInfo = UnpaidMonthInfo.builder()
                             .month(billingMonthInstant)
                             .expectedAmount(expectedAmount)
-                            .paidAmount(paidAmount)
+                            .paidAmount(totalPaidAmount)
                             .remainingAmount(remainingAmount)
                             .hasPayment(true)
                             .build();
@@ -243,9 +258,9 @@ public class StudentService {
                 // Chưa có payment record cho tháng này
                 unpaidMonthInfo = UnpaidMonthInfo.builder()
                         .month(billingMonthInstant)
-                        .expectedAmount((long) monthlyFee)
-                        .paidAmount(0L)
-                        .remainingAmount((long) monthlyFee)
+                        .expectedAmount(Long.valueOf((long) monthlyFee))
+                        .paidAmount(Long.valueOf(0L))
+                        .remainingAmount(Long.valueOf((long) monthlyFee))
                         .hasPayment(false)
                         .build();
                 unpaidMonths.add(unpaidMonthInfo);
@@ -286,39 +301,49 @@ public class StudentService {
             LocalDate firstDayOfMonth = month.atDay(1);
             Instant billingMonthInstant = firstDayOfMonth.atStartOfDay(ZoneId.systemDefault()).toInstant();
             
-            // Kiểm tra xem có payment cho tháng này không
-            Optional<Payment> paymentOpt = paymentRepository.findByStudentIdAndBillingMonth(studentId, billingMonthInstant);
+            // Lấy tất cả payments của tháng này để tổng hợp
+            List<Payment> paymentsForMonth = paymentRepository.findAllByStudentIdAndBillingMonth(studentId, billingMonthInstant);
             
             MonthPaymentStatus monthPaymentStatus;
-            if (paymentOpt.isPresent()) {
-                Payment payment = paymentOpt.get();
-                Long expectedAmount = payment.getFeeSnapshot();
-                Long paidAmount = payment.getPaid() != null ? payment.getPaid() : 0L;
-                Long remainingAmount = expectedAmount - paidAmount;
+            if (!paymentsForMonth.isEmpty()) {
+                // Tổng hợp tất cả payments trong tháng
+                Long expectedAmount = null;
+                Long totalPaidAmount = 0L;
                 
-                // Xác định trạng thái thanh toán
-                MonthPaymentStatus.PaymentStatusEnum status;
-                if (payment.getPaymentStatus() == PaymentStatus.COMPLETED || remainingAmount <= 0) {
-                    // Đã thanh toán đủ - check paymentStatus trước, sau đó check remainingAmount
-                    status = MonthPaymentStatus.PaymentStatusEnum.PAID;
-                    // Đảm bảo remainingAmount không âm
-                    remainingAmount = 0L;
-                    // Đảm bảo paidAmount = expectedAmount nếu đã completed
-                    if (payment.getPaymentStatus() == PaymentStatus.COMPLETED) {
-                        paidAmount = expectedAmount;
+                for (Payment payment : paymentsForMonth) {
+                    // Lấy feeSnapshot từ payment đầu tiên (tất cả payments trong tháng có cùng feeSnapshot)
+                    if (expectedAmount == null) {
+                        expectedAmount = payment.getFeeSnapshot();
                     }
-                } else if (paidAmount > 0) {
+                    // Tổng hợp số tiền đã đóng từ tất cả payments
+                    totalPaidAmount += payment.getPaid() != null ? payment.getPaid() : 0L;
+                }
+                
+                // Nếu không có feeSnapshot từ payments, dùng monthlyFee
+                if (expectedAmount == null) {
+                    expectedAmount = Long.valueOf((long) monthlyFee);
+                }
+                
+                Long remainingAmount = expectedAmount - totalPaidAmount;
+                
+                // Xác định trạng thái thanh toán dựa trên tổng số tiền đã đóng
+                MonthPaymentStatus.PaymentStatusEnum status;
+                if (totalPaidAmount >= expectedAmount) {
+                    // Đã thanh toán đủ
+                    status = MonthPaymentStatus.PaymentStatusEnum.PAID;
+                    remainingAmount = 0L;
+                } else if (totalPaidAmount > 0) {
                     // Đã đóng một phần nhưng chưa đủ
                     status = MonthPaymentStatus.PaymentStatusEnum.PARTIAL;
                 } else {
-                    // Chưa đóng gì (có payment record nhưng paidAmount = 0 và status = INCOMPLETE)
+                    // Chưa đóng gì
                     status = MonthPaymentStatus.PaymentStatusEnum.UNPAID;
                 }
                 
                 monthPaymentStatus = MonthPaymentStatus.builder()
                         .month(billingMonthInstant)
                         .expectedAmount(expectedAmount)
-                        .paidAmount(paidAmount)
+                        .paidAmount(totalPaidAmount)
                         .remainingAmount(remainingAmount)
                         .status(status)
                         .build();
@@ -326,9 +351,9 @@ public class StudentService {
                 // Chưa có payment record cho tháng này - chưa thanh toán
                 monthPaymentStatus = MonthPaymentStatus.builder()
                         .month(billingMonthInstant)
-                        .expectedAmount((long) monthlyFee)
-                        .paidAmount(0L)
-                        .remainingAmount((long) monthlyFee)
+                        .expectedAmount(Long.valueOf((long) monthlyFee))
+                        .paidAmount(Long.valueOf(0L))
+                        .remainingAmount(Long.valueOf((long) monthlyFee))
                         .status(MonthPaymentStatus.PaymentStatusEnum.UNPAID)
                         .build();
             }

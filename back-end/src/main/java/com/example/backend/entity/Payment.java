@@ -78,4 +78,7 @@ public class Payment extends Auditable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "class_id")
     private Class clazz;
+
+    @Column(length = 500)
+    private String note; // Ghi chú về khoản thanh toán
 }
