@@ -3,12 +3,10 @@ package com.example.backend.service;
 import com.example.backend.dto.student.MonthPaymentStatus;
 import com.example.backend.dto.student.StudentRequest;
 import com.example.backend.dto.student.StudentResponse;
-import com.example.backend.dto.student.UnpaidMonthInfo;
 import com.example.backend.entity.Class;
 import com.example.backend.entity.Payment;
 import com.example.backend.entity.Student;
 import com.example.backend.entity.StudentClass;
-import com.example.backend.enums.PaymentStatus;
 import com.example.backend.enums.StudentClassStatus;
 import com.example.backend.enums.StudentStatus;
 import com.example.backend.exception.NotFoundException;
@@ -27,7 +25,6 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +49,10 @@ public class StudentService {
             StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
 
             StudentClass studentClass = getClassByStudent(studentResponse.getId());
+            if (studentClass == null) {
+                studentResponseList.add(studentResponse);
+                continue;
+            }
             Class classDB = studentClass.getClazz();
             studentClassResponse.setId(classDB.getId());
             studentClassResponse.setName(classDB.getName());
@@ -170,14 +171,6 @@ public class StudentService {
             studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
             studentResponse.setClazz(studentClassResponse);
             
-            // Tính toán các tháng chưa đóng tiền (deprecated - giữ lại để tương thích)
-            List<UnpaidMonthInfo> unpaidMonths = calculateUnpaidMonths(
-                    student.getId(),
-                    studentClass.getJoinedAt(),
-                    classDB.getMonthlyFee()
-            );
-            studentResponse.setUnpaidMonths(unpaidMonths);
-            
             // Tính toán trạng thái thanh toán của tất cả các tháng từ joinAt đến hiện tại
             List<MonthPaymentStatus> monthPaymentStatuses = calculateMonthPaymentStatuses(
                     student.getId(),
@@ -188,89 +181,6 @@ public class StudentService {
         }
 
         return studentResponse;
-    }
-
-    /**
-     * Tính toán danh sách các tháng chưa đóng tiền dựa trên joinAt
-     * @param studentId ID của học viên
-     * @param joinAt Thời gian tham gia lớp
-     * @param monthlyFee Học phí hàng tháng
-     * @return Danh sách các tháng chưa đóng hoặc chưa đủ tiền
-     */
-    private List<UnpaidMonthInfo> calculateUnpaidMonths(String studentId, Instant joinAt, int monthlyFee) {
-        List<UnpaidMonthInfo> unpaidMonths = new ArrayList<>();
-        
-        if (joinAt == null) {
-            return unpaidMonths;
-        }
-        
-        // Chuyển joinAt sang LocalDate để tính tháng
-        LocalDate joinDate = joinAt.atZone(ZoneId.systemDefault()).toLocalDate();
-        YearMonth joinMonth = YearMonth.from(joinDate);
-        
-        // Tháng hiện tại
-        YearMonth currentMonth = YearMonth.now();
-        
-        // Tạo danh sách các tháng từ joinMonth đến currentMonth (bao gồm cả hai)
-        YearMonth month = joinMonth;
-        while (!month.isAfter(currentMonth)) {
-            // Tạo Instant cho ngày đầu tháng (ví dụ: 2025-09-01 00:00:00)
-            LocalDate firstDayOfMonth = month.atDay(1);
-            Instant billingMonthInstant = firstDayOfMonth.atStartOfDay(ZoneId.systemDefault()).toInstant();
-            
-            // Lấy tất cả payments của tháng này để tổng hợp
-            List<Payment> paymentsForMonth = paymentRepository.findAllByStudentIdAndBillingMonth(studentId, billingMonthInstant);
-            
-            UnpaidMonthInfo unpaidMonthInfo;
-            if (!paymentsForMonth.isEmpty()) {
-                // Tổng hợp tất cả payments trong tháng
-                Long expectedAmount = null;
-                Long totalPaidAmount = 0L;
-                
-                for (Payment payment : paymentsForMonth) {
-                    // Lấy feeSnapshot từ payment đầu tiên (tất cả payments trong tháng có cùng feeSnapshot)
-                    if (expectedAmount == null) {
-                        expectedAmount = payment.getFeeSnapshot();
-                    }
-                    // Tổng hợp số tiền đã đóng từ tất cả payments
-                    totalPaidAmount += payment.getPaid() != null ? payment.getPaid() : 0L;
-                }
-                
-                // Nếu không có feeSnapshot từ payments, dùng monthlyFee
-                if (expectedAmount == null) {
-                    expectedAmount = Long.valueOf((long) monthlyFee);
-                }
-                
-                Long remainingAmount = expectedAmount - totalPaidAmount;
-                
-                // Chỉ thêm vào danh sách nếu chưa đóng đủ (remainingAmount > 0)
-                if (remainingAmount > 0) {
-                    unpaidMonthInfo = UnpaidMonthInfo.builder()
-                            .month(billingMonthInstant)
-                            .expectedAmount(expectedAmount)
-                            .paidAmount(totalPaidAmount)
-                            .remainingAmount(remainingAmount)
-                            .hasPayment(true)
-                            .build();
-                    unpaidMonths.add(unpaidMonthInfo);
-                }
-            } else {
-                // Chưa có payment record cho tháng này
-                unpaidMonthInfo = UnpaidMonthInfo.builder()
-                        .month(billingMonthInstant)
-                        .expectedAmount(Long.valueOf((long) monthlyFee))
-                        .paidAmount(Long.valueOf(0L))
-                        .remainingAmount(Long.valueOf((long) monthlyFee))
-                        .hasPayment(false)
-                        .build();
-                unpaidMonths.add(unpaidMonthInfo);
-            }
-            
-            // Chuyển sang tháng tiếp theo
-            month = month.plusMonths(1);
-        }
-        
-        return unpaidMonths;
     }
 
     /**

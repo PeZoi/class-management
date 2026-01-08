@@ -58,13 +58,13 @@ const generateMockClassHistory = (): ClassHistoryItem[] => {
 const generateMockAttendance = (): AttendanceSession[] => {
   const sessions: AttendanceSession[] = [];
   const currentDate = new Date();
-  
+
   // Generate sessions for the last 3 months
   for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
     const month = new Date(currentDate.getFullYear(), currentDate.getMonth() - monthOffset, 1);
     const year = month.getFullYear();
     const monthNum = month.getMonth() + 1;
-    
+
     // Generate 8 sessions per month (2 per week)
     for (let week = 0; week < 4; week++) {
       // Monday session
@@ -79,7 +79,7 @@ const generateMockAttendance = (): AttendanceSession[] => {
           checkInTime: random > 0.2 ? '19:00' : random > 0.15 ? '19:15' : undefined,
         });
       }
-      
+
       // Thursday session
       const thursdayDate = new Date(year, monthNum - 1, 4 + week * 7);
       if (thursdayDate.getMonth() === monthNum - 1) {
@@ -94,10 +94,9 @@ const generateMockAttendance = (): AttendanceSession[] => {
       }
     }
   }
-  
+
   return sessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
-
 
 // Convert MonthPaymentStatus from API to PaymentMonthStatus for component
 const convertToPaymentMonthStatus = (apiPayments: MonthPaymentStatus[]): PaymentMonthStatus[] => {
@@ -105,14 +104,14 @@ const convertToPaymentMonthStatus = (apiPayments: MonthPaymentStatus[]): Payment
     const date = new Date(payment.month);
     const month = date.getMonth() + 1; // JavaScript months are 0-indexed
     const year = date.getFullYear();
-    
+
     // Convert status from API format (PAID, PARTIAL, UNPAID) to component format (paid, partial, unpaid)
     const statusMap: Record<string, 'paid' | 'unpaid' | 'partial'> = {
       PAID: 'paid',
       PARTIAL: 'partial',
       UNPAID: 'unpaid',
     };
-    
+
     return {
       month,
       year,
@@ -130,26 +129,26 @@ const convertToPaymentHistoryItem = (apiPayment: PaymentResponse): PaymentHistor
   const month = billingDate.getMonth() + 1;
   const year = billingDate.getFullYear();
   const period = `Tháng ${month}/${year}`;
-  
+
   // Convert payment method
   const paymentMethodMap: Record<string, 'cash' | 'bank_transfer'> = {
     CASH: 'cash',
     BANK_TRANSFER: 'bank_transfer',
   };
-  
+
   // Convert payment status
-  const statusMap: Record<string, 'paid' | 'pending' | 'failed'> = {
+  const statusMap: Record<string, 'paid' | 'partial'> = {
     COMPLETED: 'paid',
-    INCOMPLETE: 'pending',
+    INCOMPLETE: 'partial',
   };
-  
+
   return {
     id: apiPayment.id || apiPayment.paymentId,
     invoiceId: apiPayment.paymentId || `PAY-${apiPayment.id}`,
-    paymentDate: apiPayment.createdAt || new Date().toISOString(),
+    paymentDate: apiPayment?.createdAt || new Date().toISOString(),
     amount: apiPayment.paid || 0,
     paymentMethod: paymentMethodMap[apiPayment.paymentMethod] || 'bank_transfer',
-    status: statusMap[apiPayment.paymentStatus] || 'pending',
+    status: statusMap[apiPayment.paymentStatus] || 'partial',
     period,
     notes: apiPayment.note,
   };
@@ -161,13 +160,13 @@ export default function StudentDetailPage() {
 
   const [studentData, setStudentData] = useState<StudentType | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Mock data states (for features not yet implemented)
   const [classHistory] = useState<ClassHistoryItem[]>(() => generateMockClassHistory());
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
   const [loadingPaymentHistory, setLoadingPaymentHistory] = useState(false);
   const [attendanceSessions] = useState<AttendanceSession[]>(() => generateMockAttendance());
-  
+
   // Convert API monthPaymentStatuses to component format
   const monthlyPayments = useMemo(() => {
     if (studentData?.monthPaymentStatuses && studentData.monthPaymentStatuses.length > 0) {
@@ -209,7 +208,9 @@ export default function StudentDetailPage() {
       try {
         const response = await paymentService.getPaymentsByStudentId(studentId as string);
         if (response.status === 200 && response.data) {
-          const convertedHistory = response.data.map(convertToPaymentHistoryItem);
+          const convertedHistory = response.data.map(convertToPaymentHistoryItem).sort((a, b) => {
+            return new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime();
+          });
           setPaymentHistory(convertedHistory);
         }
       } catch (error) {
@@ -233,20 +234,22 @@ export default function StudentDetailPage() {
 
       // Call API to create payment
       const response = await paymentService.createStudentPayment(data, studentData.class.monthlyFee);
-      
+
       if (response.status === 201 && response.data) {
         toast.success(`Đã ghi nhận thanh toán ${formatCurrency(data.amount)} cho tháng ${data.month}/${data.year}`);
-        
+
         // Refresh student data to update payment status
         const studentResponse = await studentService.getStudentById(data.studentId);
         if (studentResponse.status === 200 && studentResponse.data) {
           setStudentData(studentResponse.data);
         }
-        
+
         // Refresh payment history
         const paymentHistoryResponse = await paymentService.getPaymentsByStudentId(data.studentId);
         if (paymentHistoryResponse.status === 200 && paymentHistoryResponse.data) {
-          const convertedHistory = paymentHistoryResponse.data.map(convertToPaymentHistoryItem);
+          const convertedHistory = paymentHistoryResponse.data.map(convertToPaymentHistoryItem).sort((a, b) => {
+            return new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime();
+          });
           setPaymentHistory(convertedHistory);
         }
       } else {
@@ -289,8 +292,8 @@ export default function StudentDetailPage() {
       </div>
 
       {/* Payment Status Calendar - Quick Overview */}
-      <PaymentStatusCalendar 
-        monthlyPayments={monthlyPayments} 
+      <PaymentStatusCalendar
+        monthlyPayments={monthlyPayments}
         monthlyFee={studentData?.class?.monthlyFee || 0}
         studentId={studentData?.id}
         onPaymentSubmit={handlePaymentSubmit}

@@ -34,11 +34,11 @@ interface PaymentStatusCalendarProps {
   }) => void;
 }
 
-export function PaymentStatusCalendar({ 
-  monthlyPayments, 
+export function PaymentStatusCalendar({
+  monthlyPayments,
   monthlyFee,
   studentId,
-  onPaymentSubmit 
+  onPaymentSubmit,
 }: PaymentStatusCalendarProps) {
   const t = useTranslations('student-detail');
   const currentDate = new Date();
@@ -46,14 +46,12 @@ export function PaymentStatusCalendar({
   const currentMonth = currentDate.getMonth() + 1;
 
   // Get available years from payments
-  const availableYears = Array.from(
-    new Set(monthlyPayments.map((p) => p.year))
-  ).sort((a, b) => b - a);
+  const availableYears = Array.from(new Set(monthlyPayments.map((p) => p.year))).sort((a, b) => b - a);
 
   // Default to current year if available, otherwise use the most recent year
   const defaultYear = availableYears.includes(currentYear) ? currentYear : availableYears[0] || currentYear;
   const [selectedYear, setSelectedYear] = useState(defaultYear);
-  
+
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentMonthStatus | null>(null);
@@ -106,10 +104,13 @@ export function PaymentStatusCalendar({
   const filteredPayments = monthlyPayments.filter((p) => p.year === selectedYear);
 
   // Group by month for selected year
-  const paymentsByMonth = filteredPayments.reduce((acc, payment) => {
-    acc[payment.month] = payment;
-    return acc;
-  }, {} as Record<number, PaymentMonthStatus>);
+  const paymentsByMonth = filteredPayments.reduce(
+    (acc, payment) => {
+      acc[payment.month] = payment;
+      return acc;
+    },
+    {} as Record<number, PaymentMonthStatus>,
+  );
 
   // Calculate statistics for selected year
   const yearPaid = filteredPayments.filter((p) => p.status === 'paid').length;
@@ -151,7 +152,7 @@ export function PaymentStatusCalendar({
           </CardTitle>
           <div className="flex items-center gap-4">
             <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(Number(value))}>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-30">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -187,7 +188,8 @@ export function PaymentStatusCalendar({
           </div>
         </div>
         <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          {t('monthlyFee')}: <span className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(monthlyFee)}</span>
+          {t('monthlyFee')}:{' '}
+          <span className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(monthlyFee)}</span>
         </div>
       </CardHeader>
       <CardContent>
@@ -213,9 +215,7 @@ export function PaymentStatusCalendar({
                     <div className="text-center mb-3">
                       <div
                         className={`text-sm font-semibold ${
-                          isCurrentMonth
-                            ? 'text-indigo-900 dark:text-indigo-100'
-                            : 'text-slate-900 dark:text-slate-100'
+                          isCurrentMonth ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-900 dark:text-slate-100'
                         }`}
                       >
                         {monthNames[month - 1]}
@@ -241,7 +241,10 @@ export function PaymentStatusCalendar({
                       </div>
                     ) : (
                       <div className="text-center">
-                        <Badge variant="outline" className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        <Badge
+                          variant="outline"
+                          className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                        >
                           {t('noData')}
                         </Badge>
                       </div>

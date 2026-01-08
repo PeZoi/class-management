@@ -1,21 +1,21 @@
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { formatCurrency, formatDateTime } from '@/utils/helper';
 import {
-  CreditCard,
+  ArrowLeftRight,
+  Banknote,
   Calendar,
   CheckCircle,
   Clock,
+  CreditCard,
   DollarSign,
   FileText,
   Tag,
-  Wallet,
   TrendingUp,
-  Banknote,
-  ArrowLeftRight,
+  Wallet,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { formatCurrency, formatDate } from '@/utils/helper';
 
 export interface PaymentHistoryItem {
   id: string;
@@ -23,7 +23,7 @@ export interface PaymentHistoryItem {
   paymentDate: string;
   amount: number;
   paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
-  status: 'paid' | 'pending' | 'failed';
+  status: 'paid' | 'partial';
   period: string; // VD: "Tháng 12/2024"
   notes?: string;
 }
@@ -39,12 +39,14 @@ export function StudentPaymentHistory({ paymentHistory }: StudentPaymentHistoryP
     const methods: Record<string, { label: string; className: string; icon: typeof Banknote }> = {
       cash: {
         label: t('paymentMethodCash') || 'Tiền mặt',
-        className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
+        className:
+          'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
         icon: Banknote,
       },
       bank_transfer: {
         label: t('paymentMethodBankTransfer') || 'Chuyển khoản',
-        className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+        className:
+          'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
         icon: ArrowLeftRight,
       },
     };
@@ -61,19 +63,14 @@ export function StudentPaymentHistory({ paymentHistory }: StudentPaymentHistoryP
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
       paid: {
-        label: t('statusPaid') || 'Đã thanh toán',
+        label: t('statusPaid') || 'Đã thanh toán đủ',
         icon: CheckCircle,
         className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
       },
-      pending: {
-        label: t('statusPending') || 'Chờ thanh toán',
+      partial: {
+        label: t('statusPending') || 'Đóng một phần',
         icon: Clock,
         className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-      },
-      failed: {
-        label: t('statusFailed') || 'Thất bại',
-        icon: Clock,
-        className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
       },
     };
     const variant = variants[status] || variants.paid;
@@ -86,9 +83,7 @@ export function StudentPaymentHistory({ paymentHistory }: StudentPaymentHistoryP
     );
   };
 
-  const totalPaid = paymentHistory
-    .filter((p) => p.status === 'paid')
-    .reduce((sum, p) => sum + p.amount, 0);
+  const totalPaid = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg">
@@ -162,10 +157,7 @@ export function StudentPaymentHistory({ paymentHistory }: StudentPaymentHistoryP
               </TableHeader>
               <TableBody>
                 {paymentHistory.map((payment) => (
-                  <TableRow
-                    key={payment.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                  >
+                  <TableRow key={payment.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <TableCell className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
                       <div className="flex items-center gap-2">
                         <span>#{payment.invoiceId}</span>
@@ -181,7 +173,7 @@ export function StudentPaymentHistory({ paymentHistory }: StudentPaymentHistoryP
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{formatDate(payment.paymentDate)}</span>
+                        <span className="text-sm font-medium">{formatDateTime(payment.paymentDate)}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -191,9 +183,7 @@ export function StudentPaymentHistory({ paymentHistory }: StudentPaymentHistoryP
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
-                      {getPaymentMethodBadge(payment.paymentMethod)}
-                    </TableCell>
+                    <TableCell className="text-center">{getPaymentMethodBadge(payment.paymentMethod)}</TableCell>
                     <TableCell>{getStatusBadge(payment.status)}</TableCell>
                   </TableRow>
                 ))}

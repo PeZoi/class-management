@@ -30,10 +30,6 @@ public class StudentResponse {
 
     @JsonProperty("class")
     private StudentClassResponse clazz;
-
-    // Danh sách các tháng chưa đóng tiền (deprecated - dùng monthPaymentStatuses thay thế)
-    @Builder.Default
-    private List<UnpaidMonthInfo> unpaidMonths = new ArrayList<>();
     
     // Danh sách trạng thái thanh toán của tất cả các tháng từ joinAt đến hiện tại
     @Builder.Default

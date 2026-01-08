@@ -366,7 +366,7 @@
     "paymentMethodCreditCard": "Credit Card",
     "paymentMethodEWallet": "E-Wallet",
     "statusPaid": "Paid",
-    "statusPending": "Pending",
+    "statusPending": "Partial paid",
     "statusFailed": "Failed",
     "statusUnpaid": "Unpaid",
     "statusPartial": "Partial",
