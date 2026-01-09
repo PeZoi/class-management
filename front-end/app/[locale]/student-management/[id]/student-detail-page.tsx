@@ -19,9 +19,9 @@ import {
 import { studentService, paymentService } from '@/services';
 import { StudentType, MonthPaymentStatus, CreateStudentPaymentData, PaymentResponse, ClassHistoryResponse } from '@/types';
 import { toast } from 'react-toastify';
-import { Loader2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { formatCurrency } from '@/utils/helper';
+import { PageLoading } from '@/components/page-loading';
 
 // Convert API ClassHistoryResponse to ClassHistoryItem
 const convertToClassHistoryItem = (apiHistory: ClassHistoryResponse): ClassHistoryItem => {
@@ -268,11 +268,7 @@ export default function StudentDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="size-10 animate-spin" />
-      </div>
-    );
+    return <PageLoading />;
   }
 
   if (!studentData) {

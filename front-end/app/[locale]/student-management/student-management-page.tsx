@@ -8,6 +8,7 @@ import { PaymentActionDialog } from './_components/payment-action-dialog';
 import { StudentRequest, StudentType } from '@/types/student-type';
 import { studentService } from '@/services';
 import { toast } from 'react-toastify';
+import { PageLoading } from '@/components/page-loading';
 
 export interface StudentItem extends StudentType {
   idCard?: string; // ID card number (optional, not in API)
@@ -313,14 +314,7 @@ export default function StudentManagementPage() {
   }, [students, filters]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 dark:border-slate-100 mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-400">Đang tải danh sách học viên...</p>
-        </div>
-      </div>
-    );
+    return <PageLoading message="Đang tải danh sách học viên..." />;
   }
 
   return (

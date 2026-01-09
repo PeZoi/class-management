@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { ClassRequest, ClassType } from '@/types/class-type';
 import { classService } from '@/services/class-service';
 import { toast } from 'react-toastify';
+import { PageLoading } from '@/components/page-loading';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -236,12 +237,14 @@ export default function ClassroomManagementPage() {
   const [classes, setClasses] = useState<ClassType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassType | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Chart state
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
 
   const fetchClasses = useCallback(async () => {
     try {
+      setIsLoading(true);
       const response = await classService.getAllClasses();
       if (response.status === 200) {
         setClasses(response.data || []);
@@ -249,6 +252,8 @@ export default function ClassroomManagementPage() {
     } catch (error) {
       console.error(error);
       toast.error('Không thể tải danh sách lớp học');
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -319,6 +324,10 @@ export default function ClassroomManagementPage() {
   const handlePeriodChange = useCallback((period: TimePeriod) => {
     setSelectedPeriod(period);
   }, []);
+
+  if (isLoading) {
+    return <PageLoading message="Đang tải danh sách lớp học..." />;
+  }
 
   return (
     <div className="space-y-4 md:space-y-6 lg:space-y-8 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">

@@ -9,6 +9,7 @@ import { toast } from 'react-toastify';
 import { TeacherRequest, TeacherType } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
+import { PageLoading } from '@/components/page-loading';
 
 export default function TeacherManagementPage() {
   const router = useRouter();
@@ -18,9 +19,11 @@ export default function TeacherManagementPage() {
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherType | null>(null);
   const [isSalaryDialogOpen, setIsSalaryDialogOpen] = useState(false);
   const [teacherForSalary, setTeacherForSalary] = useState<TeacherType | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchTeachers = useCallback(async () => {
     try {
+      setIsLoading(true);
       const response = await teacherService.getAllTeachers();
       if (response.status === 200) {
         setTeachers(response.data || []);
@@ -28,6 +31,8 @@ export default function TeacherManagementPage() {
     } catch (error) {
       toast.error('Không thể tải danh sách giáo viên');
       console.error('Error fetching teachers:', error);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -131,6 +136,10 @@ export default function TeacherManagementPage() {
     // Show success message (có thể dùng toast notification)
     alert(`Đã trả lương cho giáo viên thành công!\nSố tiền: ${salaryData.totalAmount.toLocaleString('vi-VN')} VNĐ`);
   };
+
+  if (isLoading) {
+    return <PageLoading message="Đang tải danh sách giáo viên..." />;
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">

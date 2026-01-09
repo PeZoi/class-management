@@ -10,9 +10,9 @@ import {
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { teacherService } from '@/services/teacher-service';
-import { Loader2 } from 'lucide-react';
 import { classService } from '@/services/class-service';
 import { ClassType } from '@/types';
+import { PageLoading } from '@/components/page-loading';
 
 // Mock salary history data
 const mockSalaryHistory = [
@@ -125,29 +125,38 @@ export default function TeacherDetailPage() {
 
   const [teacherData, setTeacherData] = useState<TeacherType>();
   const [classesData, setClassesData] = useState<ClassType[]>();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchTeacherData = async () => {
-      const response = await teacherService.getTeacherById(teacherId as string);
-      if (response.status === 200 && response.data) {
-        setTeacherData(response.data);
-      }
-    }
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [teacherResponse, classesResponse] = await Promise.all([
+          teacherService.getTeacherById(teacherId as string),
+          classService.getClassesByTeacherId(teacherId as string),
+        ]);
 
-    const fetchClassesData = async () => {
-      const response = await classService.getClassesByTeacherId(teacherId as string);
-      if (response.status === 200 && response.data) {
-        setClassesData(response.data);
+        if (teacherResponse.status === 200 && teacherResponse.data) {
+          setTeacherData(teacherResponse.data);
+        }
+
+        if (classesResponse.status === 200 && classesResponse.data) {
+          setClassesData(classesResponse.data);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
       }
+    };
+
+    if (teacherId) {
+      fetchData();
     }
-    fetchTeacherData();
-    fetchClassesData();
   }, [teacherId])
 
-  if (!teacherData || !classesData) {
-    return <div className="flex items-center justify-center h-screen">
-      <Loader2 className="size-10 animate-spin" />
-    </div>;
+  if (loading || !teacherData || !classesData) {
+    return <PageLoading />;
   }
 
   return (

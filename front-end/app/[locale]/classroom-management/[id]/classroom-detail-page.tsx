@@ -16,6 +16,7 @@ import { PaymentActionDialog } from '@/app/[locale]/student-management/_componen
 import { classService, studentService } from '@/services';
 import { ClassType, StudentType, TeacherType } from '@/types';
 import { toast } from 'react-toastify';
+import { PageLoading } from '@/components/page-loading';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -276,6 +277,7 @@ export default function ClassroomDetailPage() {
   const [studentsState, setStudentsState] = useState<Student[]>([]);
   const [students, setStudents] = useState<StudentType[]>([]);
   const [classData, setClassData] = useState<ClassType | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const initialStudents = studentsData[classIdTmp] || studentsData[1];
 
@@ -301,6 +303,8 @@ export default function ClassroomDetailPage() {
       } catch (error) {
         console.log('Lỗi fetch thông tin lớp học', error);
         toast.error('Không thể tải thông tin lớp học.');
+      } finally {
+        setLoading(false);
       }
     };
     if (classId) {
@@ -338,6 +342,10 @@ export default function ClassroomDetailPage() {
   };
 
   const currentClassData = getClassDataForUI(classData);
+
+  if (loading) {
+    return <PageLoading />;
+  }
 
   const handlePayment = (student: Student) => {
     // Transform Student to match PaymentActionDialog's expected format
