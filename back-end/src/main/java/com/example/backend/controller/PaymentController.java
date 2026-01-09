@@ -28,5 +28,11 @@ public class PaymentController {
         List<PaymentResponse> payments = paymentService.getPaymentsByStudentId(studentId);
         return new ResponseEntity<>(payments, HttpStatus.OK);
     }
+
+    @GetMapping
+    public ResponseEntity<List<PaymentResponse>> getAllPayments() {
+        List<PaymentResponse> payments = paymentService.getAllPayments();
+        return new ResponseEntity<>(payments, HttpStatus.OK);
+    }
 }
 

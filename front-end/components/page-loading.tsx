@@ -7,12 +7,7 @@ interface PageLoadingProps {
 export function PageLoading({ message }: PageLoadingProps) {
   return (
     <div className="relative flex h-screen items-center justify-center overflow-hidden bg-linear-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
-      {/* Decorative gradient blobs */}
-      <div className="pointer-events-none absolute inset-0 opacity-60 dark:opacity-70">
-        <div className="absolute -left-32 -top-32 h-64 w-64 rounded-full bg-sky-400/40 blur-3xl dark:bg-sky-500/30" />
-        <div className="absolute -right-24 -bottom-24 h-72 w-72 rounded-full bg-violet-400/40 blur-3xl dark:bg-violet-500/30" />
-      </div>
-
+      
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center px-4 text-center">
         {/* Logo / avatar circle */}

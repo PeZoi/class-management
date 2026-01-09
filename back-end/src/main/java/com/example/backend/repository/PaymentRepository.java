@@ -24,4 +24,7 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     // Lấy tất cả payments của một student
     @Query("SELECT p FROM Payment p WHERE p.student.id = :studentId ORDER BY p.billingMonth DESC, p.createdAt DESC")
     List<Payment> findByStudentId(@Param("studentId") String studentId);
+
+    // Lấy tất cả payments, mới nhất trước
+    List<Payment> findAllByOrderByCreatedAtDesc();
 }

@@ -166,7 +166,9 @@
     "revenue": "Revenue",
     "studentsList": "Students List",
     "studentName": "Student Name",
+    "class": "Class",
     "parentName": "Parent Name",
+    "parent": "Parent",
     "studentContact": "Student Contact",
     "parentContact": "Parent Contact",
     "contact": "Contact Info",
@@ -177,6 +179,7 @@
     "phone": "Phone",
     "status": "Status",
     "paymentStatus": "Payment Status",
+    "payment": "Payment",
     "amountPaid": "Amount Paid",
     "status_active": "Active",
     "status_pending": "Pending",
@@ -212,7 +215,13 @@
     "month9": "September",
     "month10": "October",
     "month11": "November",
-    "month12": "December"
+    "month12": "December",
+    "noClass": "No class assigned",
+    "studentsListDescription": "List of students currently in this class",
+    "noStudentsInClass": "No students in this class yet",
+    "unpaidMonths": "Unpaid Months",
+    "actions": "Actions",
+    "viewDetail": "View Detail"
   },
   "teacher-management": {
     "title": "Teacher Management",
@@ -663,6 +672,10 @@
     "typeLabel": "Type",
     "relatedPersonLabel": "Related Person",
     "createdDateTimeLabel": "Created Date Time",
-    "statusLabel": "Status"
+    "statusLabel": "Status",
+    "loading": "Loading payments...",
+    "prevPage": "Previous",
+    "nextPage": "Next",
+    "pagination_summary": "Page {currentPage}/{totalPages} - Total {totalItems} invoices"
   }
 }

@@ -166,7 +166,9 @@
     "revenue": "Doanh thu",
     "studentsList": "Danh Sách Học Sinh",
     "studentName": "Tên Học Sinh",
+    "class": "Lớp Học",
     "parentName": "Tên Phụ Huynh",
+    "parent": "Phụ Huynh",
     "studentContact": "Liên Hệ Học Sinh",
     "parentContact": "Liên Hệ Phụ Huynh",
     "contact": "Thông Tin Liên Hệ",
@@ -177,6 +179,7 @@
     "phone": "Số Điện Thoại",
     "status": "Trạng Thái",
     "paymentStatus": "Trạng Thái Thanh Toán",
+    "payment": "Thanh Toán",
     "amountPaid": "Số Tiền Đã Thanh Toán",
     "status_active": "Đang Học",
     "status_pending": "Chờ Xác Nhận",
@@ -212,7 +215,13 @@
     "month9": "Tháng 9",
     "month10": "Tháng 10",
     "month11": "Tháng 11",
-    "month12": "Tháng 12"
+    "month12": "Tháng 12",
+    "noClass": "Chưa có lớp học",
+    "studentsListDescription": "Danh sách học sinh đang thuộc lớp này",
+    "noStudentsInClass": "Chưa có học sinh nào trong lớp",
+    "unpaidMonths": "Số Tháng Còn Nợ",
+    "actions": "Hành Động",
+    "viewDetail": "Xem Chi Tiết"
   },
   "teacher-management": {
     "title": "Quản Lý Giảng Viên",
@@ -674,6 +683,10 @@
     "typeLabel": "Loại",
     "relatedPersonLabel": "Người Liên Quan",
     "createdDateTimeLabel": "Ngày Giờ Tạo",
-    "statusLabel": "Trạng Thái"
+    "statusLabel": "Trạng Thái",
+    "loading": "Đang tải dữ liệu...",
+    "prevPage": "Trang trước",
+    "nextPage": "Trang sau",
+    "pagination_summary": "Trang {currentPage}/{totalPages} - Tổng {totalItems} hóa đơn"
   }
 }

@@ -6,7 +6,6 @@ import com.example.backend.entity.Class;
 import com.example.backend.entity.Payment;
 import com.example.backend.entity.Student;
 import com.example.backend.entity.StudentClass;
-import com.example.backend.enums.PaymentDirection;
 import com.example.backend.enums.PaymentStatus;
 import com.example.backend.enums.StudentClassStatus;
 import com.example.backend.exception.NotFoundException;
@@ -19,7 +18,6 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -126,23 +124,32 @@ public class PaymentService {
         List<Payment> payments = paymentRepository.findByStudentId(studentId);
         
         return payments.stream()
-                .map(payment -> {
-                    PaymentResponse response = modelMapper.map(payment, PaymentResponse.class);
-                    
-                    // Set IDs from relationships
-                    if (payment.getStudent() != null) {
-                        response.setStudentId(payment.getStudent().getId());
-                    }
-                    if (payment.getTeacher() != null) {
-                        response.setTeacherId(payment.getTeacher().getId());
-                    }
-                    if (payment.getClazz() != null) {
-                        response.setClassId(payment.getClazz().getId());
-                    }
-                    
-                    return response;
-                })
+                .map(this::mapToPaymentResponse)
                 .collect(Collectors.toList());
+    }
+
+    public List<PaymentResponse> getAllPayments() {
+        List<Payment> payments = paymentRepository.findAllByOrderByCreatedAtDesc();
+        return payments.stream()
+                .map(this::mapToPaymentResponse)
+                .collect(Collectors.toList());
+    }
+
+    private PaymentResponse mapToPaymentResponse(Payment payment) {
+        PaymentResponse response = modelMapper.map(payment, PaymentResponse.class);
+
+        // Set IDs from relationships
+        if (payment.getStudent() != null) {
+            response.setStudentId(payment.getStudent().getId());
+        }
+        if (payment.getTeacher() != null) {
+            response.setTeacherId(payment.getTeacher().getId());
+        }
+        if (payment.getClazz() != null) {
+            response.setClassId(payment.getClazz().getId());
+        }
+
+        return response;
     }
 }
 

@@ -41,6 +41,13 @@ interface PaymentTableProps {
   description?: string;
   showActions?: boolean;
   className?: string;
+  currentPage?: number;
+  totalPages?: number;
+  pageSize?: number;
+  totalItems?: number;
+  onPageChange?: (page: number) => void;
+  isLoading?: boolean;
+  error?: string;
 }
 
 export function PaymentTable({
@@ -53,6 +60,12 @@ export function PaymentTable({
   description,
   showActions = true,
   className,
+  currentPage = 1,
+  totalPages,
+  totalItems,
+  onPageChange,
+  isLoading,
+  error,
 }: PaymentTableProps) {
   const t = useTranslations('payment-management');
 
@@ -237,6 +250,9 @@ export function PaymentTable({
                   {t('statusLabel')}
                 </div>
               </TableHead>
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
+                {t('notes')}
+              </TableHead>
               {showActions && (
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
                   {t('actions')}
@@ -245,9 +261,21 @@ export function PaymentTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {payments.length === 0 ? (
+            {isLoading ? (
               <TableRow>
-                <TableCell colSpan={showActions ? 10 : 9} className="h-24 text-center text-slate-500">
+                <TableCell colSpan={showActions ? 11 : 10} className="h-24 text-center text-slate-500">
+                  {t('loading') ?? 'Đang tải dữ liệu...'}
+                </TableCell>
+              </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={showActions ? 11 : 10} className="h-24 text-center text-red-500">
+                  {error}
+                </TableCell>
+              </TableRow>
+            ) : payments.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={showActions ? 11 : 10} className="h-24 text-center text-slate-500">
                   {t('noPaymentsFound')}
                 </TableCell>
               </TableRow>
@@ -312,16 +340,6 @@ export function PaymentTable({
                         <div className="font-bold text-lg text-slate-900 dark:text-slate-100">
                           {formatCurrency(payment.totalAmount)}
                         </div>
-                        {payment.status === 'partial' && (
-                          <div className="text-xs space-y-0.5">
-                            <div className="text-green-600 dark:text-green-400">
-                              {t('paidLabel')} {formatCurrency(payment.paidAmount)}
-                            </div>
-                            <div className="text-orange-600 dark:text-orange-400 font-medium">
-                              {t('remainingLabel')} {formatCurrency(payment.totalAmount - payment.paidAmount)}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
@@ -334,6 +352,15 @@ export function PaymentTable({
                     </TableCell>
                     <TableCell className="text-center">
                       {getStatusBadge(payment.status)}
+                    </TableCell>
+                    <TableCell>
+                      {payment.note ? (
+                        <span className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
+                          {payment.note}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-sm">-</span>
+                      )}
                     </TableCell>
                     {showActions && (
                       <TableCell className="text-center">
@@ -376,6 +403,43 @@ export function PaymentTable({
             )}
           </TableBody>
         </Table>
+        {onPageChange && totalPages && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 text-sm text-slate-600 dark:text-slate-400">
+            <div>
+              {t('pagination_summary', {
+                currentPage: currentPage ?? 1,
+                totalPages,
+                totalItems: totalItems ?? payments.length,
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => currentPage && currentPage > 1 && onPageChange(currentPage - 1)}
+                disabled={!currentPage || currentPage <= 1}
+              >
+                {t('prevPage')}
+              </Button>
+              <span>
+                {currentPage ?? 1} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  currentPage &&
+                  totalPages &&
+                  currentPage < totalPages &&
+                  onPageChange(currentPage + 1)
+                }
+                disabled={!currentPage || !totalPages || currentPage >= totalPages}
+              >
+                {t('nextPage')}
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

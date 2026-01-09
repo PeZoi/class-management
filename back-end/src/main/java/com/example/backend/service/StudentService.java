@@ -154,7 +154,22 @@ public class StudentService {
         StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
 
         StudentClass studentClassDB = studentClassRepository.findCurrentClassByStudent(studentId, StudentClassStatus.STUDYING);
-        if (!studentId.equals(studentClassDB.getClazz().getId())) {
+
+        if (studentClassDB == null) {
+            Class classDB = classRepository.findById(studentRequest.getClassId()).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+            StudentClass studentClass = new StudentClass();
+            studentClass.setStudent(student);
+            studentClass.setClazz(classDB);
+            studentClass.setJoinedAt(Instant.now());
+            studentClass.setStatus(StudentClassStatus.STUDYING);
+            studentClassDB = studentClassRepository.save(studentClass);
+
+            StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
+            studentClassResponse.setId(classDB.getId());
+            studentClassResponse.setName(classDB.getName());
+            studentClassResponse.setJoinAt(studentClassDB.getJoinedAt());
+            studentResponse.setClazz(studentClassResponse);
+        } else if (studentClassDB != null && !studentId.equals(studentClassDB.getClazz().getId())) {
             studentClassDB.setLeftAt(Instant.now());
             studentClassDB.setStatus(StudentClassStatus.CHANGING);
             studentClassRepository.save(studentClassDB);

@@ -41,5 +41,9 @@ export const paymentService = {
   getPaymentsByStudentId: (studentId: string) => {
     return http.get<ResponseType<PaymentResponse[], PaymentResponse[]>>(`/api/payment/student/${studentId}`);
   },
+
+  getAllPayments: () => {
+    return http.get<ResponseType<PaymentResponse[], PaymentResponse[]>>('/api/payment');
+  },
 };
 

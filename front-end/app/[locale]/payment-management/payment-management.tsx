@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PaymentTable } from './_components/payment-table';
 import { PaymentFilter, PaymentFilterState } from './_components/payment-filter';
 import { PersonDetailDrawer } from './_components/person-detail-drawer';
 import { formatCurrency } from '@/utils/helper';
+import { paymentService } from '@/services/payment-service';
+import { PaymentResponse } from '@/types';
 
 export interface PaymentItem {
   id: number;
@@ -19,7 +21,7 @@ export interface PaymentItem {
   createdDate: string; // ISO datetime string
   paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
   status: 'paid' | 'partial'; // paid: đã đủ, partial: chưa đủ
-  notes?: string;
+  note?: string;
 }
 
 // Mock data cho học sinh - trong thực tế sẽ fetch từ API
@@ -120,178 +122,8 @@ const mockTeachers = {
   },
 };
 
-// Mock data - trong thực tế sẽ fetch từ API
-const initialPayments: PaymentItem[] = [
-  // Hóa đơn THU (Học phí)
-  {
-    id: 1,
-    invoiceId: 'INV001234',
-    type: 'income',
-    studentName: 'Nguyễn Thị Mai',
-    className: 'JavaScript Nâng Cao',
-    period: 'Tháng 1/2024',
-    totalAmount: 5000000,
-    paidAmount: 5000000,
-    createdDate: '2024-01-15T14:30:25',
-    paymentMethod: 'bank_transfer',
-    status: 'paid',
-    notes: 'Thanh toán đầy đủ học phí',
-  },
-  {
-    id: 2,
-    invoiceId: 'INV001235',
-    type: 'income',
-    studentName: 'Trần Văn Nam',
-    className: 'React Cơ Bản',
-    period: 'Tháng 2/2024',
-    totalAmount: 4500000,
-    paidAmount: 2500000,
-    createdDate: '2024-02-20T09:15:42',
-    paymentMethod: 'cash',
-    status: 'partial',
-    notes: 'Đã đóng 2.5tr, còn lại 2tr',
-  },
-  {
-    id: 3,
-    invoiceId: 'INV001236',
-    type: 'income',
-    studentName: 'Lê Thị Hoa',
-    className: 'Python Căn Bản',
-    period: 'Tháng 3/2024',
-    totalAmount: 4000000,
-    paidAmount: 4000000,
-    createdDate: '2024-03-10T16:45:10',
-    paymentMethod: 'bank_transfer',
-    status: 'paid',
-    notes: 'Chuyển khoản đầy đủ',
-  },
-  {
-    id: 4,
-    invoiceId: 'INV001237',
-    type: 'income',
-    studentName: 'Phạm Văn Đức',
-    className: 'JavaScript Nâng Cao',
-    period: 'Q1/2024 (3 tháng)',
-    totalAmount: 15000000,
-    paidAmount: 15000000,
-    createdDate: '2024-01-05T11:20:33',
-    paymentMethod: 'e_wallet',
-    status: 'paid',
-    notes: 'Đóng trước 3 tháng (5tr x 3)',
-  },
-  {
-    id: 5,
-    invoiceId: 'INV001238',
-    type: 'income',
-    studentName: 'Hoàng Thị Linh',
-    className: 'React Cơ Bản',
-    period: 'Tháng 2/2024',
-    totalAmount: 4500000,
-    paidAmount: 1500000,
-    createdDate: '2024-02-15T13:55:18',
-    paymentMethod: 'bank_transfer',
-    status: 'partial',
-    notes: 'Đợt 1: 1.5tr',
-  },
-  {
-    id: 6,
-    invoiceId: 'INV001239',
-    type: 'income',
-    studentName: 'Vũ Văn Hải',
-    className: 'Python Căn Bản',
-    period: 'Tháng 12/2023',
-    totalAmount: 8000000,
-    paidAmount: 8000000,
-    createdDate: '2023-12-20T10:30:45',
-    paymentMethod: 'credit_card',
-    status: 'paid',
-    notes: 'Đóng trước 2 tháng',
-  },
-  {
-    id: 7,
-    invoiceId: 'INV001240',
-    type: 'income',
-    studentName: 'Đặng Thị Lan',
-    className: 'JavaScript Nâng Cao',
-    period: 'Tháng 1/2024',
-    totalAmount: 5000000,
-    paidAmount: 3000000,
-    createdDate: '2024-01-25T15:10:22',
-    paymentMethod: 'cash',
-    status: 'partial',
-    notes: 'Đã đóng 3tr, còn 2tr',
-  },
-  {
-    id: 8,
-    invoiceId: 'INV001241',
-    type: 'income',
-    studentName: 'Bùi Văn Minh',
-    className: 'React Cơ Bản',
-    period: 'Tháng 3/2024',
-    totalAmount: 4500000,
-    paidAmount: 4500000,
-    createdDate: '2024-03-01T08:45:55',
-    paymentMethod: 'bank_transfer',
-    status: 'paid',
-    notes: 'Thanh toán đầy đủ',
-  },
-  // Hóa đơn CHI (Lương giáo viên)
-  {
-    id: 9,
-    invoiceId: 'SAL001201',
-    type: 'expense',
-    teacherName: 'Nguyễn Văn A',
-    period: 'Tháng 1/2024',
-    totalAmount: 15000000,
-    paidAmount: 15000000,
-    createdDate: '2024-01-31T17:00:00',
-    paymentMethod: 'bank_transfer',
-    status: 'paid',
-    notes: 'Lương tháng 1/2024 - Đầy đủ',
-  },
-  {
-    id: 10,
-    invoiceId: 'SAL001202',
-    type: 'expense',
-    teacherName: 'Trần Thị B',
-    period: 'Tháng 1/2024',
-    totalAmount: 18000000,
-    paidAmount: 18000000,
-    createdDate: '2024-01-31T17:15:30',
-    paymentMethod: 'bank_transfer',
-    status: 'paid',
-    notes: 'Lương tháng 1/2024 + thưởng',
-  },
-  {
-    id: 11,
-    invoiceId: 'SAL001203',
-    type: 'expense',
-    teacherName: 'Lê Văn C',
-    period: 'Tháng 2/2024',
-    totalAmount: 12000000,
-    paidAmount: 6000000,
-    createdDate: '2024-02-28T16:45:15',
-    paymentMethod: 'bank_transfer',
-    status: 'partial',
-    notes: 'Tạm ứng 50% lương tháng 2',
-  },
-  {
-    id: 12,
-    invoiceId: 'SAL001204',
-    type: 'expense',
-    teacherName: 'Phạm Thị D',
-    period: 'Tháng 3/2024',
-    totalAmount: 14000000,
-    paidAmount: 7000000,
-    createdDate: '2024-03-31T18:20:40',
-    paymentMethod: 'cash',
-    status: 'partial',
-    notes: 'Tạm ứng 50% - Còn lại trả cuối tháng',
-  },
-];
-
 export default function PaymentManagementPage() {
-  const [payments] = useState<PaymentItem[]>(initialPayments);
+  const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [filters, setFilters] = useState<PaymentFilterState>({
     searchQuery: '',
     type: 'all',
@@ -317,6 +149,75 @@ export default function PaymentManagementPage() {
     subject?: string;
     experience?: string;
   } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const res = await paymentService.getAllPayments();
+        const data = res.data.data as PaymentResponse[];
+
+        const mapped: PaymentItem[] = data.map((p, index) => {
+          const type: 'income' | 'expense' =
+            p.direction === 'INCOME' ? 'income' : 'expense';
+
+          const status: 'paid' | 'partial' =
+            p.paymentStatus === 'COMPLETED' ? 'paid' : 'partial';
+
+          const paymentMethodMap: Record<string, PaymentItem['paymentMethod']> = {
+            CASH: 'cash',
+            BANK_TRANSFER: 'bank_transfer',
+            CREDIT_CARD: 'credit_card',
+            E_WALLET: 'e_wallet',
+          };
+
+          const paymentDate =
+            p.createdAt ?? p.billingMonth;
+
+          const createdDate = paymentDate
+            ? new Date(paymentDate as unknown as string).toISOString()
+            : new Date().toISOString();
+
+          const period = p.billingMonth
+            ? new Date(p.billingMonth as unknown as string).toLocaleDateString('vi-VN', {
+                month: '2-digit',
+                year: 'numeric',
+              })
+            : undefined;
+
+          return {
+            id: index + 1,
+            invoiceId: p.paymentId,
+            type,
+            studentName: undefined,
+            teacherName: undefined,
+            className: undefined,
+            period,
+            totalAmount: Number(p.feeSnapshot ?? p.amount ?? 0),
+            paidAmount: Number(p.paid ?? 0),
+            createdDate,
+            paymentMethod: paymentMethodMap[p.paymentMethod] ?? 'cash',
+            status,
+            note: p.note ?? undefined,
+          };
+        });
+
+        setPayments(mapped);
+      } catch (err) {
+        setError('Không thể tải dữ liệu thanh toán');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPayments();
+  }, []);
 
   // Handle person click to show detail drawer
   const handlePersonClick = (name: string, type: 'student' | 'teacher') => {
@@ -422,6 +323,13 @@ export default function PaymentManagementPage() {
     return result;
   }, [payments, filters]);
 
+  const paginatedPayments = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredPayments.slice(start, start + pageSize);
+  }, [filteredPayments, currentPage, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPayments.length / pageSize));
+
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
       {/* Filter and Search */}
@@ -433,9 +341,16 @@ export default function PaymentManagementPage() {
 
       {/* Payment Table */}
       <PaymentTable
-        payments={filteredPayments}
+        payments={paginatedPayments}
         onPersonClick={handlePersonClick}
         showActions={false}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={filteredPayments.length}
+        onPageChange={setCurrentPage}
+        isLoading={isLoading}
+        error={error || undefined}
       />
 
       {/* Person Detail Drawer */}
