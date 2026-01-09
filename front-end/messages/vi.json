@@ -482,7 +482,10 @@
     "month12": "Tháng 12",
     "attendanceInfo": "Tháng này có {totalSessions} buổi học (2 buổi/tuần)",
     "totalSessions": "buổi",
-    "studentName": "Tên Học Viên"
+    "studentName": "Tên Học Viên",
+    "notes": "Ghi chú",
+    "noNotes": "Không có ghi chú",
+    "notesDescription": "Nội dung ghi chú đầy đủ"
   },
   "profile": {
     "title": "Hồ Sơ Cá Nhân",

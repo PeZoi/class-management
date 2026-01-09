@@ -3,8 +3,11 @@ import { ResponseType, PaymentRequest, PaymentResponse, CreateStudentPaymentData
 
 // Helper function to convert CreateStudentPaymentData to PaymentRequest
 const convertToPaymentRequest = (data: CreateStudentPaymentData, monthlyFee: number): PaymentRequest => {
-  // Convert month/year to billingMonth (first day of the month)
-  const billingMonth = new Date(data.year, data.month - 1, 1).toISOString();
+  // Convert month/year to billingMonth (first day of the month in UTC)
+  // Format: YYYY-MM-DDTHH:mm:ss.sssZ (always UTC, e.g., 2025-10-01T00:00:00.000Z)
+  const year = data.year;
+  const month = String(data.month).padStart(2, '0');
+  const billingMonth = `${year}-${month}-01T00:00:00.000Z`;
   
   // Map payment method from FE format to BE format
   const paymentMethodMap: Record<'cash' | 'bank_transfer', 'CASH' | 'BANK_TRANSFER'> = {

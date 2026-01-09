@@ -218,7 +218,7 @@ export function StudentTable({
                     <div className="text-right space-y-1">
                       {getPaymentBadge(student.paymentStatus)}
                       <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {formatCurrency(student.amountPaid)} / {formatCurrency(student.monthlyFee)}
+                        {formatCurrency(student.currentMonthPaidAmount ?? student.amountPaid)} / {formatCurrency(student.monthlyFee)}
                       </div>
                     </div>
                   </TableCell>
@@ -236,18 +236,6 @@ export function StudentTable({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-                          {onPayment && student.paymentStatus !== 'paid' && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="cursor-pointer text-green-600 dark:text-green-400 font-medium"
-                                onClick={() => onPayment(student)}
-                              >
-                                <CreditCard className="size-4 mr-2" />
-                                Đóng Tiền
-                              </DropdownMenuItem>
-                            </>
-                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="cursor-pointer" asChild>
                             <Link href={`/${locale}/student-management/${student.id}`} className="flex items-center">

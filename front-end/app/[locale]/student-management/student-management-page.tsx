@@ -15,24 +15,67 @@ export interface StudentItem extends StudentType {
   paymentStatus: 'paid' | 'unpaid' | 'partial';
   monthlyFee: number;
   amountPaid: number;
+  currentMonthPaidAmount?: number; // Số tiền đã đóng tháng hiện tại
 }
+
+// Helper function to get current month payment status
+const getCurrentMonthPaymentStatus = (
+  monthPaymentStatuses?: Array<{
+    month: string;
+    expectedAmount: number;
+    paidAmount: number;
+    remainingAmount: number;
+    status: 'PAID' | 'PARTIAL' | 'UNPAID';
+  }>,
+  monthlyFee?: number,
+): {
+  paymentStatus: 'paid' | 'unpaid' | 'partial';
+  paidAmount: number;
+  expectedAmount: number;
+} => {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1; // 1-12
+
+  // Tìm payment status của tháng hiện tại
+  if (monthPaymentStatuses && monthPaymentStatuses.length > 0) {
+    for (const paymentStatus of monthPaymentStatuses) {
+      const paymentDate = new Date(paymentStatus.month);
+      const paymentYear = paymentDate.getFullYear();
+      const paymentMonth = paymentDate.getMonth() + 1;
+
+      if (paymentYear === currentYear && paymentMonth === currentMonth) {
+        // Convert status từ API format (PAID, PARTIAL, UNPAID) sang component format
+        const statusMap: Record<'PAID' | 'PARTIAL' | 'UNPAID', 'paid' | 'unpaid' | 'partial'> = {
+          PAID: 'paid',
+          PARTIAL: 'partial',
+          UNPAID: 'unpaid',
+        };
+
+        return {
+          paymentStatus: statusMap[paymentStatus.status] || 'unpaid',
+          paidAmount: paymentStatus.paidAmount || 0,
+          expectedAmount: paymentStatus.expectedAmount || monthlyFee || 0,
+        };
+      }
+    }
+  }
+
+  // Nếu không tìm thấy tháng hiện tại, trả về unpaid
+  return {
+    paymentStatus: 'unpaid',
+    paidAmount: 0,
+    expectedAmount: monthlyFee || 0,
+  };
+};
 
 // Helper function to map API StudentType to StudentItem
 const mapStudentTypeToStudentItem = (student: StudentType, index: number): StudentItem => {
-  // Set payment status statically (random for demo, you can change this)
-  const paymentStatuses: Array<'paid' | 'unpaid' | 'partial'> = ['paid', 'unpaid', 'partial'];
-  const randomPaymentStatus = paymentStatuses[index % 3];
-  
-  // Set monthly fee statically (random between 4M - 5M VND)
-  const monthlyFee = 4000000 + (index % 2) * 500000;
-  
-  // Set amount paid based on payment status
-  let amountPaid = 0;
-  if (randomPaymentStatus === 'paid') {
-    amountPaid = monthlyFee;
-  } else if (randomPaymentStatus === 'partial') {
-    amountPaid = Math.floor(monthlyFee * 0.5);
-  }
+  // Lấy monthly fee từ class hoặc fallback
+  const monthlyFee = student.class?.monthlyFee || 4000000 + (index % 2) * 500000;
+
+  // Lấy payment status của tháng hiện tại từ monthPaymentStatuses
+  const currentMonthPayment = getCurrentMonthPaymentStatus(student.monthPaymentStatuses, monthlyFee);
 
   // Set status statically (mostly active)
   const status: 'active' | 'pending' | 'completed' = index % 10 === 0 ? 'pending' : index % 20 === 0 ? 'completed' : 'active';
@@ -41,9 +84,10 @@ const mapStudentTypeToStudentItem = (student: StudentType, index: number): Stude
     ...student,
     idCard: '', // Not available in API, set empty
     status,
-    paymentStatus: randomPaymentStatus,
+    paymentStatus: currentMonthPayment.paymentStatus,
     monthlyFee,
-    amountPaid,
+    amountPaid: currentMonthPayment.paidAmount,
+    currentMonthPaidAmount: currentMonthPayment.paidAmount,
   };
 };
 

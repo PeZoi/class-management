@@ -402,7 +402,10 @@
     "month12": "December",
     "attendanceInfo": "This month has {totalSessions} sessions (2 sessions/week)",
     "totalSessions": "sessions",
-    "studentName": "Student Name"
+    "studentName": "Student Name",
+    "notes": "Notes",
+    "noNotes": "No notes",
+    "notesDescription": "Full notes content"
   },
   "profile": {
     "title": "Profile",

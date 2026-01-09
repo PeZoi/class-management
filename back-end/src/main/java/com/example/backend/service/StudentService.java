@@ -23,8 +23,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -57,8 +61,17 @@ public class StudentService {
             studentClassResponse.setId(classDB.getId());
             studentClassResponse.setName(classDB.getName());
             studentClassResponse.setJoinAt(studentClass.getJoinedAt());
+            studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
 
             studentResponse.setClazz(studentClassResponse);
+            
+            // Tính toán trạng thái thanh toán của tất cả các tháng từ joinAt đến hiện tại
+            List<MonthPaymentStatus> monthPaymentStatuses = calculateMonthPaymentStatuses(
+                    studentResponse.getId(),
+                    studentClass.getJoinedAt(),
+                    classDB.getMonthlyFee()
+            );
+            studentResponse.setMonthPaymentStatuses(monthPaymentStatuses);
 
             studentResponseList.add(studentResponse);
         }
@@ -68,7 +81,7 @@ public class StudentService {
     @Transactional(readOnly = true)
     public List<StudentResponse> getStudentsByClass(String classId) {
         List<StudentResponse> studentResponseList = new ArrayList<>();
-        Class _classDB = classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy " +
+        classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy " +
                 "lớp" +
                 " học"));
         List<Student> studentList = studentClassRepository.findStudentsByClass(classId, StudentClassStatus.STUDYING, StudentStatus.ACTIVE);
@@ -79,12 +92,21 @@ public class StudentService {
             StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
 
             StudentClass studentClass = getClassByStudent(studentResponse.getId());
-            Class classDB = studentClass.getClazz();
-            studentClassResponse.setId(classDB.getId());
-            studentClassResponse.setName(classDB.getName());
+            Class studentClassDB = studentClass.getClazz();
+            studentClassResponse.setId(studentClassDB.getId());
+            studentClassResponse.setName(studentClassDB.getName());
             studentClassResponse.setJoinAt(studentClass.getJoinedAt());
+            studentClassResponse.setMonthlyFee(studentClassDB.getMonthlyFee());
 
             studentResponse.setClazz(studentClassResponse);
+            
+            // Tính toán trạng thái thanh toán của tất cả các tháng từ joinAt đến hiện tại
+            List<MonthPaymentStatus> monthPaymentStatuses = calculateMonthPaymentStatuses(
+                    studentResponse.getId(),
+                    studentClass.getJoinedAt(),
+                    studentClassDB.getMonthlyFee()
+            );
+            studentResponse.setMonthPaymentStatuses(monthPaymentStatuses);
 
             studentResponseList.add(studentResponse);
         }
@@ -185,6 +207,7 @@ public class StudentService {
 
     /**
      * Tính toán trạng thái thanh toán của tất cả các tháng từ joinAt đến tháng hiện tại
+     * Nếu có payment cho các tháng trước tháng hiện tại, cũng hiển thị các tháng đó
      * @param studentId ID của học viên
      * @param joinAt Thời gian tham gia lớp
      * @param monthlyFee Học phí hàng tháng
@@ -204,12 +227,42 @@ public class StudentService {
         // Tháng hiện tại
         YearMonth currentMonth = YearMonth.now();
         
-        // Tạo danh sách các tháng từ joinMonth đến currentMonth (bao gồm cả hai)
+        // Lấy tất cả payments của student để tìm các tháng có payment (có thể là tháng trước)
+        List<Payment> allPayments = paymentRepository.findByStudentId(studentId);
+        Set<YearMonth> monthsWithPayments = new HashSet<>();
+        
+        // Tìm tất cả các tháng có payment
+        for (Payment payment : allPayments) {
+            if (payment.getBillingMonth() != null) {
+                LocalDate billingDate = payment.getBillingMonth().atZone(ZoneOffset.UTC).toLocalDate();
+                YearMonth paymentMonth = YearMonth.from(billingDate);
+                monthsWithPayments.add(paymentMonth);
+            }
+        }
+        
+        // Tạo set để lưu các tháng cần hiển thị
+        Set<YearMonth> monthsToShow = new HashSet<>();
+        
+        // Thêm các tháng từ joinMonth đến currentMonth
         YearMonth month = joinMonth;
         while (!month.isAfter(currentMonth)) {
-            // Tạo Instant cho ngày đầu tháng (ví dụ: 2025-09-01 00:00:00)
-            LocalDate firstDayOfMonth = month.atDay(1);
-            Instant billingMonthInstant = firstDayOfMonth.atStartOfDay(ZoneId.systemDefault()).toInstant();
+            monthsToShow.add(month);
+            month = month.plusMonths(1);
+        }
+        
+        // Thêm các tháng có payment (nếu có payment cho tháng trước, cũng hiển thị)
+        monthsToShow.addAll(monthsWithPayments);
+        
+        // Sắp xếp các tháng theo thứ tự
+        List<YearMonth> sortedMonths = monthsToShow.stream()
+                .sorted()
+                .collect(Collectors.toList());
+        
+        // Tính toán trạng thái thanh toán cho từng tháng
+        for (YearMonth yearMonth : sortedMonths) {
+            // Tạo Instant cho ngày đầu tháng trong UTC (ví dụ: 2025-10-01 00:00:00 UTC)
+            LocalDate firstDayOfMonth = yearMonth.atDay(1);
+            Instant billingMonthInstant = firstDayOfMonth.atStartOfDay(ZoneOffset.UTC).toInstant();
             
             // Lấy tất cả payments của tháng này để tổng hợp
             List<Payment> paymentsForMonth = paymentRepository.findAllByStudentIdAndBillingMonth(studentId, billingMonthInstant);
@@ -258,20 +311,24 @@ public class StudentService {
                         .status(status)
                         .build();
             } else {
-                // Chưa có payment record cho tháng này - chưa thanh toán
-                monthPaymentStatus = MonthPaymentStatus.builder()
-                        .month(billingMonthInstant)
-                        .expectedAmount(Long.valueOf((long) monthlyFee))
-                        .paidAmount(Long.valueOf(0L))
-                        .remainingAmount(Long.valueOf((long) monthlyFee))
-                        .status(MonthPaymentStatus.PaymentStatusEnum.UNPAID)
-                        .build();
+                // Chưa có payment record cho tháng này
+                // Chỉ hiển thị nếu tháng này nằm trong khoảng từ joinMonth đến currentMonth
+                // (không hiển thị các tháng trước nếu không có payment)
+                if (!yearMonth.isBefore(joinMonth) && !yearMonth.isAfter(currentMonth)) {
+                    monthPaymentStatus = MonthPaymentStatus.builder()
+                            .month(billingMonthInstant)
+                            .expectedAmount(Long.valueOf((long) monthlyFee))
+                            .paidAmount(Long.valueOf(0L))
+                            .remainingAmount(Long.valueOf((long) monthlyFee))
+                            .status(MonthPaymentStatus.PaymentStatusEnum.UNPAID)
+                            .build();
+                } else {
+                    // Bỏ qua tháng này nếu không có payment và nằm ngoài khoảng joinMonth đến currentMonth
+                    continue;
+                }
             }
             
             monthPaymentStatuses.add(monthPaymentStatus);
-            
-            // Chuyển sang tháng tiếp theo
-            month = month.plusMonths(1);
         }
         
         return monthPaymentStatuses;

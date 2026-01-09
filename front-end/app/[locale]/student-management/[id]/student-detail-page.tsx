@@ -296,6 +296,7 @@ export default function StudentDetailPage() {
         monthlyPayments={monthlyPayments}
         monthlyFee={studentData?.class?.monthlyFee || 0}
         studentId={studentData?.id}
+        paymentHistory={paymentHistory}
         onPaymentSubmit={handlePaymentSubmit}
       />
 

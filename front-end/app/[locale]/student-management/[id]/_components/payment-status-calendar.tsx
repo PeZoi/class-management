@@ -2,13 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, CheckCircle, XCircle, DollarSign } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/utils/helper';
 import { useState } from 'react';
 import { MonthlyPaymentDialog } from './monthly-payment-dialog';
+import { PaymentDetailDialog } from './payment-detail-dialog';
+import { PaymentHistoryItem } from './student-payment-history';
 
 export interface PaymentMonthStatus {
   month: number; // 1-12
@@ -23,6 +24,7 @@ interface PaymentStatusCalendarProps {
   monthlyPayments: PaymentMonthStatus[];
   monthlyFee: number;
   studentId?: string;
+  paymentHistory?: PaymentHistoryItem[];
   onPaymentSubmit?: (data: {
     studentId: string;
     month: number;
@@ -38,6 +40,7 @@ export function PaymentStatusCalendar({
   monthlyPayments,
   monthlyFee,
   studentId,
+  paymentHistory = [],
   onPaymentSubmit,
 }: PaymentStatusCalendarProps) {
   const t = useTranslations('student-detail');
@@ -54,6 +57,7 @@ export function PaymentStatusCalendar({
 
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentMonthStatus | null>(null);
 
   const getStatusBadge = (status: string, amount?: number, paidAmount?: number) => {
@@ -117,10 +121,37 @@ export function PaymentStatusCalendar({
   const yearUnpaid = filteredPayments.filter((p) => p.status === 'unpaid').length;
   const yearPartial = filteredPayments.filter((p) => p.status === 'partial').length;
 
-  // Handle payment button click
-  const handlePaymentClick = (payment: PaymentMonthStatus) => {
-    setSelectedPayment(payment);
-    setPaymentDialogOpen(true);
+  // Handle month item click
+  const handleMonthClick = (month: number, payment: PaymentMonthStatus | undefined) => {
+    if (!studentId) return;
+
+    // If no payment data exists, create a new payment status for this month
+    if (!payment) {
+      const newPayment: PaymentMonthStatus = {
+        month,
+        year: selectedYear,
+        status: 'unpaid',
+        amount: monthlyFee,
+        paidAmount: 0,
+      };
+      setSelectedPayment(newPayment);
+      setPaymentDialogOpen(true);
+      return;
+    }
+
+    // If payment is paid, show detail dialog
+    if (payment.status === 'paid') {
+      setSelectedPayment(payment);
+      setDetailDialogOpen(true);
+      return;
+    }
+
+    // If payment is unpaid or partial, show payment dialog
+    if (payment.status === 'unpaid' || payment.status === 'partial') {
+      setSelectedPayment(payment);
+      setPaymentDialogOpen(true);
+      return;
+    }
   };
 
   // Handle payment submit from dialog
@@ -206,10 +237,11 @@ export function PaymentStatusCalendar({
                 return (
                   <div
                     key={`${selectedYear}-${month}`}
-                    className={`p-4 border rounded-lg transition-colors ${
+                    onClick={() => handleMonthClick(month, payment)}
+                    className={`p-4 border rounded-lg transition-all cursor-pointer ${
                       isCurrentMonth
-                        ? 'border-indigo-300 dark:border-indigo-700 bg-linear-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 shadow-md'
-                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        ? 'border-indigo-300 dark:border-indigo-700 bg-linear-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 shadow-md hover:shadow-lg'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-md'
                     }`}
                   >
                     <div className="text-center mb-3">
@@ -227,17 +259,6 @@ export function PaymentStatusCalendar({
                     {payment ? (
                       <div className="flex flex-col items-center gap-2">
                         {getStatusBadge(payment.status, payment.amount, payment.paidAmount)}
-                        {(payment.status === 'unpaid' || payment.status === 'partial') && studentId && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full text-xs mt-1"
-                            onClick={() => handlePaymentClick(payment)}
-                          >
-                            <DollarSign className="size-3 mr-1" />
-                            Đóng tiền
-                          </Button>
-                        )}
                       </div>
                     ) : (
                       <div className="text-center">
@@ -266,6 +287,18 @@ export function PaymentStatusCalendar({
         monthNames={monthNames}
         onSubmit={handleDialogSubmit}
       />
+
+      {/* Payment Detail Dialog */}
+      {selectedPayment && selectedPayment.status === 'paid' && (
+        <PaymentDetailDialog
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          payment={selectedPayment}
+          monthlyFee={monthlyFee}
+          monthNames={monthNames}
+          paymentHistory={paymentHistory}
+        />
+      )}
     </Card>
   );
 }
