@@ -170,6 +170,7 @@ export function StudentPaymentHistory({ paymentHistory }: StudentPaymentHistoryP
       cell: ({ row }) => {
         return (
           <div className="flex items-center gap-2">
+            <Calendar className="size-4 opacity-60" />
             <span className="text-sm font-medium">{formatDateTime(row.original.paymentDate)}</span>
           </div>
         );

@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -8,9 +10,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 import { formatCurrency, formatDate } from '@/utils/helper';
+import { ColumnDef } from '@tanstack/react-table';
 import {
   BookOpen,
   Calendar,
@@ -26,7 +29,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  CreditCard,
   Eye,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
@@ -50,7 +52,6 @@ export function StudentTable({
   onEdit,
   onDelete,
   onAdd,
-  onPayment,
   title,
   description,
   showActions = true,
@@ -92,6 +93,215 @@ export function StudentTable({
     );
   };
 
+  const columns: ColumnDef<StudentItem>[] = [
+    {
+      accessorKey: 'fullName',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <User className="size-4" />
+            {t('studentName')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="font-medium text-slate-900 dark:text-slate-100">
+            <div className="space-y-0.5">
+              <div>{row.original.fullName}</div>
+              <div className="text-xs text-slate-500">
+                {t(`gender_${row.original.gender.toLowerCase()}`)}
+              </div>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'contact',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Mail className="size-4" />
+          {t('contact')}
+        </div>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <Mail className="size-3.5 text-slate-500" />
+              <span className="text-xs">{row.original.email}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <Phone className="size-3.5 text-slate-500" />
+              <span className="text-xs">{row.original.phoneNumber}</span>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'fullNameParent',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <Users className="size-4" />
+            {t('parent')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="space-y-1">
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              {row.original.fullNameParent}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Phone className="size-3 text-slate-500" />
+              {row.original.phoneNumberParent}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'class',
+      header: () => (
+        <div className="flex items-center justify-center gap-2">
+          <BookOpen className="size-4" />
+          {t('class')}
+        </div>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center">
+            <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-medium">
+              {row.original.class?.name || 'Chưa có lớp'}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'dob',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Calendar className="size-4" />
+            {t('dob')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+            {formatDate(row.original.dob)}
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const dateA = new Date(rowA.original.dob).getTime();
+        const dateB = new Date(rowB.original.dob).getTime();
+        return dateA - dateB;
+      },
+    },
+    {
+      id: 'payment',
+      header: () => (
+        <div className="flex items-center justify-end gap-2">
+          <DollarSign className="size-4" />
+          {t('payment')}
+        </div>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-right space-y-1">
+            {getPaymentBadge(row.original.paymentStatus)}
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {formatCurrency(row.original.currentMonthPaidAmount ?? row.original.amountPaid)} /{' '}
+              {formatCurrency(row.original.monthlyFee)}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'joinedAt',
+      accessorFn: (row) => row.class?.joinAt || '',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Calendar className="size-4" />
+            {t('joinedDate')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+            {formatDate(row.original?.class?.joinAt || '')}
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const dateA = rowA.original.class?.joinAt ? new Date(rowA.original.class.joinAt).getTime() : 0;
+        const dateB = rowB.original.class?.joinAt ? new Date(rowB.original.class.joinAt).getTime() : 0;
+        return dateA - dateB;
+      },
+    },
+  ];
+
+  if (showActions) {
+    columns.push({
+      id: 'actions',
+      header: () => <div className="text-center">{t('actions')}</div>,
+      cell: ({ row }) => {
+        const student = row.original;
+        return (
+          <div className="text-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="size-8 p-0">
+                  <span className="sr-only">{t('openMenu')}</span>
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer" asChild>
+                  <Link href={`/${locale}/student-management/${student.id}`} className="flex items-center">
+                    <Eye className="size-4 mr-2" />
+                    {t('viewDetail')}
+                  </Link>
+                </DropdownMenuItem>
+                {onEdit && (
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(student)}>
+                    <Edit className="size-4 mr-2" />
+                    {t('edit')}
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    className="cursor-pointer text-red-600 dark:text-red-400"
+                    onClick={() => {
+                      if (window.confirm(t('confirmDelete'))) {
+                        onDelete(student.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-4 mr-2" />
+                    {t('delete')}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    });
+  }
+
   return (
     <Card
       className={cn(
@@ -114,163 +324,14 @@ export function StudentTable({
           )}
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table className={cn('min-w-[1000px]', showActions && 'min-w-[1100px]')}>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-700">
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <User className="size-4" />
-                  {t('studentName')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <Mail className="size-4" />
-                  {t('contact')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <Users className="size-4" />
-                  {t('parent')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <BookOpen className="size-4" />
-                  {t('class')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Calendar className="size-4" />
-                  {t('dob')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <DollarSign className="size-4" />
-                  {t('payment')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Calendar className="size-4" />
-                  {t('joinedDate')}
-                </div>
-              </TableHead>
-              {showActions && (
-                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                  {t('actions')}
-                </TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {students.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={showActions ? 8 : 7} className="h-24 text-center text-slate-500">
-                  {t('noStudentsFound')}
-                </TableCell>
-              </TableRow>
-            ) : (
-              students.map((student) => (
-                <TableRow key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                    <div className="space-y-0.5">
-                      <div>{student.fullName}</div>
-                      <div className="text-xs text-slate-500">{t(`gender_${student.gender.toLowerCase()}`)}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                        <Mail className="size-3.5 text-slate-500" />
-                        <span className="text-xs">{student.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                        <Phone className="size-3.5 text-slate-500" />
-                        <span className="text-xs">{student.phoneNumber}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {student.fullNameParent}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <Phone className="size-3 text-slate-500" />
-                        {student.phoneNumberParent}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-medium">
-                      {student.class?.name || 'Chưa có lớp'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
-                    {formatDate(student.dob)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-right space-y-1">
-                      {getPaymentBadge(student.paymentStatus)}
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {formatCurrency(student.currentMonthPaidAmount ?? student.amountPaid)} / {formatCurrency(student.monthlyFee)}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
-                    {formatDate(student?.class?.joinAt || '')}
-                  </TableCell>
-                  {showActions && (
-                    <TableCell className="text-center">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="size-8 p-0">
-                            <span className="sr-only">{t('openMenu')}</span>
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="cursor-pointer" asChild>
-                            <Link href={`/${locale}/student-management/${student.id}`} className="flex items-center">
-                              <Eye className="size-4 mr-2" />
-                              {t('viewDetail')}
-                            </Link>
-                          </DropdownMenuItem>
-                          {onEdit && (
-                            <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(student)}>
-                              <Edit className="size-4 mr-2" />
-                              {t('edit')}
-                            </DropdownMenuItem>
-                          )}
-                          {onDelete && (
-                            <DropdownMenuItem
-                              className="cursor-pointer text-red-600 dark:text-red-400"
-                              onClick={() => {
-                                if (window.confirm(t('confirmDelete'))) {
-                                  onDelete(student.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="size-4 mr-2" />
-                              {t('delete')}
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <CardContent>
+        {students.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('noStudentsFound')}</p>
+          </div>
+        ) : (
+          <DataTable columns={columns} data={students} />
+        )}
       </CardContent>
     </Card>
   );

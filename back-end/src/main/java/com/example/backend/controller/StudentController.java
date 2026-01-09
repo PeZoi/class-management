@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.backend.dto.student.ClassHistoryResponse;
 import com.example.backend.dto.student.StudentRequest;
 import com.example.backend.dto.student.StudentResponse;
 import com.example.backend.service.StudentService;
@@ -46,5 +47,11 @@ public class StudentController {
     public ResponseEntity<StudentResponse> update(@RequestBody StudentRequest studentRequest, @PathVariable String studentId) {
         StudentResponse studentResponse = studentService.update(studentRequest, studentId);
         return new ResponseEntity<>(studentResponse, HttpStatus.OK);
+    }
+
+    @GetMapping("/class-history/{studentId}")
+    public ResponseEntity<List<ClassHistoryResponse>> getClassHistory(@PathVariable String studentId) {
+        List<ClassHistoryResponse> classHistoryList = studentService.getClassHistory(studentId);
+        return new ResponseEntity<>(classHistoryList, HttpStatus.OK);
     }
 }

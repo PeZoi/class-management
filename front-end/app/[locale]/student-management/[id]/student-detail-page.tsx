@@ -17,41 +17,31 @@ import {
   PaymentMonthStatus,
 } from './_components';
 import { studentService, paymentService } from '@/services';
-import { StudentType, MonthPaymentStatus, CreateStudentPaymentData, PaymentResponse } from '@/types';
+import { StudentType, MonthPaymentStatus, CreateStudentPaymentData, PaymentResponse, ClassHistoryResponse } from '@/types';
 import { toast } from 'react-toastify';
 import { Loader2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { formatCurrency } from '@/utils/helper';
 
-// Mock data for class history
-const generateMockClassHistory = (): ClassHistoryItem[] => {
-  return [
-    {
-      id: '1',
-      className: 'JavaScript Cơ Bản',
-      classId: '1',
-      joinedAt: '2024-01-15T00:00:00Z',
-      leftAt: '2024-06-30T00:00:00Z',
-      status: 'completed',
-      reason: 'Hoàn thành khóa học',
-    },
-    {
-      id: '2',
-      className: 'JavaScript Nâng Cao',
-      classId: '2',
-      joinedAt: '2024-07-01T00:00:00Z',
-      leftAt: '2024-09-15T00:00:00Z',
-      status: 'transferred',
-      reason: 'Chuyển lớp theo yêu cầu',
-    },
-    {
-      id: '3',
-      className: 'React & Next.js',
-      classId: '3',
-      joinedAt: '2024-09-16T00:00:00Z',
-      status: 'studying',
-    },
-  ];
+// Convert API ClassHistoryResponse to ClassHistoryItem
+const convertToClassHistoryItem = (apiHistory: ClassHistoryResponse): ClassHistoryItem => {
+  // Map backend status to frontend status
+  const statusMap: Record<string, 'studying' | 'completed' | 'transferred' | 'changing' | 'dropped'> = {
+    'STUDYING': 'studying',
+    'COMPLETED': 'completed',
+    'CHANGING': 'transferred',
+    'DROPPED': 'dropped',
+  };
+
+  return {
+    id: apiHistory.id,
+    className: apiHistory.className,
+    classId: apiHistory.classId,
+    joinedAt: apiHistory.joinedAt,
+    leftAt: apiHistory.leftAt,
+    status: statusMap[apiHistory.status] || 'studying',
+    reason: apiHistory.reason,
+  };
 };
 
 // Mock data for attendance
@@ -161,10 +151,9 @@ export default function StudentDetailPage() {
   const [studentData, setStudentData] = useState<StudentType | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Mock data states (for features not yet implemented)
-  const [classHistory] = useState<ClassHistoryItem[]>(() => generateMockClassHistory());
+  // Class history state
+  const [classHistory, setClassHistory] = useState<ClassHistoryItem[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
-  const [loadingPaymentHistory, setLoadingPaymentHistory] = useState(false);
   const [attendanceSessions] = useState<AttendanceSession[]>(() => generateMockAttendance());
 
   // Convert API monthPaymentStatuses to component format
@@ -204,7 +193,6 @@ export default function StudentDetailPage() {
     const fetchPaymentHistory = async () => {
       if (!studentId) return;
 
-      setLoadingPaymentHistory(true);
       try {
         const response = await paymentService.getPaymentsByStudentId(studentId as string);
         if (response.status === 200 && response.data) {
@@ -216,12 +204,30 @@ export default function StudentDetailPage() {
       } catch (error) {
         console.error('Lỗi fetch lịch sử thanh toán', error);
         // Don't show error toast, just log it
-      } finally {
-        setLoadingPaymentHistory(false);
       }
     };
 
     fetchPaymentHistory();
+  }, [studentId]);
+
+  // Fetch class history
+  useEffect(() => {
+    const fetchClassHistory = async () => {
+      if (!studentId) return;
+
+      try {
+        const response = await studentService.getClassHistory(studentId as string);
+        if (response.status === 200 && response.data) {
+          const convertedHistory = response.data.map(convertToClassHistoryItem);
+          setClassHistory(convertedHistory);
+        }
+      } catch (error) {
+        console.error('Lỗi fetch lịch sử lớp học', error);
+        // Don't show error toast, just log it
+      }
+    };
+
+    fetchClassHistory();
   }, [studentId]);
 
   // Handle payment submit from calendar

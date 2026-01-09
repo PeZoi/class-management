@@ -63,6 +63,7 @@ export function MonthlyPaymentDialog({
   useEffect(() => {
     if (open && payment) {
       const remainingAmount = getRemainingAmount(payment);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         amount: remainingAmount,
         paymentMethod: 'cash',

@@ -1,5 +1,6 @@
 package com.example.backend.service;
 
+import com.example.backend.dto.student.ClassHistoryResponse;
 import com.example.backend.dto.student.MonthPaymentStatus;
 import com.example.backend.dto.student.StudentRequest;
 import com.example.backend.dto.student.StudentResponse;
@@ -332,5 +333,25 @@ public class StudentService {
         }
         
         return monthPaymentStatuses;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClassHistoryResponse> getClassHistory(String studentId) {
+        List<StudentClass> studentClasses = studentClassRepository.findAllByStudentId(studentId);
+        List<ClassHistoryResponse> classHistoryList = new ArrayList<>();
+
+        for (StudentClass studentClass : studentClasses) {
+            ClassHistoryResponse.ClassHistoryResponseBuilder builder = ClassHistoryResponse.builder()
+                    .id(studentClass.getId())
+                    .classId(studentClass.getClazz().getId())
+                    .className(studentClass.getClazz().getName())
+                    .joinedAt(studentClass.getJoinedAt())
+                    .leftAt(studentClass.getLeftAt())
+                    .status(studentClass.getStatus());
+
+            classHistoryList.add(builder.build());
+        }
+
+        return classHistoryList;
     }
 }

@@ -36,3 +36,13 @@ export interface StudentRequest {
   phoneNumberParent: string;
   classId: string;
 }
+
+export interface ClassHistoryResponse {
+  id: number;
+  className: string;
+  classId: string;
+  joinedAt: string;
+  leftAt?: string;
+  status: 'STUDYING' | 'COMPLETED' | 'CHANGING' | 'DROPPED';
+  reason?: string;
+}

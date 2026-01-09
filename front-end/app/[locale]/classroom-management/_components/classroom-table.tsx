@@ -1,3 +1,5 @@
+'use client';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,9 +11,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 import { ClassType } from '@/types/class-type';
+import { ColumnDef } from '@tanstack/react-table';
 import {
   BookOpen,
   Calendar,
@@ -58,6 +61,236 @@ export function ClassroomTable({
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
 
+  const columns: ColumnDef<ClassType>[] = [
+    {
+      accessorKey: 'name',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <BookOpen className="size-4" />
+            {t('className')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="font-medium">
+            <Link
+              href={`/${locale}/classroom-management/${row.original.id}`}
+              className="font-semibold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              {row.original.name}
+            </Link>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'teacher.fullName',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <User className="size-4" />
+            {t('teacher')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="font-medium text-slate-900 dark:text-slate-100">
+            <div className="space-y-0.5">
+              <div>{row.original.teacher.fullName}</div>
+              <div className="text-xs text-slate-500">
+                {row.original.teacher.gender === 'MALE' ? 'Nam' : 'Nữ'}
+              </div>
+            </div>
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        return rowA.original.teacher.fullName.localeCompare(rowB.original.teacher.fullName);
+      },
+    },
+    {
+      accessorKey: 'studentCount',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Users className="size-4" />
+            {t('students')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center">
+            <Badge variant="outline" className="font-semibold">
+              {row.original.studentCount}
+            </Badge>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'schedule',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <Calendar className="size-4" />
+            {t('schedule')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
+            <Calendar className="size-3.5" />
+            <span>{row.original.schedule}</span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'monthlyFee',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <Wallet className="size-4" />
+            {t('monthlyFee')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="flex flex-col">
+            <span className="font-bold text-slate-900 dark:text-slate-100">
+              {formatCurrency(row.original.monthlyFee)}
+            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t('perStudent')}</span>
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        return rowA.original.monthlyFee - rowB.original.monthlyFee;
+      },
+    },
+    {
+      id: 'paymentStatus',
+      header: () => (
+        <div className="flex items-center justify-center gap-2">
+          <CreditCard className="size-4" />
+          {t('paymentStatus')}
+        </div>
+      ),
+      cell: ({ row }) => {
+        const classItem = row.original;
+        return (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-600 dark:text-slate-400">
+                {((classItem.collected / classItem.total) * 100 || 0).toFixed(1)}% (
+                {classItem.collected === classItem.total ? t('fullyCollected') : t('notFullyCollected')})
+              </span>
+            </div>
+            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${(classItem.collected / classItem.total) * 100}%`,
+                  background:
+                    classItem.collected === classItem.total
+                      ? 'linear-gradient(to right, #10b981, #059669)'
+                      : classItem.collected / classItem.total >= 0.8
+                        ? 'linear-gradient(to right, #3b82f6, #2563eb)'
+                        : 'linear-gradient(to right, #f59e0b, #d97706)',
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-green-600 dark:text-green-400">
+                {formatCurrency(classItem.collected)}
+              </span>
+              <span className="text-slate-500 dark:text-slate-400">/ {formatCurrency(classItem.total)}</span>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'revenue',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-end">
+          <div className="flex items-center justify-end gap-2">
+            <DollarSign className="size-4" />
+            {t('revenue')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-right">
+            <span className="font-bold text-slate-900 dark:text-slate-100">
+              {formatCurrency(row.original.revenue)}
+            </span>
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        return rowA.original.revenue - rowB.original.revenue;
+      },
+    },
+  ];
+
+  if (showActions) {
+    columns.push({
+      id: 'actions',
+      header: () => <div className="text-center">{t('actions')}</div>,
+      cell: ({ row }) => {
+        const classItem = row.original;
+        return (
+          <div className="text-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer" asChild>
+                  <Link href={`/${locale}/classroom-management/${classItem.id}`} className="flex items-center">
+                    <Eye className="size-4 mr-2" />
+                    {t('viewDetail')}
+                  </Link>
+                </DropdownMenuItem>
+                {onEdit && (
+                  <DropdownMenuItem onClick={() => onEdit(classItem)} className="cursor-pointer">
+                    <Edit className="size-4 mr-2" />
+                    {t('edit')}
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (confirm(t('confirmDelete'))) {
+                        onDelete(classItem.id);
+                      }
+                    }}
+                    className="cursor-pointer text-red-600 dark:text-red-400"
+                  >
+                    <Trash2 className="size-4 mr-2 text-red-600" />
+                    {t('delete')}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    });
+  }
+
   return (
     <Card
       className={cn(
@@ -80,176 +313,14 @@ export function ClassroomTable({
           )}
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table className={cn('min-w-[900px]', showActions && 'min-w-[1000px]')}>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-700">
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="size-4" />
-                  {t('className')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <User className="size-4" />
-                  {t('teacher')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center gap-2">
-                  <Users className="size-4" />
-                  {t('students')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <Calendar className="size-4" />
-                  {t('schedule')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <Wallet className="size-4" />
-                  {t('monthlyFee')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <CreditCard className="size-4" />
-                  {t('paymentStatus')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <DollarSign className="size-4" />
-                  {t('revenue')}
-                </div>
-              </TableHead>
-              {showActions && (
-                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center w-[100px]">
-                  {t('actions')}
-                </TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {classes.map((classItem) => (
-              <TableRow key={classItem.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <TableCell className="font-medium">
-                  <div className="flex flex-col">
-                    <Link
-                      href={`/${locale}/classroom-management/${classItem.id}`}
-                      className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors w-fit"
-                    >
-                      {classItem.name}
-                    </Link>
-                  </div>
-                </TableCell>
-                <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                  <div className="space-y-0.5">
-                    <div >{classItem.teacher.fullName}</div>
-                    <div className="text-xs text-slate-500">{classItem.teacher.gender === 'MALE' ? 'Nam' : 'Nữ'}</div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="font-semibold ml-8">
-                    {classItem.studentCount}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
-                    <Calendar className="size-3.5" />
-                    <span>{classItem.schedule}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
-                      {formatCurrency(classItem.monthlyFee)}
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{t('perStudent')}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-600 dark:text-slate-400">
-                        {(classItem.collected / classItem.total) * 100 || 0}% (
-                        {classItem.collected === classItem.total ? t('fullyCollected') : t('notFullyCollected')})
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${(classItem.collected / classItem.total) * 100}%`,
-                          background:
-                            classItem.collected === classItem.total
-                              ? 'linear-gradient(to right, #10b981, #059669)'
-                              : classItem.collected / classItem.total >= 0.8
-                                ? 'linear-gradient(to right, #3b82f6, #2563eb)'
-                                : 'linear-gradient(to right, #f59e0b, #d97706)',
-                        }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-green-600 dark:text-green-400">
-                        {formatCurrency(classItem.collected)}
-                      </span>
-                      <span className="text-slate-500 dark:text-slate-400">/ {formatCurrency(classItem.total)}</span>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <span className="font-bold text-slate-900 dark:text-slate-100">
-                    {formatCurrency(classItem.revenue)}
-                  </span>
-                </TableCell>
-                {showActions && (
-                  <TableCell className="text-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="cursor-pointer" asChild>
-                          <Link href={`/${locale}/classroom-management/${classItem.id}`} className="flex items-center">
-                            <Eye className="size-4 mr-2" />
-                            {t('viewDetail')}
-                          </Link>
-                        </DropdownMenuItem>
-                        {onEdit && (
-                          <DropdownMenuItem onClick={() => onEdit(classItem)} className="cursor-pointer">
-                            <Edit className="size-4 mr-2" />
-                            {t('edit')}
-                          </DropdownMenuItem>
-                        )}
-                        {onDelete && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              if (confirm(t('confirmDelete'))) {
-                                onDelete(classItem.id);
-                              }
-                            }}
-                            className="cursor-pointer text-red-600 dark:text-red-400"
-                          >
-                            <Trash2 className="size-4 mr-2 text-red-600" />
-                            {t('delete')}
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <CardContent>
+        {classes.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('noClassesFound') || 'Chưa có lớp học nào'}</p>
+          </div>
+        ) : (
+          <DataTable columns={columns} data={classes} />
+        )}
       </CardContent>
     </Card>
   );

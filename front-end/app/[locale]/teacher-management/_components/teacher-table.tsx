@@ -1,3 +1,5 @@
+'use client';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 import { TeacherType } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/helper';
+import { ColumnDef } from '@tanstack/react-table';
 import {
   BookOpen,
   Briefcase,
@@ -60,6 +63,230 @@ export function TeacherTable({
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
 
+  const columns: ColumnDef<TeacherType>[] = [
+    {
+      accessorKey: 'fullName',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <User className="size-4" />
+            {t('teacherName')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="font-medium text-slate-900 dark:text-slate-100">
+            <div className="space-y-0.5">
+              <div>{row.original.fullName}</div>
+              <div className="text-xs text-slate-500">
+                {row.original.gender === 'MALE' ? t('male') : row.original.gender === 'FEMALE' ? t('female') : t('other')}
+              </div>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'contact',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Mail className="size-4" />
+          {t('contact')}
+        </div>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <Mail className="size-3.5 text-slate-500" />
+              <span className="text-xs">{row.original.email}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <Phone className="size-3.5 text-slate-500" />
+              <span className="text-xs">{row.original.phoneNumber}</span>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'salary',
+      header: () => (
+        <div className="flex items-center justify-end gap-2">
+          <DollarSign className="size-4" />
+          {t('salary')}
+        </div>
+      ),
+      cell: () => {
+        return (
+          <div className="text-right">
+            <div className="text-base font-bold text-green-600 dark:text-green-400">
+              {formatCurrency(9999999)}
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{t('perMonth')}</div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'totalClasses',
+      accessorFn: (row) => row.classList?.length || 0,
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <BookOpen className="size-4" />
+            {t('totalClasses')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center">
+            <Badge variant="outline" className="font-semibold">
+              {row.original?.classList?.length || 0}
+            </Badge>
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const countA = rowA.original.classList?.length || 0;
+        const countB = rowB.original.classList?.length || 0;
+        return countA - countB;
+      },
+    },
+    {
+      accessorKey: 'dob',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Calendar className="size-4" />
+            {t('dob')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+            {formatDate(row.original.dob.toString())}
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const dateA = new Date(rowA.original.dob.toString()).getTime();
+        const dateB = new Date(rowB.original.dob.toString()).getTime();
+        return dateA - dateB;
+      },
+    },
+    {
+      accessorKey: 'idCard',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <CreditCard className="size-4" />
+            {t('idCard')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center">
+            <span className="font-mono text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded">
+              {row.original.idCard}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'createdAt',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Calendar className="size-4" />
+            {t('joinedDate')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+            {formatDate(row.original.createdAt.toString())}
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const dateA = new Date(rowA.original.createdAt.toString()).getTime();
+        const dateB = new Date(rowB.original.createdAt.toString()).getTime();
+        return dateA - dateB;
+      },
+    },
+  ];
+
+  if (showActions) {
+    columns.push({
+      id: 'actions',
+      header: () => <div className="text-center">{t('actions')}</div>,
+      cell: ({ row }) => {
+        const teacher = row.original;
+        return (
+          <div className="text-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="size-8 p-0">
+                  <span className="sr-only">{t('openMenu')}</span>
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+
+                {onPaySalary && (
+                  <>
+                    <DropdownMenuItem
+                      className="cursor-pointer text-green-600 dark:text-green-400 font-medium"
+                      onClick={() => onPaySalary(teacher)}
+                    >
+                      <Briefcase className="size-4 mr-2" />
+                      {t('paySalary')}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {onViewDetail && (
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => onViewDetail(teacher)}>
+                    <Eye className="size-4 mr-2" />
+                    {t('viewDetail')}
+                  </DropdownMenuItem>
+                )}
+                {onEdit && (
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(teacher)}>
+                    <Edit className="size-4 mr-2" />
+                    {t('edit')}
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    className="cursor-pointer text-red-600 dark:text-red-400"
+                    onClick={() => {
+                      if (window.confirm(t('confirmDelete'))) {
+                        onDelete(teacher.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-4 mr-2" />
+                    {t('delete')}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    });
+  }
+
   return (
     <Card
       className={cn(
@@ -82,181 +309,14 @@ export function TeacherTable({
           )}
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table className={cn('min-w-225', showActions && 'min-w-250')}>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-700">
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <User className="size-4" />
-                  {t('teacherName')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <Mail className="size-4" />
-                  {t('contact')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <DollarSign className="size-4" />
-                  {t('salary')}
-                </div>
-              </TableHead>
-              {/* <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Award className="size-4" />
-                  {t('experience')}
-                </div>
-              </TableHead> */}
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <BookOpen className="size-4" />
-                  {t('totalClasses')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Calendar className="size-4" />
-                  {t('dob')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <CreditCard className="size-4" />
-                  {t('idCard')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Calendar className="size-4" />
-                  {t('joinedDate')}
-                </div>
-              </TableHead>
-              {showActions && (
-                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                  {t('actions')}
-                </TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {teachers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={showActions ? 8 : 7} className="h-24 text-center text-slate-500">
-                  {t('noTeachersFound')}
-                </TableCell>
-              </TableRow>
-            ) : (
-              teachers.map((teacher) => (
-                <TableRow key={teacher.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                    <div className="space-y-0.5">
-                      <div>{teacher.fullName}</div>
-                      <div className="text-xs text-slate-500">
-                        {teacher.gender === 'MALE' ? t('male') : teacher.gender === 'FEMALE' ? t('female') : t('other')}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                        <Mail className="size-3.5 text-slate-500" />
-                        <span className="text-xs">{teacher.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                        <Phone className="size-3.5 text-slate-500" />
-                        <span className="text-xs">{teacher.phoneNumber}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="text-base font-bold text-green-600 dark:text-green-400">
-                      {formatCurrency(9999999)}
-                    </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">{t('perMonth')}</div>
-                  </TableCell>
-                  {/* <TableCell className="text-center">
-                    <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-sm font-medium">
-                      {999} {t('years')}
-                    </span>
-                  </TableCell> */}
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="font-semibold ml-8">
-                      {teacher?.classList?.length || 0}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
-                    {formatDate(teacher.dob.toString())}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="font-mono text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded">
-                      {teacher.idCard}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
-                    {formatDate(teacher.createdAt.toString())}
-                  </TableCell>
-                  {showActions && (
-                    <TableCell className="text-center">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="size-8 p-0">
-                            <span className="sr-only">{t('openMenu')}</span>
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-
-                          {onPaySalary && (
-                            <>
-                              <DropdownMenuItem
-                                className="cursor-pointer text-green-600 dark:text-green-400 font-medium"
-                                onClick={() => onPaySalary(teacher)}
-                              >
-                                <Briefcase className="size-4 mr-2" />
-                                {t('paySalary')}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
-                          {onViewDetail && (
-                            <DropdownMenuItem className="cursor-pointer" onClick={() => onViewDetail(teacher)}>
-                              <Eye className="size-4 mr-2" />
-                              {t('viewDetail')}
-                            </DropdownMenuItem>
-                          )}
-                          {onEdit && (
-                            <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(teacher)}>
-                              <Edit className="size-4 mr-2" />
-                              {t('edit')}
-                            </DropdownMenuItem>
-                          )}
-                          {onDelete && (
-                            <DropdownMenuItem
-                              className="cursor-pointer text-red-600 dark:text-red-400"
-                              onClick={() => {
-                                if (window.confirm(t('confirmDelete'))) {
-                                  onDelete(teacher.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="size-4 mr-2" />
-                              {t('delete')}
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <CardContent>
+        {teachers.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('noTeachersFound')}</p>
+          </div>
+        ) : (
+          <DataTable columns={columns} data={teachers} />
+        )}
       </CardContent>
     </Card>
   );

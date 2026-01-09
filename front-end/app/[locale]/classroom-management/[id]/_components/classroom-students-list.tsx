@@ -1,10 +1,13 @@
+'use client';
+
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { StudentType } from '@/types';
 import { formatDate } from '@/utils/helper';
 import { Calendar, Mail, Phone, User2, UserCircle, Users, UsersRound } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { ColumnDef } from '@tanstack/react-table';
 
 interface ClassroomStudentsListProps {
   students: StudentType[];
@@ -22,6 +25,146 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
     return variants[gender] || variants.other;
   };
 
+  const columns: ColumnDef<StudentType>[] = [
+    {
+      accessorKey: 'fullName',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <User2 className="size-4" />
+            {t('studentName')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="font-medium text-slate-900 dark:text-slate-100">{row.original.fullName}</div>
+        );
+      },
+    },
+    {
+      accessorKey: 'fullNameParent',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <UserCircle className="size-4" />
+            {t('parentName')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return <div className="text-slate-700 dark:text-slate-300">{row.original.fullNameParent}</div>;
+      },
+    },
+    {
+      id: 'studentContact',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Phone className="size-4" />
+          {t('studentContact')}
+        </div>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <Phone className="size-3.5 text-slate-500" />
+              <span>{row.original.phoneNumber}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+              <Mail className="size-3.5 text-slate-500" />
+              <span>{row.original.email}</span>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'parentContact',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Phone className="size-4" />
+          {t('parentContact')}
+        </div>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+            <Phone className="size-3.5 text-slate-500" />
+            <span>{row.original.phoneNumberParent}</span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'gender',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <UsersRound className="size-4" />
+            {t('gender')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center">
+            <Badge className={getGenderBadge(row.original.gender)}>
+              {row.original.gender === 'MALE' ? 'Nam' : 'Nữ'}
+            </Badge>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'dob',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Calendar className="size-4" />
+            {t('dob')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+            {formatDate(row.original.dob)}
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const dateA = new Date(rowA.original.dob).getTime();
+        const dateB = new Date(rowB.original.dob).getTime();
+        return dateA - dateB;
+      },
+    },
+    {
+      id: 'joinedAt',
+      accessorFn: (row) => row.class?.joinAt || '',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Calendar className="size-4" />
+            {t('joinedAt')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+            {formatDate(row.original.class?.joinAt || '')}
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const dateA = rowA.original.class?.joinAt ? new Date(rowA.original.class.joinAt).getTime() : 0;
+        const dateB = rowB.original.class?.joinAt ? new Date(rowB.original.class.joinAt).getTime() : 0;
+        return dateA - dateB;
+      },
+    },
+  ];
+
   return (
     <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg">
       <CardHeader>
@@ -33,90 +176,14 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table className="min-w-[1200px]">
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-700">
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <User2 className="size-4" />
-                  {t('studentName')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <UserCircle className="size-4" />
-                  {t('parentName')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <Phone className="size-4" />
-                  {t('studentContact')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <Phone className="size-4" />
-                  {t('parentContact')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <UsersRound className="size-4" />
-                  {t('gender')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Calendar className="size-4" />
-                  {t('dob')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Calendar className="size-4" />
-                  {t('joinedAt')}
-                </div>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {students.map((student) => (
-              <TableRow key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                <TableCell className="font-medium text-slate-900 dark:text-slate-100">{student.fullName}</TableCell>
-                <TableCell className="text-slate-700 dark:text-slate-300">{student.fullNameParent}</TableCell>
-                <TableCell>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                      <Phone className="size-3.5 text-slate-500" />
-                      <span>{student.phoneNumber}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                      <Mail className="size-3.5 text-slate-500" />
-                      <span>{student.email}</span>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                    <Phone className="size-3.5 text-slate-500" />
-                    <span>{student.phoneNumberParent}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge className={getGenderBadge(student.gender)}>{student.gender === 'MALE' ? 'Nam' : 'Nữ'}</Badge>
-                </TableCell>
-                <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
-                  {formatDate(student.dob)}
-                </TableCell>
-                <TableCell className="text-center text-slate-600 dark:text-slate-400 text-sm">
-                  {formatDate(student.class.joinAt)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <CardContent>
+        {students.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Chưa có học viên nào trong lớp</p>
+          </div>
+        ) : (
+          <DataTable columns={columns} data={students} />
+        )}
       </CardContent>
     </Card>
   );

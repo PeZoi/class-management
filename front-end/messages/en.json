@@ -353,6 +353,7 @@
     "statusStudying": "Studying",
     "statusCompleted": "Completed",
     "statusTransferred": "Transferred",
+    "statusDropped": "Dropped",
     "paymentHistory": "Payment History",
     "noPaymentHistory": "No payment history",
     "totalPaid": "Total Paid",

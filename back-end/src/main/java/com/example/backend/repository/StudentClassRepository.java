@@ -49,4 +49,12 @@ public interface StudentClassRepository extends JpaRepository<StudentClass,Long>
                 @Param("classStatus") StudentClassStatus classStatus,
                 @Param("studentStatus") StudentStatus studentStatus
         ); // Lấy tất cả học sinh của 1 lớp học
+
+    @Query("""
+        SELECT sc
+        FROM StudentClass sc
+        WHERE sc.student.id = :studentId
+        ORDER BY sc.joinedAt DESC
+    """)
+    List<StudentClass> findAllByStudentId(@Param("studentId") String studentId); // Lấy tất cả lịch sử lớp học của học viên
 }

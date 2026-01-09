@@ -433,6 +433,7 @@
     "statusStudying": "Đang học",
     "statusCompleted": "Hoàn thành",
     "statusTransferred": "Chuyển lớp",
+    "statusDropped": "Bỏ học",
     "paymentHistory": "Lịch Sử Đóng Tiền",
     "noPaymentHistory": "Chưa có lịch sử thanh toán",
     "totalPaid": "Tổng đã đóng",
