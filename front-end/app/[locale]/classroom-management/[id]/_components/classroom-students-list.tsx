@@ -245,11 +245,16 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
     },
     {
       id: 'unpaidMonths',
-      header: () => (
-        <div className="flex items-center justify-center gap-2">
-          <Calendar className="size-4" />
-          {t('unpaidMonths')}
-        </div>
+      accessorFn: (row) => {
+        return row.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+      },
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Calendar className="size-4" />
+            {t('unpaidMonths')}
+          </div>
+        </SortableHeader>
       ),
       cell: ({ row }) => {
         const unpaidMonths =
@@ -259,6 +264,13 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
             {unpaidMonths}
           </div>
         );
+      },
+      sortingFn: (rowA, rowB) => {
+        const unpaidMonthsA =
+          rowA.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+        const unpaidMonthsB =
+          rowB.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+        return unpaidMonthsA - unpaidMonthsB;
       },
     },
     {

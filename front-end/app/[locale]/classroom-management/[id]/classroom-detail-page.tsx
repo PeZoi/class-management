@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ClassroomDetailHeader,
   ClassroomDetailRevenueChart,
@@ -9,277 +9,48 @@ import {
   ClassroomStatsCards,
   ClassroomStudentsList,
   ClassroomTeacherInfo,
-  ClassroomUnpaidStudentsList,
   ClassroomStudentAttendance,
 } from './_components';
-import { PaymentActionDialog } from '@/app/[locale]/student-management/_components/payment-action-dialog';
 import { classService, studentService } from '@/services';
-import { ClassType, StudentType, TeacherType } from '@/types';
+import { ClassType, StudentType, TeacherType, ClassSingleRevenueDataResponse } from '@/types';
 import { toast } from 'react-toastify';
 import { PageLoading } from '@/components/page-loading';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
-interface Student {
-  id: number;
-  studentName: string;
-  parentName: string;
-  studentPhoneNumber: string;
-  parentPhoneNumber: string;
-  email: string;
-  dob: string; // Date of Birth
-  gender: 'male' | 'female' | 'other';
-  classJoinedAt: string;
-  paymentStatus: 'paid' | 'unpaid' | 'partial';
-  amountPaid: number;
-  totalFee: number;
-}
-
-// Mock data - trong thực tế sẽ fetch từ API dựa vào id
-const classDetails = {
-  1: {
-    id: 1,
-    name: 'JavaScript Nâng Cao',
-    teacher: 'Nguyễn Văn A',
-    teacherEmail: 'nguyenvana@example.com',
-    teacherPhone: '0912345678',
-    students: 35,
-    revenue: 87500000,
-    schedule: 'Thứ 2, Thứ 4, Thứ 6',
-    time: '19:00 - 21:00',
-    duration: '3 tháng',
-    monthlyFee: 2500000,
-    collected: 87500000,
-    total: 87500000,
-    level: 'Intermediate',
-    description: 'Khóa học JavaScript nâng cao dành cho những người đã có kiến thức cơ bản về JavaScript',
-    color: '#3b82f6',
-  },
-  2: {
-    id: 2,
-    name: 'React & Next.js',
-    teacher: 'Trần Thị B',
-    teacherEmail: 'tranthib@example.com',
-    teacherPhone: '0987654321',
-    students: 42,
-    revenue: 126000000,
-    schedule: 'Thứ 3, Thứ 5, Thứ 7',
-    time: '18:30 - 20:30',
-    duration: '4 tháng',
-    monthlyFee: 3000000,
-    collected: 108000000,
-    total: 126000000,
-    level: 'Advanced',
-    description: 'Học React và Next.js từ cơ bản đến nâng cao',
-    color: '#8b5cf6',
-  },
-  // Add more classes as needed
-};
-
-const revenueDataByClass: Record<
-  number,
-  Record<TimePeriod, Array<{ month: string; revenue: number; label: string }>>
-> = {
-  1: {
-    '3months': [
-      { month: 'T10', revenue: 87500000, label: 'Tháng 10' },
-      { month: 'T11', revenue: 87500000, label: 'Tháng 11' },
-      { month: 'T12', revenue: 87500000, label: 'Tháng 12' },
-    ],
-    '6months': [
-      { month: 'T7', revenue: 85000000, label: 'Tháng 7' },
-      { month: 'T8', revenue: 86000000, label: 'Tháng 8' },
-      { month: 'T9', revenue: 87000000, label: 'Tháng 9' },
-      { month: 'T10', revenue: 87500000, label: 'Tháng 10' },
-      { month: 'T11', revenue: 87500000, label: 'Tháng 11' },
-      { month: 'T12', revenue: 87500000, label: 'Tháng 12' },
-    ],
-    '12months': [
-      { month: 'T1', revenue: 80000000, label: 'Tháng 1' },
-      { month: 'T2', revenue: 81000000, label: 'Tháng 2' },
-      { month: 'T3', revenue: 82000000, label: 'Tháng 3' },
-      { month: 'T4', revenue: 83000000, label: 'Tháng 4' },
-      { month: 'T5', revenue: 84000000, label: 'Tháng 5' },
-      { month: 'T6', revenue: 85000000, label: 'Tháng 6' },
-      { month: 'T7', revenue: 85000000, label: 'Tháng 7' },
-      { month: 'T8', revenue: 86000000, label: 'Tháng 8' },
-      { month: 'T9', revenue: 87000000, label: 'Tháng 9' },
-      { month: 'T10', revenue: 87500000, label: 'Tháng 10' },
-      { month: 'T11', revenue: 87500000, label: 'Tháng 11' },
-      { month: 'T12', revenue: 87500000, label: 'Tháng 12' },
-    ],
-  },
-  2: {
-    '3months': [
-      { month: 'T10', revenue: 126000000, label: 'Tháng 10' },
-      { month: 'T11', revenue: 120000000, label: 'Tháng 11' },
-      { month: 'T12', revenue: 126000000, label: 'Tháng 12' },
-    ],
-    '6months': [
-      { month: 'T7', revenue: 120000000, label: 'Tháng 7' },
-      { month: 'T8', revenue: 123000000, label: 'Tháng 8' },
-      { month: 'T9', revenue: 125000000, label: 'Tháng 9' },
-      { month: 'T10', revenue: 126000000, label: 'Tháng 10' },
-      { month: 'T11', revenue: 120000000, label: 'Tháng 11' },
-      { month: 'T12', revenue: 126000000, label: 'Tháng 12' },
-    ],
-    '12months': [
-      { month: 'T1', revenue: 115000000, label: 'Tháng 1' },
-      { month: 'T2', revenue: 116000000, label: 'Tháng 2' },
-      { month: 'T3', revenue: 117000000, label: 'Tháng 3' },
-      { month: 'T4', revenue: 118000000, label: 'Tháng 4' },
-      { month: 'T5', revenue: 119000000, label: 'Tháng 5' },
-      { month: 'T6', revenue: 120000000, label: 'Tháng 6' },
-      { month: 'T7', revenue: 120000000, label: 'Tháng 7' },
-      { month: 'T8', revenue: 123000000, label: 'Tháng 8' },
-      { month: 'T9', revenue: 125000000, label: 'Tháng 9' },
-      { month: 'T10', revenue: 126000000, label: 'Tháng 10' },
-      { month: 'T11', revenue: 120000000, label: 'Tháng 11' },
-      { month: 'T12', revenue: 126000000, label: 'Tháng 12' },
-    ],
-  },
-};
-
-// Mock students data
-const studentsData: Record<number, Student[]> = {
-  1: [
-    {
-      id: 1,
-      studentName: 'Nguyễn Văn A',
-      parentName: 'Nguyễn Văn Phụ Huynh A',
-      studentPhoneNumber: '0901234567',
-      parentPhoneNumber: '0981234567',
-      email: 'nguyenvana@example.com',
-      dob: '2010-05-15',
-      gender: 'male',
-      classJoinedAt: '2024-01-10',
-      paymentStatus: 'paid',
-      amountPaid: 2500000,
-      totalFee: 2500000,
-    },
-    {
-      id: 2,
-      studentName: 'Trần Thị B',
-      parentName: 'Trần Văn Phụ Huynh B',
-      studentPhoneNumber: '0902234567',
-      parentPhoneNumber: '0982234567',
-      email: 'tranthib@example.com',
-      dob: '2011-03-20',
-      gender: 'female',
-      classJoinedAt: '2024-01-15',
-      paymentStatus: 'paid',
-      amountPaid: 2500000,
-      totalFee: 2500000,
-    },
-    {
-      id: 3,
-      studentName: 'Lê Văn C',
-      parentName: 'Lê Thị Phụ Huynh C',
-      studentPhoneNumber: '0903234567',
-      parentPhoneNumber: '0983234567',
-      email: 'levanc@example.com',
-      dob: '2010-08-12',
-      gender: 'male',
-      classJoinedAt: '2024-02-01',
-      paymentStatus: 'partial',
-      amountPaid: 1500000,
-      totalFee: 2500000,
-    },
-    {
-      id: 4,
-      studentName: 'Phạm Thị D',
-      parentName: 'Phạm Văn Phụ Huynh D',
-      studentPhoneNumber: '0904234567',
-      parentPhoneNumber: '0984234567',
-      email: 'phamthid@example.com',
-      dob: '2011-11-25',
-      gender: 'female',
-      classJoinedAt: '2024-02-15',
-      paymentStatus: 'unpaid',
-      amountPaid: 0,
-      totalFee: 2500000,
-    },
-    {
-      id: 5,
-      studentName: 'Võ Minh E',
-      parentName: 'Võ Văn Phụ Huynh E',
-      studentPhoneNumber: '0905234567',
-      parentPhoneNumber: '0985234567',
-      email: 'vominhe@example.com',
-      dob: '2010-07-08',
-      gender: 'male',
-      classJoinedAt: '2024-03-01',
-      paymentStatus: 'paid',
-      amountPaid: 2500000,
-      totalFee: 2500000,
-    },
-    {
-      id: 6,
-      studentName: 'Đặng Thị F',
-      parentName: 'Đặng Văn Phụ Huynh F',
-      studentPhoneNumber: '0906234567',
-      parentPhoneNumber: '0986234567',
-      email: 'dangthif@example.com',
-      dob: '2011-02-14',
-      gender: 'female',
-      classJoinedAt: '2024-03-15',
-      paymentStatus: 'partial',
-      amountPaid: 2000000,
-      totalFee: 2500000,
-    },
-  ],
-  2: [
-    {
-      id: 1,
-      studentName: 'Hoàng Văn G',
-      parentName: 'Hoàng Thị Phụ Huynh G',
-      studentPhoneNumber: '0907234567',
-      parentPhoneNumber: '0987234567',
-      email: 'hoangvang@example.com',
-      dob: '2009-04-22',
-      gender: 'male',
-      classJoinedAt: '2024-01-05',
-      paymentStatus: 'paid',
-      amountPaid: 3000000,
-      totalFee: 3000000,
-    },
-    {
-      id: 2,
-      studentName: 'Bùi Thị H',
-      parentName: 'Bùi Văn Phụ Huynh H',
-      studentPhoneNumber: '0908234567',
-      parentPhoneNumber: '0988234567',
-      email: 'buithih@example.com',
-      dob: '2009-09-18',
-      gender: 'female',
-      classJoinedAt: '2024-01-20',
-      paymentStatus: 'paid',
-      amountPaid: 3000000,
-      totalFee: 3000000,
-    },
-  ],
-};
-
 export default function ClassroomDetailPage() {
   const params = useParams();
   const classId = params.id;
-  const classIdTmp = Number(params.id);
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [studentForPayment, setStudentForPayment] = useState<{
-    id: number;
-    name: string;
-    className: string;
-    monthlyFee: number;
-    amountPaid: number;
-  } | null>(null);
-  const [studentsState, setStudentsState] = useState<Student[]>([]);
   const [students, setStudents] = useState<StudentType[]>([]);
   const [classData, setClassData] = useState<ClassType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
+  const [revenueData, setRevenueData] = useState<Array<{ month: string; revenue: number; label: string }>>([]);
 
-  const initialStudents = studentsData[classIdTmp] || studentsData[1];
+  // Fetch revenue data from BE
+  const fetchRevenueData = useCallback(async (classIdParam: string, period: TimePeriod) => {
+    try {
+      setIsLoadingRevenue(true);
+      const response = await classService.getRevenueDataByClassIdAndPeriod(classIdParam, period);
+      if (response.status === 200 && response.data) {
+        // Map dữ liệu từ BE sang format mà component cần
+        const mappedData = response.data.map((item: ClassSingleRevenueDataResponse) => ({
+          month: item.month,
+          label: item.label,
+          revenue: item.revenue || 0,
+        }));
+        setRevenueData(mappedData);
+      }
+    } catch (error) {
+      console.error('Error fetching revenue data:', error);
+      toast.error('Không thể tải dữ liệu doanh thu');
+      setRevenueData([]);
+    } finally {
+      setIsLoadingRevenue(false);
+    }
+  }, []);
 
   // Initialize students state
   useEffect(() => {
@@ -311,19 +82,38 @@ export default function ClassroomDetailPage() {
       fetchClass();
       fetchStudents();
     }
-  }, [classId, classIdTmp]);
+  }, [classId]);
 
-  const _students = studentsState.length > 0 ? studentsState : initialStudents;
-  const revenueData = revenueDataByClass[classIdTmp]?.[selectedPeriod] || revenueDataByClass[1][selectedPeriod];
+  // Fetch revenue data when period or classId changes
+  useEffect(() => {
+    if (classId) {
+      fetchRevenueData(classId as string, selectedPeriod);
+    }
+  }, [classId, selectedPeriod, fetchRevenueData]);
 
   // Transform ClassType to UI format with additional static fields
   const getClassDataForUI = (data: ClassType | null) => {
     if (!data) {
-      const fallback = classDetails[classIdTmp as keyof typeof classDetails] || classDetails[1];
-      return fallback;
+      return {
+        id: 0,
+        name: 'Chưa có tên',
+        teacher: 'Chưa có giáo viên',
+        teacherEmail: '',
+        teacherPhone: '',
+        students: 0,
+        revenue: 0,
+        schedule: 'Chưa có lịch học',
+        time: '19:00 - 21:00', // Dữ liệu tĩnh
+        duration: '3 tháng', // Dữ liệu tĩnh
+        monthlyFee: 0,
+        collected: 0,
+        total: 0,
+        description: '',
+        color: '#3b82f6', // Dữ liệu tĩnh
+      };
     }
     return {
-      id: Number(data.id) || classIdTmp,
+      id: Number(data.id) || 0,
       name: data.name || 'Chưa có tên',
       teacher: data.teacher?.fullName || 'Chưa có giáo viên',
       teacherEmail: data.teacher?.email || '',
@@ -347,71 +137,6 @@ export default function ClassroomDetailPage() {
     return <PageLoading />;
   }
 
-  const handlePayment = (student: Student) => {
-    // Transform Student to match PaymentActionDialog's expected format
-    const studentForDialog: {
-      id: number;
-      name: string;
-      className: string;
-      monthlyFee: number;
-      amountPaid: number;
-    } = {
-      id: student.id,
-      name: student.studentName,
-      className: currentClassData.name,
-      monthlyFee: student.totalFee,
-      amountPaid: student.amountPaid,
-    };
-    setStudentForPayment(studentForDialog);
-    setIsPaymentDialogOpen(true);
-  };
-
-  const handleConfirmPayment = (
-    studentId: number,
-    paymentData: {
-      amount: number;
-      paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
-      paymentDate: string;
-      notes: string;
-    },
-  ) => {
-    setStudentsState((prev) =>
-      prev.map((s) => {
-        if (s.id === studentId) {
-          const newAmountPaid = s.amountPaid + paymentData.amount;
-          let newPaymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
-
-          if (newAmountPaid >= s.totalFee) {
-            newPaymentStatus = 'paid';
-          } else if (newAmountPaid > 0) {
-            newPaymentStatus = 'partial';
-          }
-
-          // TODO: Tạo hóa đơn tự động ở đây
-          console.log('Tạo hóa đơn cho học viên trong lớp:', {
-            studentId: s.id,
-            studentName: s.studentName,
-            className: currentClassData.name,
-            amount: paymentData.amount,
-            paymentMethod: paymentData.paymentMethod,
-            paymentDate: paymentData.paymentDate,
-            notes: paymentData.notes,
-          });
-
-          return {
-            ...s,
-            amountPaid: newAmountPaid,
-            paymentStatus: newPaymentStatus,
-          };
-        }
-        return s;
-      }),
-    );
-
-    setIsPaymentDialogOpen(false);
-    setStudentForPayment(null);
-  };
-
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
       {/* Header with Breadcrumb */}
@@ -429,29 +154,20 @@ export default function ClassroomDetailPage() {
       </div>
 
       {/* Revenue Chart */}
-      <ClassroomDetailRevenueChart
-        selectedPeriod={selectedPeriod}
-        onPeriodChange={setSelectedPeriod}
-        revenueData={revenueData}
-        color={currentClassData.color}
-      />
+      {!isLoadingRevenue && revenueData.length > 0 && (
+        <ClassroomDetailRevenueChart
+          selectedPeriod={selectedPeriod}
+          onPeriodChange={setSelectedPeriod}
+          revenueData={revenueData}
+          color={currentClassData.color}
+        />
+      )}
 
       {/* Students List */}
       <ClassroomStudentsList students={students} />
 
       {/* Student Attendance */}
       <ClassroomStudentAttendance students={students} />
-
-      {/* Unpaid Students List */}
-      <ClassroomUnpaidStudentsList students={_students} onPayment={handlePayment} />
-
-      {/* Payment Dialog */}
-      <PaymentActionDialog
-        open={isPaymentDialogOpen}
-        onOpenChange={setIsPaymentDialogOpen}
-        student={studentForPayment}
-        onConfirm={handleConfirmPayment}
-      />
     </div>
   );
 }

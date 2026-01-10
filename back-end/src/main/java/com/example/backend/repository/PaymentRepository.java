@@ -1,6 +1,7 @@
 package com.example.backend.repository;
 
 import com.example.backend.entity.Payment;
+import com.example.backend.enums.PaymentDirection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,4 +28,16 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     // Lấy tất cả payments, mới nhất trước
     List<Payment> findAllByOrderByCreatedAtDesc();
+
+    // Tính tổng số tiền đã thu (collected) và doanh thu (revenue) cho một class từ payments có direction = INCOME
+    @Query("SELECT COALESCE(SUM(p.paid), 0) FROM Payment p WHERE p.clazz.id = :classId AND p.direction = :direction")
+    Long sumByClassIdAndDirection(@Param("classId") String classId, @Param("direction") PaymentDirection direction);
+
+    // Tính tổng số tiền đã thu (collected) và doanh thu (revenue) cho một class từ payments có direction = INCOME trong tháng hiện tại
+    @Query("SELECT COALESCE(SUM(p.paid), 0) FROM Payment p WHERE p.clazz.id = :classId AND p.direction = :direction AND p.billingMonth = :billingMonth")
+    Long sumByClassIdAndDirectionAndMonth(@Param("classId") String classId, @Param("direction") PaymentDirection direction, @Param("billingMonth") Instant billingMonth);
+
+    // Tính tổng revenue cho một class trong một tháng cụ thể (direction = INCOME)
+    @Query("SELECT COALESCE(SUM(p.paid), 0) FROM Payment p WHERE p.clazz.id = :classId AND p.direction = :direction AND p.billingMonth = :billingMonth")
+    Long sumRevenueByClassIdAndMonth(@Param("classId") String classId, @Param("direction") PaymentDirection direction, @Param("billingMonth") Instant billingMonth);
 }

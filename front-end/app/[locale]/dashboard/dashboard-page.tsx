@@ -1,9 +1,13 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { formatCurrency } from '@/utils/helper';
 import { OverduePaymentsAlert, RecentClassesTable, RevenueChart, StatsCards } from '@/app/[locale]/dashboard/_components';
+import { classService } from '@/services/class-service';
+import { ClassType } from '@/types/class-type';
+import { toast } from 'react-toastify';
+import { PageLoading } from '@/components/page-loading';
 
 // Dữ liệu tĩnh cho dashboard
 const statsData = {
@@ -47,69 +51,6 @@ const revenueData = {
     { month: 'T12', revenue: 680000000, label: 'Tháng 12' },
   ],
 };
-
-const recentClasses = [
-  {
-    id: 1,
-    name: 'JavaScript Nâng Cao',
-    teacher: 'Nguyễn Văn A',
-    students: 35,
-    revenue: 87500000,
-    schedule: 'T2, T4, T6 - 19:00',
-    duration: '3 tháng',
-    monthlyFee: 2500000, // Học phí mỗi học viên
-    collected: 87500000, // Đã thu
-    total: 87500000, // Tổng cần thu (students * monthlyFee)
-  },
-  {
-    id: 2,
-    name: 'React & Next.js',
-    teacher: 'Trần Thị B',
-    students: 42,
-    revenue: 126000000,
-    schedule: 'T3, T5, T7 - 18:30',
-    duration: '4 tháng',
-    monthlyFee: 3000000,
-    collected: 108000000,
-    total: 126000000,
-  },
-  {
-    id: 3,
-    name: 'Python for Data Science',
-    teacher: 'Lê Văn C',
-    students: 28,
-    revenue: 98000000,
-    schedule: 'T2, T4 - 20:00',
-    duration: '3 tháng',
-    monthlyFee: 3500000,
-    collected: 98000000,
-    total: 98000000,
-  },
-  {
-    id: 4,
-    name: 'UI/UX Design Fundamentals',
-    teacher: 'Phạm Thị D',
-    students: 30,
-    revenue: 75000000,
-    schedule: 'T7, CN - 14:00',
-    duration: '2 tháng',
-    monthlyFee: 2500000,
-    collected: 62500000,
-    total: 75000000,
-  },
-  {
-    id: 5,
-    name: 'Machine Learning',
-    teacher: 'Hoàng Văn E',
-    students: 25,
-    revenue: 112500000,
-    schedule: 'T3, T5 - 19:30',
-    duration: '5 tháng',
-    monthlyFee: 4500000,
-    collected: 90000000,
-    total: 112500000,
-  },
-];
 
 // Dữ liệu học viên nợ học phí
 const overduePayments = [
@@ -280,8 +221,35 @@ type TimePeriod = '3months' | '6months' | '12months';
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
+  const [topClasses, setTopClasses] = useState<ClassType[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const currentRevenueData = revenueData[selectedPeriod];
+
+  // Fetch top 3 classes by revenue
+  const fetchTop3Classes = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await classService.getTop3ClassesByRevenue();
+      if (response.status === 200 && response.data) {
+        setTopClasses(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching top 3 classes:', error);
+      toast.error('Không thể tải dữ liệu top 3 lớp học');
+      setTopClasses([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTop3Classes();
+  }, [fetchTop3Classes]);
+
+  if (loading) {
+    return <PageLoading />;
+  }
 
   return (
     <div className="space-y-4 md:space-y-6 lg:space-y-8 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
@@ -310,8 +278,8 @@ export default function DashboardPage() {
         <OverduePaymentsAlert overduePayments={overduePayments} formatCurrency={formatCurrency} className="w-full" />
       </div>
 
-      {/* Recent Classes Table */}
-      <RecentClassesTable recentClasses={recentClasses} formatCurrency={formatCurrency} />
+      {/* Top 3 Classes by Revenue Table */}
+      <RecentClassesTable topClasses={topClasses} formatCurrency={formatCurrency} />
     </div>
   );
 }

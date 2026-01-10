@@ -19,3 +19,15 @@ export interface ClassType {
   total: number;
   teacher: TeacherType;
 }
+
+export interface ClassRevenueDataResponse {
+  month: string; // "T1", "T2", etc.
+  label: string; // "Tháng 1", "Tháng 2", etc.
+  classRevenues: Record<string, number>; // { "class_1": revenue, "class_2": revenue, ... }
+}
+
+export interface ClassSingleRevenueDataResponse {
+  month: string; // "T1", "T2", etc.
+  label: string; // "Tháng 1", "Tháng 2", etc.
+  revenue: number; // Revenue cho class này trong tháng này
+}

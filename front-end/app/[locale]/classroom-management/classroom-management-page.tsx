@@ -6,231 +6,27 @@ import { ClassroomTable } from './_components/classroom-table';
 import { ClassroomDialog } from './_components/classroom-dialog';
 import { ClassroomRevenueChart } from './_components/classroom-revenue-chart';
 import { useTranslations } from 'next-intl';
-import { ClassRequest, ClassType } from '@/types/class-type';
+import { ClassRequest, ClassType, ClassRevenueDataResponse } from '@/types/class-type';
 import { classService } from '@/services/class-service';
 import { toast } from 'react-toastify';
 import { PageLoading } from '@/components/page-loading';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
-// Màu sắc cho từng lớp học
-const classColors = [
-  { id: 1, name: 'JavaScript Nâng Cao', color: '#3b82f6' }, // Blue
-  { id: 2, name: 'React & Next.js', color: '#8b5cf6' }, // Purple
-  { id: 3, name: 'Python for Data Science', color: '#10b981' }, // Green
-  { id: 4, name: 'UI/UX Design Fundamentals', color: '#f59e0b' }, // Orange
-  { id: 5, name: 'Machine Learning', color: '#ef4444' }, // Red
+// Màu sắc cho từng lớp học (sẽ map động từ classes)
+const colorPalette = [
+  '#3b82f6', // Blue
+  '#8b5cf6', // Purple
+  '#10b981', // Green
+  '#f59e0b', // Orange
+  '#ef4444', // Red
+  '#06b6d4', // Cyan
+  '#f97316', // Orange-600
+  '#ec4899', // Pink
+  '#6366f1', // Indigo
+  '#14b8a6', // Teal
 ];
 
-// Dữ liệu doanh thu so sánh tất cả các lớp theo tháng
-const revenueComparisonData: Record<
-  TimePeriod,
-  Array<{
-    month: string;
-    label: string;
-    class_1: number;
-    class_2: number;
-    class_3: number;
-    class_4: number;
-    class_5: number;
-  }>
-> = {
-  '3months': [
-    {
-      month: 'T10',
-      label: 'Tháng 10',
-      class_1: 87500000,
-      class_2: 126000000,
-      class_3: 98000000,
-      class_4: 75000000,
-      class_5: 112500000,
-    },
-    {
-      month: 'T11',
-      label: 'Tháng 11',
-      class_1: 87500000,
-      class_2: 120000000,
-      class_3: 98000000,
-      class_4: 70000000,
-      class_5: 105000000,
-    },
-    {
-      month: 'T12',
-      label: 'Tháng 12',
-      class_1: 87500000,
-      class_2: 126000000,
-      class_3: 98000000,
-      class_4: 75000000,
-      class_5: 112500000,
-    },
-  ],
-  '6months': [
-    {
-      month: 'T7',
-      label: 'Tháng 7',
-      class_1: 85000000,
-      class_2: 120000000,
-      class_3: 95000000,
-      class_4: 72000000,
-      class_5: 108000000,
-    },
-    {
-      month: 'T8',
-      label: 'Tháng 8',
-      class_1: 86000000,
-      class_2: 123000000,
-      class_3: 96000000,
-      class_4: 73000000,
-      class_5: 110000000,
-    },
-    {
-      month: 'T9',
-      label: 'Tháng 9',
-      class_1: 87000000,
-      class_2: 125000000,
-      class_3: 97000000,
-      class_4: 74000000,
-      class_5: 111000000,
-    },
-    {
-      month: 'T10',
-      label: 'Tháng 10',
-      class_1: 87500000,
-      class_2: 126000000,
-      class_3: 98000000,
-      class_4: 75000000,
-      class_5: 112500000,
-    },
-    {
-      month: 'T11',
-      label: 'Tháng 11',
-      class_1: 87500000,
-      class_2: 120000000,
-      class_3: 98000000,
-      class_4: 70000000,
-      class_5: 105000000,
-    },
-    {
-      month: 'T12',
-      label: 'Tháng 12',
-      class_1: 87500000,
-      class_2: 126000000,
-      class_3: 98000000,
-      class_4: 75000000,
-      class_5: 112500000,
-    },
-  ],
-  '12months': [
-    {
-      month: 'T1',
-      label: 'Tháng 1',
-      class_1: 80000000,
-      class_2: 115000000,
-      class_3: 90000000,
-      class_4: 68000000,
-      class_5: 100000000,
-    },
-    {
-      month: 'T2',
-      label: 'Tháng 2',
-      class_1: 81000000,
-      class_2: 116000000,
-      class_3: 91000000,
-      class_4: 69000000,
-      class_5: 102000000,
-    },
-    {
-      month: 'T3',
-      label: 'Tháng 3',
-      class_1: 82000000,
-      class_2: 117000000,
-      class_3: 92000000,
-      class_4: 70000000,
-      class_5: 104000000,
-    },
-    {
-      month: 'T4',
-      label: 'Tháng 4',
-      class_1: 83000000,
-      class_2: 118000000,
-      class_3: 93000000,
-      class_4: 71000000,
-      class_5: 106000000,
-    },
-    {
-      month: 'T5',
-      label: 'Tháng 5',
-      class_1: 84000000,
-      class_2: 119000000,
-      class_3: 94000000,
-      class_4: 71500000,
-      class_5: 107000000,
-    },
-    {
-      month: 'T6',
-      label: 'Tháng 6',
-      class_1: 85000000,
-      class_2: 120000000,
-      class_3: 95000000,
-      class_4: 72000000,
-      class_5: 108000000,
-    },
-    {
-      month: 'T7',
-      label: 'Tháng 7',
-      class_1: 85000000,
-      class_2: 120000000,
-      class_3: 95000000,
-      class_4: 72000000,
-      class_5: 108000000,
-    },
-    {
-      month: 'T8',
-      label: 'Tháng 8',
-      class_1: 86000000,
-      class_2: 123000000,
-      class_3: 96000000,
-      class_4: 73000000,
-      class_5: 110000000,
-    },
-    {
-      month: 'T9',
-      label: 'Tháng 9',
-      class_1: 87000000,
-      class_2: 125000000,
-      class_3: 97000000,
-      class_4: 74000000,
-      class_5: 111000000,
-    },
-    {
-      month: 'T10',
-      label: 'Tháng 10',
-      class_1: 87500000,
-      class_2: 126000000,
-      class_3: 98000000,
-      class_4: 75000000,
-      class_5: 112500000,
-    },
-    {
-      month: 'T11',
-      label: 'Tháng 11',
-      class_1: 87500000,
-      class_2: 120000000,
-      class_3: 98000000,
-      class_4: 70000000,
-      class_5: 105000000,
-    },
-    {
-      month: 'T12',
-      label: 'Tháng 12',
-      class_1: 87500000,
-      class_2: 126000000,
-      class_3: 98000000,
-      class_4: 75000000,
-      class_5: 112500000,
-    },
-  ],
-};
 
 export default function ClassroomManagementPage() {
   const t = useTranslations('classroom-management');
@@ -238,9 +34,15 @@ export default function ClassroomManagementPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
 
   // Chart state
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
+  const [revenueData, setRevenueData] = useState<Array<{
+    month: string;
+    label: string;
+    [key: string]: string | number;
+  }>>([]);
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -257,11 +59,48 @@ export default function ClassroomManagementPage() {
     }
   }, []);
 
+  // Fetch revenue data from BE
+  const fetchRevenueData = useCallback(async (period: TimePeriod) => {
+    try {
+      setIsLoadingRevenue(true);
+      const response = await classService.getRevenueDataByPeriod(period);
+      if (response.status === 200 && response.data) {
+        // Map dữ liệu từ BE sang format mà component cần
+        const mappedData = response.data.map((item: ClassRevenueDataResponse) => {
+          const revenueItem: { month: string; label: string; [key: string]: string | number } = {
+            month: item.month,
+            label: item.label,
+          };
+          
+          // Map classRevenues từ Map sang object
+          Object.entries(item.classRevenues || {}).forEach(([key, value]) => {
+            revenueItem[key] = value || 0;
+          });
+          
+          return revenueItem;
+        });
+        
+        setRevenueData(mappedData);
+      }
+    } catch (error) {
+      console.error('Error fetching revenue data:', error);
+      toast.error('Không thể tải dữ liệu doanh thu');
+      setRevenueData([]);
+    } finally {
+      setIsLoadingRevenue(false);
+    }
+  }, []);
+
   // Call API to get all classes
   useEffect(() => {
     fetchClasses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch revenue data when period changes
+  useEffect(() => {
+    fetchRevenueData(selectedPeriod);
+  }, [selectedPeriod, fetchRevenueData]);
 
   const handleAdd = useCallback(() => {
     setSelectedClass(null);
@@ -314,11 +153,16 @@ export default function ClassroomManagementPage() {
     }
   }, []);
 
-  // Get revenue data for chart - memoized to prevent recalculation
-  const currentRevenueData = useMemo(
-    () => revenueComparisonData[selectedPeriod],
-    [selectedPeriod]
-  );
+  // Map classes to classColors dynamically
+  // Sort classes by id to match BE order (BE sorts classes by id before mapping to class_1, class_2, ...)
+  const classColors = useMemo(() => {
+    const sortedClasses = [...classes].sort((a, b) => a.id.localeCompare(b.id));
+    return sortedClasses.map((cls, index) => ({
+      id: index + 1, // 1-based index to match BE format (class_1, class_2, ...)
+      name: cls.name,
+      color: colorPalette[index % colorPalette.length],
+    }));
+  }, [classes]);
 
   // Memoize period change handler
   const handlePeriodChange = useCallback((period: TimePeriod) => {
@@ -343,13 +187,15 @@ export default function ClassroomManagementPage() {
       />
 
       {/* Revenue Chart */}
-      <ClassroomRevenueChart
-        selectedPeriod={selectedPeriod}
-        onPeriodChange={handlePeriodChange}
-        revenueData={currentRevenueData}
-        formatCurrency={formatCurrency}
-        classNames={classColors}
-      />
+      {!isLoadingRevenue && revenueData.length > 0 && (
+        <ClassroomRevenueChart
+          selectedPeriod={selectedPeriod}
+          onPeriodChange={handlePeriodChange}
+          revenueData={revenueData}
+          formatCurrency={formatCurrency}
+          classNames={classColors}
+        />
+      )}
 
       <ClassroomDialog
         open={isDialogOpen}

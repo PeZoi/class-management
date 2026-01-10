@@ -184,33 +184,37 @@ export function ClassroomTable({
       ),
       cell: ({ row }) => {
         const classItem = row.original;
+        const total = classItem.total || 0;
+        const collected = classItem.collected || 0;
+        const percentage = total > 0 ? (collected / total) * 100 : 0;
+        const isFullyCollected = total > 0 && collected >= total;
+        const isHighCollection = total > 0 && percentage >= 80;
+
         return (
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-600 dark:text-slate-400">
-                {((classItem.collected / classItem.total) * 100 || 0).toFixed(1)}% (
-                {classItem.collected === classItem.total ? t('fullyCollected') : t('notFullyCollected')})
+                {percentage.toFixed(1)}% ({isFullyCollected ? t('fullyCollected') : t('notFullyCollected')})
               </span>
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
-                  width: `${(classItem.collected / classItem.total) * 100}%`,
-                  background:
-                    classItem.collected === classItem.total
-                      ? 'linear-gradient(to right, #10b981, #059669)'
-                      : classItem.collected / classItem.total >= 0.8
-                        ? 'linear-gradient(to right, #3b82f6, #2563eb)'
-                        : 'linear-gradient(to right, #f59e0b, #d97706)',
+                  width: `${Math.min(percentage, 100)}%`,
+                  background: isFullyCollected
+                    ? 'linear-gradient(to right, #10b981, #059669)'
+                    : isHighCollection
+                      ? 'linear-gradient(to right, #3b82f6, #2563eb)'
+                      : 'linear-gradient(to right, #f59e0b, #d97706)',
                 }}
               />
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-green-600 dark:text-green-400">
-                {formatCurrency(classItem.collected)}
+                {formatCurrency(collected)}
               </span>
-              <span className="text-slate-500 dark:text-slate-400">/ {formatCurrency(classItem.total)}</span>
+              <span className="text-slate-500 dark:text-slate-400">/ {formatCurrency(total)}</span>
             </div>
           </div>
         );
@@ -227,10 +231,11 @@ export function ClassroomTable({
         </SortableHeader>
       ),
       cell: ({ row }) => {
+        const revenue = row.original.revenue || 0;
         return (
           <div className="text-right">
             <span className="font-bold text-slate-900 dark:text-slate-100">
-              {formatCurrency(row.original.revenue)}
+              {formatCurrency(revenue)}
             </span>
           </div>
         );

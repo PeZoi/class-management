@@ -2,6 +2,8 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.classroom.ClassRequest;
 import com.example.backend.dto.classroom.ClassResponse;
+import com.example.backend.dto.classroom.ClassRevenueDataResponse;
+import com.example.backend.dto.classroom.ClassSingleRevenueDataResponse;
 import com.example.backend.service.ClassService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -50,5 +52,25 @@ public class ClassController {
     public ResponseEntity<ClassResponse> getClassById(@PathVariable(value = "classId") String classId) {
         ClassResponse classResponse = classService.getClassById(classId);
         return new ResponseEntity<>(classResponse, HttpStatus.OK);
+    }
+
+    @GetMapping("/revenue-data/{period}")
+    public ResponseEntity<List<ClassRevenueDataResponse>> getRevenueDataByPeriod(@PathVariable(value = "period") String period) {
+        List<ClassRevenueDataResponse> revenueData = classService.getRevenueDataByPeriod(period);
+        return new ResponseEntity<>(revenueData, HttpStatus.OK);
+    }
+
+    @GetMapping("/{classId}/revenue-data/{period}")
+    public ResponseEntity<List<ClassSingleRevenueDataResponse>> getRevenueDataByClassIdAndPeriod(
+            @PathVariable(value = "classId") String classId,
+            @PathVariable(value = "period") String period) {
+        List<ClassSingleRevenueDataResponse> revenueData = classService.getRevenueDataByClassIdAndPeriod(classId, period);
+        return new ResponseEntity<>(revenueData, HttpStatus.OK);
+    }
+
+    @GetMapping("/top-3-revenue")
+    public ResponseEntity<List<ClassResponse>> getTop3ClassesByRevenue() {
+        List<ClassResponse> topClasses = classService.getTop3ClassesByRevenue();
+        return new ResponseEntity<>(topClasses, HttpStatus.OK);
     }
 }
