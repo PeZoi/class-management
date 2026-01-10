@@ -25,6 +25,7 @@ interface DataTableProps<TData, TValue> {
   className?: string;
   pageSize?: number;
   pageSizeOptions?: number[];
+  getRowClassName?: (row: TData) => string;
 }
 
 export function DataTable<TData, TValue>({ 
@@ -33,6 +34,7 @@ export function DataTable<TData, TValue>({
   className,
   pageSize = 10,
   pageSizeOptions = [5, 10, 20, 30, 50, 100],
+  getRowClassName,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -87,19 +89,25 @@ export function DataTable<TData, TValue>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const customClassName = getRowClassName ? getRowClassName(row.original) : '';
+                return (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && 'selected'}
+                    className={cn(
+                      'transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                      customClassName
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">

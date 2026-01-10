@@ -4,6 +4,7 @@ import com.example.backend.enums.PaymentDirection;
 import com.example.backend.enums.PaymentMethod;
 import com.example.backend.enums.PaymentStatus;
 import com.example.backend.enums.PaymentType;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -31,10 +32,41 @@ public class PaymentResponse {
     private String studentId;
     private String teacherId;
     private String classId;
+    private StudentPayment student;
+    private TeacherPayment teacher;
+    @JsonProperty("class")
+    private ClassPayment clazz;
     private String note; // Ghi chú về khoản thanh toán
     private Instant createdAt;
     private Instant updatedAt;
-    private String createdBy;
-    private String updatedBy;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TeacherPayment {
+        private String id;
+        private String fullName;
+        private String gender;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StudentPayment {
+        private String id;
+        private String fullName;
+        private String gender;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ClassPayment {
+        private String id;
+        private String name;
+    }
 }
 

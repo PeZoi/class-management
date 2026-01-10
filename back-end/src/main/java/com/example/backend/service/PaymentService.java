@@ -14,7 +14,6 @@ import com.example.backend.repository.PaymentRepository;
 import com.example.backend.repository.StudentClassRepository;
 import com.example.backend.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +28,6 @@ public class PaymentService {
     private final StudentRepository studentRepository;
     private final ClassRepository classRepository;
     private final StudentClassRepository studentClassRepository;
-    private final ModelMapper modelMapper;
 
     @Transactional
     public PaymentResponse createPayment(PaymentRequest paymentRequest) {
@@ -103,23 +101,11 @@ public class PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
         
-        // Map to response
-        PaymentResponse response = modelMapper.map(savedPayment, PaymentResponse.class);
-        
-        // Set IDs from relationships
-        if (savedPayment.getStudent() != null) {
-            response.setStudentId(savedPayment.getStudent().getId());
-        }
-        if (savedPayment.getTeacher() != null) {
-            response.setTeacherId(savedPayment.getTeacher().getId());
-        }
-        if (savedPayment.getClazz() != null) {
-            response.setClassId(savedPayment.getClazz().getId());
-        }
-        
-        return response;
+        // Map to response using helper method
+        return mapToPaymentResponse(savedPayment);
     }
 
+    @Transactional(readOnly = true)
     public List<PaymentResponse> getPaymentsByStudentId(String studentId) {
         List<Payment> payments = paymentRepository.findByStudentId(studentId);
         
@@ -128,6 +114,7 @@ public class PaymentService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<PaymentResponse> getAllPayments() {
         List<Payment> payments = paymentRepository.findAllByOrderByCreatedAtDesc();
         return payments.stream()
@@ -136,17 +123,64 @@ public class PaymentService {
     }
 
     private PaymentResponse mapToPaymentResponse(Payment payment) {
-        PaymentResponse response = modelMapper.map(payment, PaymentResponse.class);
+        // Create response manually to avoid ModelMapper issues with nested objects
+        PaymentResponse response = new PaymentResponse();
+        
+        // Map basic fields
+        response.setId(payment.getId());
+        response.setPaymentId(payment.getPaymentId());
+        response.setAmount(payment.getAmount());
+        response.setFeeSnapshot(payment.getFeeSnapshot());
+        response.setPaid(payment.getPaid());
+        response.setBillingMonth(payment.getBillingMonth());
+        response.setPaymentStatus(payment.getPaymentStatus());
+        response.setPaymentMethod(payment.getPaymentMethod());
+        response.setPaymentType(payment.getPaymentType());
+        response.setDirection(payment.getDirection());
+        response.setNote(payment.getNote());
+        
+        // Map dates from Auditable
+        if (payment.getCreatedAt() != null) {
+            response.setCreatedAt(payment.getCreatedAt());
+        }
+        if (payment.getUpdatedAt() != null) {
+            response.setUpdatedAt(payment.getUpdatedAt());
+        }
 
-        // Set IDs from relationships
+        // Map nested objects for student
         if (payment.getStudent() != null) {
-            response.setStudentId(payment.getStudent().getId());
+            Student student = payment.getStudent();
+            PaymentResponse.StudentPayment studentPayment = new PaymentResponse.StudentPayment();
+            studentPayment.setId(student.getId());
+            studentPayment.setFullName(student.getFullName());
+            if (student.getGender() != null) {
+                studentPayment.setGender(student.getGender().name());
+            }
+            response.setStudent(studentPayment);
+            response.setStudentId(student.getId());
         }
+
+        // Map nested objects for teacher
         if (payment.getTeacher() != null) {
-            response.setTeacherId(payment.getTeacher().getId());
+            com.example.backend.entity.User teacher = payment.getTeacher();
+            PaymentResponse.TeacherPayment teacherPayment = new PaymentResponse.TeacherPayment();
+            teacherPayment.setId(teacher.getId());
+            teacherPayment.setFullName(teacher.getFullName());
+            if (teacher.getGender() != null) {
+                teacherPayment.setGender(teacher.getGender().name());
+            }
+            response.setTeacher(teacherPayment);
+            response.setTeacherId(teacher.getId());
         }
+
+        // Map nested objects for class
         if (payment.getClazz() != null) {
-            response.setClassId(payment.getClazz().getId());
+            Class clazz = payment.getClazz();
+            PaymentResponse.ClassPayment classPayment = new PaymentResponse.ClassPayment();
+            classPayment.setId(clazz.getId());
+            classPayment.setName(clazz.getName());
+            response.setClazz(classPayment);
+            response.setClassId(clazz.getId());
         }
 
         return response;

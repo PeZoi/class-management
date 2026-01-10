@@ -19,6 +19,24 @@ export interface PaymentRequest {
   note?: string;
 }
 
+// Nested types for PaymentResponse
+export interface StudentPayment {
+  id: string;
+  fullName: string;
+  gender?: string;
+}
+
+export interface TeacherPayment {
+  id: string;
+  fullName: string;
+  gender?: string;
+}
+
+export interface ClassPayment {
+  id: string;
+  name: string;
+}
+
 // Payment response (from backend)
 export interface PaymentResponse {
   id: string;
@@ -34,6 +52,9 @@ export interface PaymentResponse {
   studentId?: string;
   teacherId?: string;
   classId?: string;
+  student?: StudentPayment;
+  teacher?: TeacherPayment;
+  class?: ClassPayment;
   note?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -50,5 +71,26 @@ export interface CreateStudentPaymentData {
   paymentMethod: 'cash' | 'bank_transfer';
   paymentDate: string;
   notes: string;
+}
+
+// Payment item for UI (transformed from PaymentResponse)
+export interface PaymentItem {
+  id: number;
+  invoiceId: string;
+  type: 'income' | 'expense'; // Thu (học phí) hoặc Chi (lương)
+  studentId?: string; // For fetching student detail
+  teacherId?: string; // For fetching teacher detail
+  studentName?: string; // For income
+  teacherName?: string; // For expense
+  studentGender?: string; // For income
+  teacherGender?: string; // For expense
+  className?: string;
+  period?: string; // Kỳ thanh toán (VD: "Tháng 12/2024", "Học kỳ 1/2024")
+  totalAmount: number; // Tổng số tiền cần thanh toán
+  paidAmount: number; // Số tiền đã thanh toán (có thể thanh toán nhiều lần)
+  createdDate: string; // ISO datetime string
+  paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
+  status: 'paid' | 'partial'; // paid: đã đủ, partial: chưa đủ
+  note?: string;
 }
 

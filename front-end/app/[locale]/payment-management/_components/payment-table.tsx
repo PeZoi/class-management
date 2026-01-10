@@ -1,6 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -8,9 +15,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/helper';
+import { ColumnDef } from '@tanstack/react-table';
 import {
   Activity,
   ArrowDownCircle,
@@ -22,6 +30,7 @@ import {
   CreditCard,
   Edit,
   FileText,
+  MessageSquare,
   MoreHorizontal,
   Plus,
   Tag,
@@ -29,7 +38,8 @@ import {
   User,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { PaymentItem } from '../payment-management';
+import { useState } from 'react';
+import { PaymentItem } from '@/types';
 
 interface PaymentTableProps {
   payments: PaymentItem[];
@@ -41,11 +51,6 @@ interface PaymentTableProps {
   description?: string;
   showActions?: boolean;
   className?: string;
-  currentPage?: number;
-  totalPages?: number;
-  pageSize?: number;
-  totalItems?: number;
-  onPageChange?: (page: number) => void;
   isLoading?: boolean;
   error?: string;
 }
@@ -60,14 +65,12 @@ export function PaymentTable({
   description,
   showActions = true,
   className,
-  currentPage = 1,
-  totalPages,
-  totalItems,
-  onPageChange,
   isLoading,
   error,
 }: PaymentTableProps) {
   const t = useTranslations('payment-management');
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [selectedNotes, setSelectedNotes] = useState<string>('');
 
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
@@ -164,11 +167,292 @@ export function PaymentTable({
     );
   };
 
-  const getRowBackground = (type: 'income' | 'expense') => {
-    return type === 'income'
-      ? 'bg-green-50/30 dark:bg-green-950/10 hover:bg-green-50/50 dark:hover:bg-green-950/20'
-      : 'bg-red-50/30 dark:bg-red-950/10 hover:bg-red-50/50 dark:hover:bg-red-950/20';
-  };
+  const columns: ColumnDef<PaymentItem>[] = [
+    {
+      accessorKey: 'invoiceId',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <FileText className="size-4" />
+            {t('invoiceId')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => (
+        <div className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
+          #{row.original.invoiceId}
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'type',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Tag className="size-4" />
+            {t('typeLabel')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => (
+        <div className="text-center">{getTypeBadge(row.original.type)}</div>
+      ),
+    },
+    {
+      id: 'relatedPerson',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <User className="size-4" />
+          {t('relatedPersonLabel')}
+        </div>
+      ),
+      cell: ({ row }) => {
+        const payment = row.original;
+        const displayName = payment.type === 'income' ? payment.studentName : payment.teacherName;
+        const displayGender = payment.type === 'income' ? payment.studentGender : payment.teacherGender;
+        
+        const getGenderLabel = (gender?: string) => {
+          if (!gender) return '';
+          if (gender === 'MALE') return t('male');
+          if (gender === 'FEMALE') return t('female');
+          if (gender === 'OTHER') return t('other');
+          return '';
+        };
+        
+        return (
+          <div className="font-medium text-slate-900 dark:text-slate-100">
+            {displayName ? (
+              <button
+                onClick={() => onPersonClick?.(displayName, payment.type === 'income' ? 'student' : 'teacher')}
+                className="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer group w-full text-left"
+              >
+                <User className="size-4 text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors shrink-0" />
+                <div className="space-y-0.5 min-w-0 flex-1">
+                  <div className="underline decoration-transparent group-hover:decoration-blue-600 dark:group-hover:decoration-blue-400 transition-all truncate">
+                    {displayName}
+                  </div>
+                  {displayGender && (
+                    <div className="text-xs text-slate-500">
+                      {getGenderLabel(displayGender)}
+                    </div>
+                  )}
+                </div>
+              </button>
+            ) : (
+              <span className="text-slate-400 text-sm">-</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'className',
+      header: ({ column }) => (
+        <SortableHeader column={column}>
+          <div className="flex items-center gap-2">
+            <BookOpen className="size-4" />
+            {t('className')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => {
+        const payment = row.original;
+        const displayClass = payment.type === 'income' ? payment.className : '-';
+        
+        return (
+          <div>
+            {displayClass !== '-' ? (
+              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-medium">
+                {displayClass}
+              </span>
+            ) : (
+              <span className="text-slate-400 text-sm">-</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'period',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Calendar className="size-4" />
+            {t('period')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => (
+        <div className="text-center">
+          {row.original.period ? (
+            <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-xs font-medium">
+              {row.original.period}
+            </span>
+          ) : (
+            <span className="text-slate-400 text-sm">-</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'paidAmount',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-end">
+          <div className="flex items-center justify-end gap-2">
+            <CreditCard className="size-4" />
+            {t('amount')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => (
+        <div className="text-right">
+          <div className="font-medium text-slate-900 dark:text-slate-100">
+            {formatCurrency(row.original.paidAmount)}
+          </div>
+        </div>
+      ),
+      sortingFn: (rowA, rowB) => {
+        return rowA.original.paidAmount - rowB.original.paidAmount;
+      },
+    },
+    {
+      accessorKey: 'createdDate',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Calendar className="size-4" />
+            {t('createdDateTimeLabel')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => (
+        <div className="text-center text-sm text-slate-700 dark:text-slate-300 font-medium">
+          {formatDateTime(row.original.createdDate)}
+        </div>
+      ),
+      sortingFn: (rowA, rowB) => {
+        const dateA = new Date(rowA.original.createdDate).getTime();
+        const dateB = new Date(rowB.original.createdDate).getTime();
+        return dateA - dateB;
+      },
+    },
+    {
+      accessorKey: 'paymentMethod',
+      header: () => (
+        <div className="flex items-center justify-center gap-2">
+          <CreditCard className="size-4" />
+          {t('paymentMethod')}
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="text-center">{getPaymentMethodBadge(row.original.paymentMethod)}</div>
+      ),
+    },
+    {
+      accessorKey: 'status',
+      header: ({ column }) => (
+        <SortableHeader column={column} className="justify-center">
+          <div className="flex items-center justify-center gap-2">
+            <Activity className="size-4" />
+            {t('statusLabel')}
+          </div>
+        </SortableHeader>
+      ),
+      cell: ({ row }) => (
+        <div className="text-center">{getStatusBadge(row.original.status)}</div>
+      ),
+    },
+    {
+      accessorKey: 'note',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <MessageSquare className="size-4 text-slate-600 dark:text-slate-400" />
+          {t('notes')}
+        </div>
+      ),
+      cell: ({ row }) => {
+        const notes = row.original.note || '';
+        const hasNotes = notes.trim().length > 0;
+
+        if (!hasNotes) {
+          return (
+            <div className="text-sm text-slate-400 dark:text-slate-500 italic">
+              {t('noNotes')}
+            </div>
+          );
+        }
+
+        return (
+          <div
+            onClick={() => {
+              setSelectedNotes(notes);
+              setNotesDialogOpen(true);
+            }}
+            className={cn(
+              'text-sm text-slate-700 dark:text-slate-300 cursor-pointer hover:text-slate-900 dark:hover:text-slate-100 transition-colors',
+            )}
+            style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              lineHeight: '1.5',
+              maxHeight: '3em', // 2 lines * 1.5 line-height
+            }}
+            title={notes.length > 100 ? notes : undefined}
+          >
+            {notes}
+          </div>
+        );
+      },
+    },
+  ];
+
+  if (showActions) {
+    columns.push({
+      id: 'actions',
+      header: () => <div className="text-center">{t('actions')}</div>,
+      cell: ({ row }) => {
+        const payment = row.original;
+        return (
+          <div className="text-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="size-8 p-0">
+                  <span className="sr-only">{t('openMenu')}</span>
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {onEdit && (
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(payment)}>
+                    <Edit className="size-4 mr-2" />
+                    {t('edit')}
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    className="cursor-pointer text-red-600 dark:text-red-400"
+                    onClick={() => {
+                      if (window.confirm(t('confirmDelete'))) {
+                        onDelete(payment.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-4 mr-2" />
+                    {t('delete')}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    });
+  }
 
   return (
     <Card
@@ -192,255 +476,55 @@ export function PaymentTable({
           )}
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table className={cn('min-w-[1300px]', showActions && 'min-w-[1400px]')}>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-700">
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <FileText className="size-4" />
-                  {t('invoiceId')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Tag className="size-4" />
-                  {t('typeLabel')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <User className="size-4" />
-                  {t('relatedPersonLabel')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="size-4" />
-                  {t('className')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Calendar className="size-4" />
-                  {t('period')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <CreditCard className="size-4" />
-                  {t('amount')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Calendar className="size-4" />
-                  {t('createdDateTimeLabel')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <CreditCard className="size-4" />
-                  {t('paymentMethod')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Activity className="size-4" />
-                  {t('statusLabel')}
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                {t('notes')}
-              </TableHead>
-              {showActions && (
-                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                  {t('actions')}
-                </TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={showActions ? 11 : 10} className="h-24 text-center text-slate-500">
-                  {t('loading') ?? 'Đang tải dữ liệu...'}
-                </TableCell>
-              </TableRow>
-            ) : error ? (
-              <TableRow>
-                <TableCell colSpan={showActions ? 11 : 10} className="h-24 text-center text-red-500">
-                  {error}
-                </TableCell>
-              </TableRow>
-            ) : payments.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={showActions ? 11 : 10} className="h-24 text-center text-slate-500">
-                  {t('noPaymentsFound')}
-                </TableCell>
-              </TableRow>
-            ) : (
-              payments.map((payment) => {
-                const displayName = payment.type === 'income' 
-                  ? payment.studentName 
-                  : payment.teacherName;
-                const displayClass = payment.type === 'income' 
-                  ? payment.className 
-                  : '-';
-
-                return (
-                  <TableRow
-                    key={payment.id}
-                    className={cn(
-                      'transition-colors',
-                      getRowBackground(payment.type)
-                    )}
-                  >
-                    <TableCell className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
-                      #{payment.invoiceId}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {getTypeBadge(payment.type)}
-                    </TableCell>
-                    <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                      {displayName ? (
-                        <button
-                          onClick={() => onPersonClick?.(displayName, payment.type === 'income' ? 'student' : 'teacher')}
-                          className="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer group"
-                        >
-                          <User className="size-4 text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
-                          <span className="underline decoration-transparent group-hover:decoration-blue-600 dark:group-hover:decoration-blue-400 transition-all">
-                            {displayName}
-                          </span>
-                        </button>
-                      ) : (
-                        <span className="text-slate-400 text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {displayClass !== '-' ? (
-                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-medium">
-                          {displayClass}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {payment.period ? (
-                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-xs font-medium">
-                          {payment.period}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="space-y-1">
-                        <div className="font-bold text-lg text-slate-900 dark:text-slate-100">
-                          {formatCurrency(payment.totalAmount)}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="text-sm text-slate-700 dark:text-slate-300 font-medium">
-                        {formatDateTime(payment.createdDate)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {getPaymentMethodBadge(payment.paymentMethod)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {getStatusBadge(payment.status)}
-                    </TableCell>
-                    <TableCell>
-                      {payment.note ? (
-                        <span className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
-                          {payment.note}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 text-sm">-</span>
-                      )}
-                    </TableCell>
-                    {showActions && (
-                      <TableCell className="text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="size-8 p-0">
-                              <span className="sr-only">{t('openMenu')}</span>
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {onEdit && (
-                              <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(payment)}>
-                                <Edit className="size-4 mr-2" />
-                                {t('edit')}
-                              </DropdownMenuItem>
-                            )}
-                            {onDelete && (
-                              <DropdownMenuItem
-                                className="cursor-pointer text-red-600 dark:text-red-400"
-                                onClick={() => {
-                                  if (window.confirm(t('confirmDelete'))) {
-                                    onDelete(payment.id);
-                                  }
-                                }}
-                              >
-                                <Trash2 className="size-4 mr-2" />
-                                {t('delete')}
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-        {onPageChange && totalPages && totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 text-sm text-slate-600 dark:text-slate-400">
-            <div>
-              {t('pagination_summary', {
-                currentPage: currentPage ?? 1,
-                totalPages,
-                totalItems: totalItems ?? payments.length,
-              })}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => currentPage && currentPage > 1 && onPageChange(currentPage - 1)}
-                disabled={!currentPage || currentPage <= 1}
-              >
-                {t('prevPage')}
-              </Button>
-              <span>
-                {currentPage ?? 1} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  currentPage &&
-                  totalPages &&
-                  currentPage < totalPages &&
-                  onPageChange(currentPage + 1)
-                }
-                disabled={!currentPage || !totalPages || currentPage >= totalPages}
-              >
-                {t('nextPage')}
-              </Button>
-            </div>
+      <CardContent>
+        {isLoading ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {t('loading') ?? 'Đang tải dữ liệu...'}
+            </p>
           </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-red-500">{error}</p>
+          </div>
+        ) : payments.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('noPaymentsFound')}</p>
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={payments}
+            getRowClassName={(payment) =>
+              payment.type === 'income'
+                ? 'bg-green-50/30 dark:bg-green-950/10 hover:bg-green-50/50 dark:hover:bg-green-950/20'
+                : 'bg-red-50/30 dark:bg-red-950/10 hover:bg-red-50/50 dark:hover:bg-red-950/20'
+            }
+          />
         )}
       </CardContent>
+
+      {/* Notes Dialog */}
+      <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="size-5 text-slate-600 dark:text-slate-400" />
+              {t('notes')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('notesDescription')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-4">
+              <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap wrap-break-word">
+                {selectedNotes || t('noNotes')}
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

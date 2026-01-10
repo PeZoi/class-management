@@ -232,7 +232,7 @@
     "contact": "Thông Tin Liên Hệ",
     "salary": "Lương",
     "experience": "Kinh Nghiệm",
-    "totalClasses": "Lớp Học",
+    "totalClasses": "Tổng Số Lớp",
     "dob": "Ngày Sinh",
     "idCard": "CCCD",
     "joinedDate": "Ngày Tham Gia",
@@ -675,7 +675,7 @@
     "parentPhoneLabel": "SĐT phụ huynh",
     "paymentHistoryTitle": "Lịch Sử Thanh Toán",
     "status_completed": "Hoàn thành",
-    "status_incomplete": "Chưa đủ",
+    "status_incomplete": "Đóng một phần",
     "totalAmountLabel": "Tổng tiền:",
     "paidLabel": "Đã trả:",
     "remainingLabel": "Còn lại:",
@@ -687,6 +687,11 @@
     "loading": "Đang tải dữ liệu...",
     "prevPage": "Trang trước",
     "nextPage": "Trang sau",
-    "pagination_summary": "Trang {currentPage}/{totalPages} - Tổng {totalItems} hóa đơn"
+    "pagination_summary": "Trang {currentPage}/{totalPages} - Tổng {totalItems} hóa đơn",
+    "noNotes": "Không có ghi chú",
+    "notesDescription": "Chi tiết ghi chú về khoản thanh toán",
+    "male": "Nam",
+    "female": "Nữ",
+    "other": "Khác"
   }
 }

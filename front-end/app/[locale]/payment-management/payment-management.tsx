@@ -4,25 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { PaymentTable } from './_components/payment-table';
 import { PaymentFilter, PaymentFilterState } from './_components/payment-filter';
 import { PersonDetailDrawer } from './_components/person-detail-drawer';
-import { formatCurrency } from '@/utils/helper';
 import { paymentService } from '@/services/payment-service';
-import { PaymentResponse } from '@/types';
-
-export interface PaymentItem {
-  id: number;
-  invoiceId: string;
-  type: 'income' | 'expense'; // Thu (học phí) hoặc Chi (lương)
-  studentName?: string; // For income
-  teacherName?: string; // For expense
-  className?: string;
-  period?: string; // Kỳ thanh toán (VD: "Tháng 12/2024", "Học kỳ 1/2024")
-  totalAmount: number; // Tổng số tiền cần thanh toán
-  paidAmount: number; // Số tiền đã thanh toán (có thể thanh toán nhiều lần)
-  createdDate: string; // ISO datetime string
-  paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
-  status: 'paid' | 'partial'; // paid: đã đủ, partial: chưa đủ
-  note?: string;
-}
+import { studentService } from '@/services/student-service';
+import { teacherService } from '@/services/teacher-service';
+import { PaymentResponse, PaymentItem } from '@/types';
+import { PageLoading } from '@/components/page-loading';
+import { useTranslations } from 'next-intl';
 
 // Mock data cho học sinh - trong thực tế sẽ fetch từ API
 const mockStudents = {
@@ -149,10 +136,9 @@ export default function PaymentManagementPage() {
     subject?: string;
     experience?: string;
   } | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const t = useTranslations('payment-management');
 
   useEffect(() => {
     const fetchPayments = async () => {
@@ -160,9 +146,9 @@ export default function PaymentManagementPage() {
         setIsLoading(true);
         setError(null);
         const res = await paymentService.getAllPayments();
-        const data = res.data.data as PaymentResponse[];
+        const data = res.data ?? [];
 
-        const mapped: PaymentItem[] = data.map((p, index) => {
+        const mapped: PaymentItem[] = data.map((p: PaymentResponse, index: number) => {
           const type: 'income' | 'expense' =
             p.direction === 'INCOME' ? 'income' : 'expense';
 
@@ -194,9 +180,13 @@ export default function PaymentManagementPage() {
             id: index + 1,
             invoiceId: p.paymentId,
             type,
-            studentName: undefined,
-            teacherName: undefined,
-            className: undefined,
+            studentId: p.student?.id,
+            teacherId: p.teacher?.id,
+            studentName: p.student?.fullName,
+            teacherName: p.teacher?.fullName,
+            studentGender: p.student?.gender,
+            teacherGender: p.teacher?.gender,
+            className: p.class?.name,
             period,
             totalAmount: Number(p.feeSnapshot ?? p.amount ?? 0),
             paidAmount: Number(p.paid ?? 0),
@@ -220,42 +210,87 @@ export default function PaymentManagementPage() {
   }, []);
 
   // Handle person click to show detail drawer
-  const handlePersonClick = (name: string, type: 'student' | 'teacher') => {
-    let personInfo;
-    let className: string | undefined;
+  const handlePersonClick = async (name: string, type: 'student' | 'teacher') => {
+    // Tìm payment để lấy ID
+    const payment = payments.find((p) => 
+      type === 'student' ? p.studentName === name : p.teacherName === name
+    );
 
-    if (type === 'student') {
-      personInfo = mockStudents[name as keyof typeof mockStudents];
-      // Tìm className từ payments
-      const payment = payments.find((p) => p.studentName === name);
-      className = payment?.className;
-    } else {
-      personInfo = mockTeachers[name as keyof typeof mockTeachers];
+    if (!payment) return;
+
+    let personInfo: {
+      id?: string;
+      phone?: string;
+      email?: string;
+      birthDate?: string;
+      startDate?: string;
+      parentName?: string;
+      parentPhone?: string;
+      subject?: string;
+      experience?: string;
+    } = {};
+    let className: string | undefined = payment.className;
+
+    // Fetch từ BE nếu có ID
+    try {
+      if (type === 'student' && payment.studentId) {
+        const response = await studentService.getStudentById(payment.studentId);
+        if (response.status === 200 && response.data) {
+          const student = response.data;
+          personInfo = {
+            id: student.id,
+            phone: student.phoneNumber,
+            email: student.email,
+            birthDate: student.dob,
+            startDate: student.class?.joinAt,
+            parentName: student.fullNameParent,
+            parentPhone: student.phoneNumberParent,
+          };
+          className = student.class?.name || className;
+        }
+      } else if (type === 'teacher' && payment.teacherId) {
+        const response = await teacherService.getTeacherById(payment.teacherId);
+        if (response.status === 200 && response.data) {
+          const teacher = response.data;
+          personInfo = {
+            id: teacher.id,
+            phone: teacher.phoneNumber,
+            email: teacher.email,
+            birthDate: teacher.dob,
+            startDate: teacher.createdAt,
+            subject: teacher.classList?.[0]?.name || 'N/A', // Mock - sẽ cập nhật sau khi BE có field này
+            experience: 'N/A', // Mock - sẽ cập nhật sau khi BE có field này
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching person detail:', error);
+      // Fallback to mock data nếu API fail
+      if (type === 'student') {
+        personInfo = mockStudents[name as keyof typeof mockStudents] || {};
+      } else {
+        personInfo = mockTeachers[name as keyof typeof mockTeachers] || {};
+      }
     }
 
-    if (personInfo) {
-      setSelectedPerson({
-        name,
-        type,
-        className,
-        ...personInfo,
-      });
-      setIsDrawerOpen(true);
+    // Nếu không có dữ liệu từ BE, dùng mock data
+    if (!personInfo.phone && !personInfo.email) {
+      if (type === 'student') {
+        personInfo = mockStudents[name as keyof typeof mockStudents] || {};
+      } else {
+        personInfo = mockTeachers[name as keyof typeof mockTeachers] || {};
+      }
     }
+
+    setSelectedPerson({
+      name,
+      type,
+      className,
+      ...personInfo,
+    });
+    setIsDrawerOpen(true);
   };
 
-  // Get related payments for selected person
-  const relatedPayments = useMemo(() => {
-    if (!selectedPerson) return [];
-    
-    return payments.filter((p) => {
-      if (selectedPerson.type === 'student') {
-        return p.studentName === selectedPerson.name;
-      } else {
-        return p.teacherName === selectedPerson.name;
-      }
-    });
-  }, [payments, selectedPerson]);
 
   // Get unique class names for filter
   const availableClasses = useMemo(() => {
@@ -323,12 +358,9 @@ export default function PaymentManagementPage() {
     return result;
   }, [payments, filters]);
 
-  const paginatedPayments = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredPayments.slice(start, start + pageSize);
-  }, [filteredPayments, currentPage, pageSize]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredPayments.length / pageSize));
+  if (isLoading) {
+    return <PageLoading message={t('loading')} />;
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
@@ -341,15 +373,10 @@ export default function PaymentManagementPage() {
 
       {/* Payment Table */}
       <PaymentTable
-        payments={paginatedPayments}
+        payments={filteredPayments}
         onPersonClick={handlePersonClick}
         showActions={false}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        pageSize={pageSize}
-        totalItems={filteredPayments.length}
-        onPageChange={setCurrentPage}
-        isLoading={isLoading}
+        isLoading={false}
         error={error || undefined}
       />
 
@@ -358,8 +385,6 @@ export default function PaymentManagementPage() {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         person={selectedPerson}
-        relatedPayments={relatedPayments}
-        formatCurrency={formatCurrency}
       />
     </div>
   );

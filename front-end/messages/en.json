@@ -676,6 +676,11 @@
     "loading": "Loading payments...",
     "prevPage": "Previous",
     "nextPage": "Next",
-    "pagination_summary": "Page {currentPage}/{totalPages} - Total {totalItems} invoices"
+    "pagination_summary": "Page {currentPage}/{totalPages} - Total {totalItems} invoices",
+    "noNotes": "No notes",
+    "notesDescription": "Full notes content about the payment",
+    "male": "Male",
+    "female": "Female",
+    "other": "Other"
   }
 }
