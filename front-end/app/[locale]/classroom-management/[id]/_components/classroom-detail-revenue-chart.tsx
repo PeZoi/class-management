@@ -102,7 +102,14 @@ export function ClassroomDetailRevenueChart({
                       const item = revenueData.find((d) => d.month === label);
                       return item?.label || label;
                     }}
-                    formatter={(value) => formatCurrency(Number(value))}
+                    formatter={(value) => {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-300 text-xs">Doanh thu:</span>
+                          <span className="font-bold text-white">{formatCurrency(Number(value))}</span>
+                        </div>
+                      );
+                    }}
                   />
                 }
                 cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }}

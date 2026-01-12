@@ -40,4 +40,8 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     // Tính tổng revenue cho một class trong một tháng cụ thể (direction = INCOME)
     @Query("SELECT COALESCE(SUM(p.paid), 0) FROM Payment p WHERE p.clazz.id = :classId AND p.direction = :direction AND p.billingMonth = :billingMonth")
     Long sumRevenueByClassIdAndMonth(@Param("classId") String classId, @Param("direction") PaymentDirection direction, @Param("billingMonth") Instant billingMonth);
+    
+    // Tính tổng revenue cho tất cả classes trong một tháng cụ thể (direction = INCOME)
+    @Query("SELECT COALESCE(SUM(p.paid), 0) FROM Payment p WHERE p.direction = :direction AND p.billingMonth = :billingMonth")
+    Long sumTotalRevenueByMonth(@Param("direction") PaymentDirection direction, @Param("billingMonth") Instant billingMonth);
 }

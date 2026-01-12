@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { ArrowUpRight, BookOpen, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { ArrowUpRight, BookOpen, DollarSign, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 interface StatsCardsProps {
@@ -8,11 +8,9 @@ interface StatsCardsProps {
     totalRevenue: number;
     totalClasses: number;
     totalStudents: number;
-    activeClasses: number;
+    totalTeachers: number;
     revenueGrowth: number;
-    classGrowth: number;
     studentGrowth: number;
-    activeGrowth: number;
   };
   formatCurrency: (amount: number) => string;
   className?: string;
@@ -43,24 +41,6 @@ export function StatsCards({ statsData, formatCurrency, className }: StatsCardsP
         </CardContent>
       </Card>
 
-      {/* Total Classes */}
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-purple-500">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('totalClasses')}</CardTitle>
-          <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-            <BookOpen className="size-5 text-purple-600 dark:text-purple-400" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statsData.totalClasses}</div>
-          <div className="flex items-center gap-1 mt-2">
-            <ArrowUpRight className="size-4 text-green-600" />
-            <span className="text-sm font-medium text-green-600">{statsData.classGrowth}%</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">{t('vsLastMonth')}</span>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Total Students */}
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-green-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -81,21 +61,29 @@ export function StatsCards({ statsData, formatCurrency, className }: StatsCardsP
         </CardContent>
       </Card>
 
-      {/* Active Classes */}
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-orange-500">
+      {/* Total Classes */}
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-purple-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('activeClasses')}</CardTitle>
-          <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
-            <TrendingUp className="size-5 text-orange-600 dark:text-orange-400" />
+          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('totalClasses')}</CardTitle>
+          <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+            <BookOpen className="size-5 text-purple-600 dark:text-purple-400" />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statsData.activeClasses}</div>
-          <div className="flex items-center gap-1 mt-2">
-            <ArrowUpRight className="size-4 text-green-600" />
-            <span className="text-sm font-medium text-green-600">{statsData.activeGrowth}%</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">{t('vsLastMonth')}</span>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statsData.totalClasses}</div>
+        </CardContent>
+      </Card>
+
+      {/* Total Teachers */}
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-orange-500">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('totalTeachers')}</CardTitle>
+          <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+            <Users className="size-5 text-orange-600 dark:text-orange-400" />
           </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statsData.totalTeachers}</div>
         </CardContent>
       </Card>
     </div>

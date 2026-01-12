@@ -3,218 +3,13 @@
 import { useTranslations } from 'next-intl';
 import { useState, useEffect, useCallback } from 'react';
 import { formatCurrency } from '@/utils/helper';
-import { OverduePaymentsAlert, RecentClassesTable, RevenueChart, StatsCards } from '@/app/[locale]/dashboard/_components';
-import { classService } from '@/services/class-service';
+import { OverdueStudentsTable, RecentClassesTable, RevenueChart, StatsCards } from '@/app/[locale]/dashboard/_components';
+import { classService, dashboardService } from '@/services';
 import { ClassType } from '@/types/class-type';
+import { DashboardRevenueDataResponse, DashboardStatsResponse } from '@/types/dashboard-type';
+import { StudentType } from '@/types';
 import { toast } from 'react-toastify';
 import { PageLoading } from '@/components/page-loading';
-
-// Dữ liệu tĩnh cho dashboard
-const statsData = {
-  totalRevenue: 2847500000, // 2.847.500.000 VNĐ
-  totalClasses: 45,
-  totalStudents: 1250,
-  activeClasses: 32,
-  revenueGrowth: 15.2, // % tăng trưởng
-  classGrowth: 8.5,
-  studentGrowth: 12.3,
-  activeGrowth: 5.1,
-};
-
-// Dữ liệu doanh thu theo thời gian
-const revenueData = {
-  '3months': [
-    { month: 'T10', revenue: 620000000, label: 'Tháng 10' },
-    { month: 'T11', revenue: 580000000, label: 'Tháng 11' },
-    { month: 'T12', revenue: 680000000, label: 'Tháng 12' },
-  ],
-  '6months': [
-    { month: 'T7', revenue: 420000000, label: 'Tháng 7' },
-    { month: 'T8', revenue: 510000000, label: 'Tháng 8' },
-    { month: 'T9', revenue: 445000000, label: 'Tháng 9' },
-    { month: 'T10', revenue: 620000000, label: 'Tháng 10' },
-    { month: 'T11', revenue: 580000000, label: 'Tháng 11' },
-    { month: 'T12', revenue: 680000000, label: 'Tháng 12' },
-  ],
-  '12months': [
-    { month: 'T1', revenue: 380000000, label: 'Tháng 1' },
-    { month: 'T2', revenue: 450000000, label: 'Tháng 2' },
-    { month: 'T3', revenue: 420000000, label: 'Tháng 3' },
-    { month: 'T4', revenue: 490000000, label: 'Tháng 4' },
-    { month: 'T5', revenue: 550000000, label: 'Tháng 5' },
-    { month: 'T6', revenue: 480000000, label: 'Tháng 6' },
-    { month: 'T7', revenue: 420000000, label: 'Tháng 7' },
-    { month: 'T8', revenue: 510000000, label: 'Tháng 8' },
-    { month: 'T9', revenue: 445000000, label: 'Tháng 9' },
-    { month: 'T10', revenue: 620000000, label: 'Tháng 10' },
-    { month: 'T11', revenue: 580000000, label: 'Tháng 11' },
-    { month: 'T12', revenue: 680000000, label: 'Tháng 12' },
-  ],
-};
-
-// Dữ liệu học viên nợ học phí
-const overduePayments = [
-  {
-    id: 1,
-    studentName: 'Nguyễn Văn Minh',
-    studentPhone: '0912345678',
-    studentEmail: 'minh.nguyen@email.com',
-    studentGender: 'Male',
-    studentBirthDate: '2005-03-15',
-    startDate: '2024-09-01',
-    className: 'JavaScript Nâng Cao',
-    amountDue: 2500000,
-    dueDate: '2024-11-15',
-    daysOverdue: 37,
-    contacted: false,
-    parentName: 'Nguyễn Văn Hùng',
-    parentPhone: '0987654321',
-  },
-  {
-    id: 2,
-    studentName: 'Trần Thị Hương',
-    studentPhone: '0923456789',
-    studentEmail: 'huong.tran@email.com',
-    studentGender: 'Female',
-    studentBirthDate: '2004-07-20',
-    startDate: '2024-08-15',
-    className: 'React & Next.js',
-    amountDue: 3000000,
-    dueDate: '2024-11-20',
-    daysOverdue: 32,
-    contacted: true,
-    parentName: 'Trần Văn Thành',
-    parentPhone: '0976543210',
-  },
-  {
-    id: 3,
-    studentName: 'Lê Hoàng Nam',
-    studentPhone: '0934567890',
-    studentEmail: 'nam.le@email.com',
-    studentGender: 'Male',
-    studentBirthDate: '2005-11-10',
-    startDate: '2024-10-01',
-    className: 'UI/UX Design Fundamentals',
-    amountDue: 2500000,
-    dueDate: '2024-11-25',
-    daysOverdue: 27,
-    contacted: false,
-    parentName: 'Lê Thị Lan',
-    parentPhone: '0965432109',
-  },
-  {
-    id: 4,
-    studentName: 'Phạm Minh Tuấn',
-    studentPhone: '0945678901',
-    studentEmail: 'tuan.pham@email.com',
-    studentGender: 'Male',
-    studentBirthDate: '2003-05-22',
-    startDate: '2024-07-10',
-    className: 'Machine Learning',
-    amountDue: 4500000,
-    dueDate: '2024-12-01',
-    daysOverdue: 21,
-    contacted: true,
-    parentName: 'Phạm Văn Cường',
-    parentPhone: '0954321098',
-  },
-  {
-    id: 5,
-    studentName: 'Hoàng Thị Lan',
-    studentPhone: '0956789012',
-    studentEmail: 'lan.hoang@email.com',
-    studentGender: 'Female',
-    studentBirthDate: '2004-09-08',
-    startDate: '2024-09-20',
-    className: 'Python for Data Science',
-    amountDue: 3500000,
-    dueDate: '2024-12-05',
-    daysOverdue: 17,
-    contacted: false,
-    parentName: 'Hoàng Văn Đức',
-    parentPhone: '0943210987',
-  },
-  {
-    id: 6,
-    studentName: 'Đỗ Văn Khoa',
-    studentPhone: '0967890123',
-    studentEmail: 'khoa.do@email.com',
-    studentGender: 'Male',
-    studentBirthDate: '2005-01-30',
-    startDate: '2024-08-05',
-    className: 'React & Next.js',
-    amountDue: 3000000,
-    dueDate: '2024-12-08',
-    daysOverdue: 14,
-    contacted: true,
-    parentName: 'Đỗ Thị Hoa',
-    parentPhone: '0932109876',
-  },
-  {
-    id: 7,
-    studentName: 'Vũ Thị Mai',
-    studentPhone: '0978901234',
-    studentEmail: 'mai.vu@email.com',
-    studentGender: 'Female',
-    studentBirthDate: '2004-12-18',
-    startDate: '2024-10-15',
-    className: 'JavaScript Nâng Cao',
-    amountDue: 2500000,
-    dueDate: '2024-12-10',
-    daysOverdue: 12,
-    contacted: false,
-    parentName: 'Vũ Văn Hải',
-    parentPhone: '0921098765',
-  },
-  {
-    id: 8,
-    studentName: 'Bùi Minh Quân',
-    studentPhone: '0989012345',
-    studentEmail: 'quan.bui@email.com',
-    studentGender: 'Male',
-    studentBirthDate: '2003-06-25',
-    startDate: '2024-07-01',
-    className: 'Machine Learning',
-    amountDue: 4500000,
-    dueDate: '2024-11-12',
-    daysOverdue: 40,
-    contacted: true,
-    parentName: 'Bùi Thị Nga',
-    parentPhone: '0910987654',
-  },
-  {
-    id: 9,
-    studentName: 'Ngô Thị Thu',
-    studentPhone: '0990123456',
-    studentEmail: 'thu.ngo@email.com',
-    studentGender: 'Female',
-    studentBirthDate: '2005-04-14',
-    startDate: '2024-09-10',
-    className: 'UI/UX Design Fundamentals',
-    amountDue: 2500000,
-    dueDate: '2024-11-18',
-    daysOverdue: 34,
-    contacted: false,
-    parentName: 'Ngô Văn Tuấn',
-    parentPhone: '0909876543',
-  },
-  {
-    id: 10,
-    studentName: 'Trương Văn Đức',
-    studentPhone: '0901234567',
-    studentEmail: 'duc.truong@email.com',
-    studentGender: 'Male',
-    studentBirthDate: '2004-08-05',
-    startDate: '2024-08-20',
-    className: 'Python for Data Science',
-    amountDue: 3500000,
-    dueDate: '2024-11-28',
-    daysOverdue: 24,
-    contacted: true,
-    parentName: 'Trương Thị Linh',
-    parentPhone: '0898765432',
-  },
-];
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -222,14 +17,48 @@ export default function DashboardPage() {
   const t = useTranslations('dashboard');
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
   const [topClasses, setTopClasses] = useState<ClassType[]>([]);
+  const [overdueStudents, setOverdueStudents] = useState<StudentType[]>([]);
+  const [revenueData, setRevenueData] = useState<DashboardRevenueDataResponse[]>([]);
+  const [statsData, setStatsData] = useState<DashboardStatsResponse>({
+    totalRevenue: 0,
+    totalClasses: 0,
+    totalStudents: 0,
+    totalTeachers: 0,
+    revenueGrowth: 0,
+    studentGrowth: 0,
+  });
   const [loading, setLoading] = useState(true);
 
-  const currentRevenueData = revenueData[selectedPeriod];
+  // Fetch dashboard stats
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const response = await dashboardService.getDashboardStats();
+      if (response.status === 200 && response.data) {
+        setStatsData(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      toast.error('Không thể tải dữ liệu thống kê');
+    }
+  }, []);
+
+  // Fetch revenue data by period
+  const fetchRevenueData = useCallback(async (period: TimePeriod) => {
+    try {
+      const response = await dashboardService.getRevenueDataByPeriod(period);
+      if (response.status === 200 && response.data) {
+        setRevenueData(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching revenue data:', error);
+      toast.error('Không thể tải dữ liệu doanh thu');
+      setRevenueData([]);
+    }
+  }, []);
 
   // Fetch top 3 classes by revenue
   const fetchTop3Classes = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await classService.getTop3ClassesByRevenue();
       if (response.status === 200 && response.data) {
         setTopClasses(response.data);
@@ -238,14 +67,47 @@ export default function DashboardPage() {
       console.error('Error fetching top 3 classes:', error);
       toast.error('Không thể tải dữ liệu top 3 lớp học');
       setTopClasses([]);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
+  // Fetch students with unpaid fees
+  const fetchOverdueStudents = useCallback(async () => {
+    try {
+      const response = await dashboardService.getStudentsWithUnpaidFees();
+      if (response.status === 200 && response.data) {
+        setOverdueStudents(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching overdue students:', error);
+      toast.error('Không thể tải danh sách học viên chưa đóng tiền');
+      setOverdueStudents([]);
+    }
+  }, []);
+
+  // Initial data fetch
   useEffect(() => {
-    fetchTop3Classes();
-  }, [fetchTop3Classes]);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          fetchDashboardStats(),
+          fetchRevenueData(selectedPeriod),
+          fetchTop3Classes(),
+          fetchOverdueStudents(),
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch revenue data when period changes
+  useEffect(() => {
+    fetchRevenueData(selectedPeriod);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPeriod]);
 
   if (loading) {
     return <PageLoading />;
@@ -266,20 +128,20 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <StatsCards statsData={statsData} formatCurrency={formatCurrency} />
 
-      {/* Charts and Overdue Payments */}
-      <div className="grid gap-4 md:gap-6 grid-cols-1 xl:grid-cols-2 items-start">
-        <RevenueChart
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={setSelectedPeriod}
-          currentRevenueData={currentRevenueData}
-          formatCurrency={formatCurrency}
-          className="w-full"
-        />
-        <OverduePaymentsAlert overduePayments={overduePayments} formatCurrency={formatCurrency} className="w-full" />
-      </div>
+      {/* Charts */}
+      <RevenueChart
+        selectedPeriod={selectedPeriod}
+        onPeriodChange={setSelectedPeriod}
+        currentRevenueData={revenueData}
+        formatCurrency={formatCurrency}
+        className="w-full"
+      />
 
       {/* Top 3 Classes by Revenue Table */}
       <RecentClassesTable topClasses={topClasses} formatCurrency={formatCurrency} />
+
+      {/* Overdue Students Table */}
+      <OverdueStudentsTable students={overdueStudents} formatCurrency={formatCurrency} />
     </div>
   );
 }

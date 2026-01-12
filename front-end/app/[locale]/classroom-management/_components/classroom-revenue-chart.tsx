@@ -157,14 +157,12 @@ export function ClassroomRevenueChart({
                     formatter={(value, name) => {
                       const classItem = classNames.find((c) => `class_${c.id}` === name);
                       return (
-                        <div className="flex items-center justify-between gap-4 w-full">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-2.5 h-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: classItem?.color }}
-                            />
-                            <span className="text-slate-300 text-xs">{classItem?.name}:</span>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: classItem?.color }}
+                          />
+                          <span className="text-slate-300 text-xs">{classItem?.name}:</span>
                           <span className="font-bold text-white">{formatCurrency(Number(value))}</span>
                         </div>
                       );
