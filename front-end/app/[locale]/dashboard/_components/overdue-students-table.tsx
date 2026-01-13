@@ -6,18 +6,7 @@ import { cn } from '@/lib/utils';
 import { StudentType } from '@/types';
 import { formatDate } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
-import {
-  BookOpen,
-  Calendar,
-  CheckCircle,
-  Clock,
-  DollarSign,
-  Eye,
-  Mail,
-  Phone,
-  User,
-  Users,
-} from 'lucide-react';
+import { BookOpen, Calendar, CheckCircle, Clock, DollarSign, Eye, Mail, Phone, User, Users } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 
@@ -89,8 +78,7 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
   const mappedStudents: OverdueStudentItem[] = students.map((student) => {
     const monthlyFee = student.class?.monthlyFee || 0;
     const currentMonthPayment = getCurrentMonthPaymentStatus(student.monthPaymentStatuses, monthlyFee);
-    const unpaidMonths =
-      student.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+    const unpaidMonths = student.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
     const totalRemainingAmount =
       student.monthPaymentStatuses?.reduce((sum, m) => sum + (m.remainingAmount || 0), 0) ?? 0;
 
@@ -129,10 +117,7 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
 
     return (
       <span
-        className={cn(
-          'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium',
-          config.className,
-        )}
+        className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium', config.className)}
       >
         <Icon className="size-3" />
         {config.label}
@@ -155,10 +140,13 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
         return (
           <div className="font-medium text-slate-900 dark:text-slate-100">
             <div className="space-y-0.5">
-              <div>{row.original.fullName}</div>
-              <div className="text-xs text-slate-500">
-                {t(`gender_${row.original.gender.toLowerCase()}`)}
-              </div>
+              <Link
+                href={`/student-management/${row.original.id}`}
+                className="font-semibold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {row.original.fullName}
+              </Link>
+              <div className="text-xs text-slate-500">{t(`gender_${row.original.gender.toLowerCase()}`)}</div>
             </div>
           </div>
         );
@@ -200,9 +188,7 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
       cell: ({ row }) => {
         return (
           <div className="space-y-1">
-            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              {row.original.fullNameParent}
-            </div>
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{row.original.fullNameParent}</div>
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Phone className="size-3 text-slate-500" />
               {row.original.phoneNumberParent}
@@ -232,16 +218,17 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
     {
       accessorKey: 'dob',
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex justify-center gap-2">
+          <SortableHeader column={column}>
             <Calendar className="size-4" />
             {t('dob')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm flex items-center justify-center gap-2">
+            <Calendar className="size-4 opacity-80" />
             {formatDate(row.original.dob)}
           </div>
         );
@@ -258,41 +245,34 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
         return row.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
       },
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
             <Calendar className="size-4" />
             {t('unpaidMonths')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
-        const unpaidMonths =
-          row.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
-        return (
-          <div className="text-center text-slate-700 dark:text-slate-300 text-sm font-medium">
-            {unpaidMonths}
-          </div>
-        );
+        const unpaidMonths = row.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+        return <div className="text-center text-slate-700 dark:text-slate-300 text-sm font-medium">{unpaidMonths}</div>;
       },
       sortingFn: (rowA, rowB) => {
-        const unpaidMonthsA =
-          rowA.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
-        const unpaidMonthsB =
-          rowB.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+        const unpaidMonthsA = rowA.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+        const unpaidMonthsB = rowB.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
         return unpaidMonthsA - unpaidMonthsB;
       },
     },
     {
       id: 'payment',
       header: () => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-center gap-2">
           <DollarSign className="size-4" />
           {t('payment')}
         </div>
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-right space-y-1">
+          <div className="text-center space-y-1">
             {getPaymentBadge(row.original.paymentStatus)}
             <div className="text-xs text-slate-500 dark:text-slate-400">
               {formatCurrency(row.original.currentMonthPaidAmount ?? row.original.amountPaid)} /{' '}
@@ -309,16 +289,17 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
       id: 'joinedAt',
       accessorFn: (row) => row.class?.joinAt || '',
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
             <Calendar className="size-4" />
             {t('joinedAt')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm flex items-center justify-center gap-2">
+            <Calendar className="size-4 opacity-80" />
             {formatDate(row.original.class?.joinAt || '')}
           </div>
         );
@@ -331,11 +312,7 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
     },
     {
       id: 'actions',
-      header: () => (
-        <div className="text-center">
-          {t('actions')}
-        </div>
-      ),
+      header: () => <div className="text-center">{t('actions')}</div>,
       cell: ({ row }) => {
         const student = row.original;
         return (
@@ -383,4 +360,3 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
     </Card>
   );
 }
-

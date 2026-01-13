@@ -3,13 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ColumnDef } from '@tanstack/react-table';
 import { formatCurrency, formatDateTime } from '@/utils/helper';
 import {
@@ -193,10 +187,12 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-right">
-            <span className="font-medium text-slate-900 dark:text-slate-100">
-              {formatCurrency(row.original.baseSalary)}
-            </span>
+          <div className="flex items-center justify-center">
+            <div className="text-right">
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                {formatCurrency(row.original.baseSalary)}
+              </span>
+            </div>
           </div>
         );
       },
@@ -216,14 +212,16 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-right">
-            {row.original.bonus > 0 ? (
-              <span className="font-semibold text-green-600 dark:text-green-400">
-                +{formatCurrency(row.original.bonus)}
-              </span>
-            ) : (
-              <span className="text-slate-400 dark:text-slate-500">-</span>
-            )}
+          <div className="flex items-center justify-center">
+            <div className="text-right">
+              {row.original.bonus > 0 ? (
+                <span className="font-semibold text-green-600 dark:text-green-400">
+                  +{formatCurrency(row.original.bonus)}
+                </span>
+              ) : (
+                <span className="text-slate-400 dark:text-slate-500">-</span>
+              )}
+            </div>
           </div>
         );
       },
@@ -243,14 +241,16 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-right">
-            {row.original.deduction > 0 ? (
-              <span className="font-semibold text-red-600 dark:text-red-400">
-                -{formatCurrency(row.original.deduction)}
-              </span>
-            ) : (
-              <span className="text-slate-400 dark:text-slate-500">-</span>
-            )}
+          <div className="flex items-center justify-center">
+            <div className="text-right">
+              {row.original.deduction > 0 ? (
+                <span className="font-semibold text-red-600 dark:text-red-400">
+                  -{formatCurrency(row.original.deduction)}
+                </span>
+              ) : (
+                <span className="text-slate-400 dark:text-slate-500">-</span>
+              )}
+            </div>
           </div>
         );
       },
@@ -270,10 +270,12 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-right">
-            <span className="font-bold text-slate-900 dark:text-slate-100">
-              {formatCurrency(row.original.totalAmount)}
-            </span>
+          <div className="flex items-center justify-center">
+            <div className="text-right">
+              <span className="font-bold text-slate-900 dark:text-slate-100">
+                {formatCurrency(row.original.totalAmount)}
+              </span>
+            </div>
           </div>
         );
       },
@@ -369,9 +371,7 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
               <DollarSign className="size-5 text-blue-600 dark:text-blue-400" />
               <div className="flex flex-col">
                 <span className="text-xs text-slate-500 dark:text-slate-400">{t('totalPaid') || 'Tổng đã trả'}</span>
-                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                  {formatCurrency(totalPaid)}
-                </span>
+                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalPaid)}</span>
               </div>
             </div>
           )}
@@ -410,4 +410,3 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
     </Card>
   );
 }
-

@@ -1,16 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { TeacherTable } from './_components/teacher-table';
-import { TeacherDialog } from './_components/teacher-dialog';
-import { SalaryPaymentDialog } from './_components/salary-payment-dialog';
-import { teacherService } from '@/services';
-import { paymentService } from '@/services/payment-service';
-import { toast } from 'react-toastify';
-import { TeacherRequest, TeacherType, CreateTeacherPaymentData } from '@/types';
-import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
 import { PageLoading } from '@/components/page-loading';
+import { teacherService } from '@/services';
+import { TeacherRequest, TeacherType } from '@/types';
+import { useLocale } from 'next-intl';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
+import { TeacherDialog } from './_components/teacher-dialog';
+import { TeacherTable } from './_components/teacher-table';
 
 export default function TeacherManagementPage() {
   const router = useRouter();
@@ -18,8 +16,6 @@ export default function TeacherManagementPage() {
   const [teachers, setTeachers] = useState<TeacherType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherType | null>(null);
-  const [isSalaryDialogOpen, setIsSalaryDialogOpen] = useState(false);
-  const [teacherForSalary, setTeacherForSalary] = useState<TeacherType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchTeachers = useCallback(async () => {
@@ -56,117 +52,58 @@ export default function TeacherManagementPage() {
     setTeachers((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const handleSave = useCallback(async (teacherData: TeacherRequest) => {
-    // Convert Partial<TeacherType> to TeacherRequest
-    const teacherRequest: TeacherRequest = {
-      fullName: teacherData.fullName || '',
-      email: teacherData.email || '',
-      phoneNumber: teacherData.phoneNumber || '',
-      idCard: teacherData.idCard || '',
-      dob: teacherData.dob || '',
-      avatar: teacherData.avatar || '',
-      gender: teacherData.gender || '',
-    };
-
-    if (selectedTeacher) {
-      try {
-        const response = await teacherService.updateTeacher(selectedTeacher.id, teacherRequest);
-        if (response.status === 200 && response.data) {
-          const updatedTeacher = response.data;
-          toast.success('Cập nhật giảng viên thành công');
-          setIsDialogOpen(false);
-          setSelectedTeacher(null);
-          setTeachers((prev) => 
-            prev.map((t) => t.id === selectedTeacher.id ? {...t, ...updatedTeacher} : t)
-          );
-        }
-      } catch (error) {
-        console.error('Error updating teacher:', error);
-        toast.error('Cập nhật giảng viên thất bại');
-      }
-    } else {
-      try {
-        const response = await teacherService.createTeacher(teacherRequest);
-        if (response.status === 201 && response.data) {
-          const newTeacher = response.data;
-          toast.success('Thêm giảng viên thành công');
-          setIsDialogOpen(false);
-          setSelectedTeacher(null);
-          setTeachers((prev) => [...prev, newTeacher]);
-        }
-      } catch (error) {
-        console.error('Error creating teacher:', error);
-        toast.error('Thêm giảng viên thất bại');
-      }
-    }
-  }, [selectedTeacher]);
-
-  const handleViewDetail = useCallback((teacher: TeacherType) => {
-    router.push(`/${locale}/teacher-management/${teacher.id}`);
-  }, [router, locale]);
-
-  const handlePaySalary = (teacher: TeacherType) => {
-    setTeacherForSalary(teacher);
-    setIsSalaryDialogOpen(true);
-  };
-
-  const handleConfirmSalaryPayment = async (
-    teacherId: string,
-    salaryData: {
-      baseSalary: number;
-      bonus: number;
-      deduction: number;
-      totalAmount: number;
-      paymentMethod: 'cash' | 'bank_transfer';
-      paymentDate: string;
-      period: string;
-      notes: string;
-    },
-  ) => {
-    try {
-      // Parse period để lấy month và year
-      // Format: "Tháng {month}/{year}" hoặc "Tháng {monthName} {year}"
-      const periodMatch = salaryData.period.match(/Tháng\s+(\d+)\/(\d+)/);
-      const currentDate = new Date();
-      let month: number;
-      let year: number;
-
-      if (periodMatch) {
-        month = parseInt(periodMatch[1]);
-        year = parseInt(periodMatch[2]);
-      } else {
-        // Fallback: sử dụng tháng hiện tại
-        month = currentDate.getMonth() + 1;
-        year = currentDate.getFullYear();
-      }
-
-      const paymentData: CreateTeacherPaymentData = {
-        teacherId,
-        month,
-        year,
-        baseSalary: salaryData.baseSalary,
-        bonus: salaryData.bonus,
-        deduction: salaryData.deduction,
-        totalAmount: salaryData.totalAmount,
-        paymentMethod: salaryData.paymentMethod,
-        paymentDate: salaryData.paymentDate,
-        notes: salaryData.notes,
+  const handleSave = useCallback(
+    async (teacherData: TeacherRequest) => {
+      // Convert Partial<TeacherType> to TeacherRequest
+      const teacherRequest: TeacherRequest = {
+        fullName: teacherData.fullName || '',
+        email: teacherData.email || '',
+        phoneNumber: teacherData.phoneNumber || '',
+        idCard: teacherData.idCard || '',
+        dob: teacherData.dob || '',
+        avatar: teacherData.avatar || '',
+        gender: teacherData.gender || '',
       };
 
-      const response = await paymentService.createTeacherPayment(paymentData);
-      
-      if (response.status === 201) {
-        toast.success(`Đã trả lương cho giáo viên thành công! Số tiền: ${salaryData.totalAmount.toLocaleString('vi-VN')} VNĐ`);
-        setIsSalaryDialogOpen(false);
-        setTeacherForSalary(null);
+      if (selectedTeacher) {
+        try {
+          const response = await teacherService.updateTeacher(selectedTeacher.id, teacherRequest);
+          if (response.status === 200 && response.data) {
+            const updatedTeacher = response.data;
+            toast.success('Cập nhật giảng viên thành công');
+            setIsDialogOpen(false);
+            setSelectedTeacher(null);
+            setTeachers((prev) => prev.map((t) => (t.id === selectedTeacher.id ? { ...t, ...updatedTeacher } : t)));
+          }
+        } catch (error) {
+          console.error('Error updating teacher:', error);
+          toast.error('Cập nhật giảng viên thất bại');
+        }
       } else {
-        toast.error('Trả lương thất bại. Vui lòng thử lại.');
+        try {
+          const response = await teacherService.createTeacher(teacherRequest);
+          if (response.status === 201 && response.data) {
+            const newTeacher = response.data;
+            toast.success('Thêm giảng viên thành công');
+            setIsDialogOpen(false);
+            setSelectedTeacher(null);
+            setTeachers((prev) => [...prev, newTeacher]);
+          }
+        } catch (error) {
+          console.error('Error creating teacher:', error);
+          toast.error('Thêm giảng viên thất bại');
+        }
       }
-    } catch (error) {
-      console.error('Error creating salary payment:', error);
-      toast.error('Trả lương thất bại. Vui lòng thử lại.');
-    }
-  };
+    },
+    [selectedTeacher],
+  );
+
+  const handleViewDetail = useCallback(
+    (teacher: TeacherType) => {
+      router.push(`/${locale}/teacher-management/${teacher.id}`);
+    },
+    [router, locale],
+  );
 
   if (isLoading) {
     return <PageLoading message="Đang tải danh sách giáo viên..." />;
@@ -180,21 +117,12 @@ export default function TeacherManagementPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onAdd={handleAdd}
-        onPaySalary={handlePaySalary}
         onViewDetail={handleViewDetail}
         showActions={true}
       />
 
       {/* Teacher Dialog */}
       <TeacherDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} teacher={selectedTeacher} onSave={handleSave} />
-
-      {/* Salary Payment Dialog */}
-      <SalaryPaymentDialog
-        open={isSalaryDialogOpen}
-        onOpenChange={setIsSalaryDialogOpen}
-        teacher={teacherForSalary}
-        onConfirm={handleConfirmSalaryPayment}
-      />
     </div>
   );
 }

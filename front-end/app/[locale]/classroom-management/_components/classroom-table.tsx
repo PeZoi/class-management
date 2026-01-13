@@ -100,9 +100,7 @@ export function ClassroomTable({
           <div className="font-medium text-slate-900 dark:text-slate-100">
             <div className="space-y-0.5">
               <div>{row.original.teacher.fullName}</div>
-              <div className="text-xs text-slate-500">
-                {row.original.teacher.gender === 'MALE' ? 'Nam' : 'Nữ'}
-              </div>
+              <div className="text-xs text-slate-500">{row.original.teacher.gender === 'MALE' ? 'Nam' : 'Nữ'}</div>
             </div>
           </div>
         );
@@ -114,12 +112,12 @@ export function ClassroomTable({
     {
       accessorKey: 'studentCount',
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
             <Users className="size-4" />
             {t('students')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
         return (
@@ -211,9 +209,7 @@ export function ClassroomTable({
               />
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-green-600 dark:text-green-400">
-                {formatCurrency(collected)}
-              </span>
+              <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(collected)}</span>
               <span className="text-slate-500 dark:text-slate-400">/ {formatCurrency(total)}</span>
             </div>
           </div>
@@ -223,20 +219,18 @@ export function ClassroomTable({
     {
       accessorKey: 'revenue',
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-end">
-          <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
+          <SortableHeader column={column}>
             <DollarSign className="size-4" />
             {t('revenue')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
         const revenue = row.original.revenue || 0;
         return (
           <div className="text-right">
-            <span className="font-bold text-slate-900 dark:text-slate-100">
-              {formatCurrency(revenue)}
-            </span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(revenue)}</span>
           </div>
         );
       },

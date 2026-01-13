@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 import { TeacherType } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/helper';
@@ -31,14 +31,14 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import Link from 'next/link';
 
 interface TeacherTableProps {
   teachers: TeacherType[];
   onEdit?: (teacher: TeacherType) => void;
   onDelete?: (id: string) => void;
   onAdd?: () => void;
-  onPaySalary?: (teacher: TeacherType) => void;
   onViewDetail?: (teacher: TeacherType) => void;
   title?: string;
   description?: string;
@@ -51,7 +51,6 @@ export function TeacherTable({
   onEdit,
   onDelete,
   onAdd,
-  onPaySalary,
   onViewDetail,
   title,
   description,
@@ -59,6 +58,7 @@ export function TeacherTable({
   className,
 }: TeacherTableProps) {
   const t = useTranslations('teacher-management');
+  const locale = useLocale();
 
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
@@ -78,9 +78,18 @@ export function TeacherTable({
         return (
           <div className="font-medium text-slate-900 dark:text-slate-100">
             <div className="space-y-0.5">
-              <div>{row.original.fullName}</div>
+              <Link
+                href={`/${locale}/teacher-management/${row.original.id}`}
+                className="font-semibold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {row.original.fullName}
+              </Link>
               <div className="text-xs text-slate-500">
-                {row.original.gender === 'MALE' ? t('male') : row.original.gender === 'FEMALE' ? t('female') : t('other')}
+                {row.original.gender === 'MALE'
+                  ? t('male')
+                  : row.original.gender === 'FEMALE'
+                    ? t('female')
+                    : t('other')}
               </div>
             </div>
           </div>
@@ -113,18 +122,18 @@ export function TeacherTable({
     {
       id: 'salary',
       header: () => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center gap-2">
           <DollarSign className="size-4" />
           {t('salary')}
         </div>
       ),
       cell: () => {
         return (
-          <div className="text-right">
-            <div className="text-base font-bold text-green-600 dark:text-green-400">
-              {formatCurrency(9999999)}
+          <div className="flex items-center">
+            <div className="text-right">
+              <div className="text-base font-bold text-green-600 dark:text-green-400">{formatCurrency(9999999)}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">{t('perMonth')}</div>
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">{t('perMonth')}</div>
           </div>
         );
       },
@@ -133,12 +142,12 @@ export function TeacherTable({
       id: 'totalClasses',
       accessorFn: (row) => row.classList?.length || 0,
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
             <BookOpen className="size-4" />
             {t('totalClasses')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
         return (
@@ -158,16 +167,17 @@ export function TeacherTable({
     {
       accessorKey: 'dob',
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
             <Calendar className="size-4" />
             {t('dob')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm flex items-center justify-center gap-2">
+            <Calendar className="size-4 opacity-80" />
             {formatDate(row.original.dob.toString())}
           </div>
         );
@@ -181,12 +191,12 @@ export function TeacherTable({
     {
       accessorKey: 'idCard',
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
             <CreditCard className="size-4" />
             {t('idCard')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
         return (
@@ -201,16 +211,17 @@ export function TeacherTable({
     {
       accessorKey: 'createdAt',
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
             <Calendar className="size-4" />
             {t('joinedDate')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm flex items-center justify-center gap-2">
+            <Calendar className="size-4 opacity-80" />
             {formatDate(row.original.createdAt.toString())}
           </div>
         );
@@ -241,19 +252,6 @@ export function TeacherTable({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-
-                {onPaySalary && (
-                  <>
-                    <DropdownMenuItem
-                      className="cursor-pointer text-green-600 dark:text-green-400 font-medium"
-                      onClick={() => onPaySalary(teacher)}
-                    >
-                      <Briefcase className="size-4 mr-2" />
-                      {t('paySalary')}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
                 {onViewDetail && (
                   <DropdownMenuItem className="cursor-pointer" onClick={() => onViewDetail(teacher)}>
                     <Eye className="size-4 mr-2" />

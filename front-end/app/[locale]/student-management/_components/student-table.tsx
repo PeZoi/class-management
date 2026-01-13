@@ -86,7 +86,9 @@ export function StudentTable({
     const Icon = config.icon;
 
     return (
-      <span className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium', config.className)}>
+      <span
+        className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium', config.className)}
+      >
         <Icon className="size-3" />
         {config.label}
       </span>
@@ -108,10 +110,13 @@ export function StudentTable({
         return (
           <div className="font-medium text-slate-900 dark:text-slate-100">
             <div className="space-y-0.5">
-              <div>{row.original.fullName}</div>
-              <div className="text-xs text-slate-500">
-                {t(`gender_${row.original.gender.toLowerCase()}`)}
-              </div>
+              <Link
+                href={`/${locale}/student-management/${row.original.id}`}
+                className="font-semibold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {row.original.fullName}
+              </Link>
+              <div className="text-xs text-slate-500">{t(`gender_${row.original.gender.toLowerCase()}`)}</div>
             </div>
           </div>
         );
@@ -153,9 +158,7 @@ export function StudentTable({
       cell: ({ row }) => {
         return (
           <div className="space-y-1">
-            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              {row.original.fullNameParent}
-            </div>
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{row.original.fullNameParent}</div>
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Phone className="size-3 text-slate-500" />
               {row.original.phoneNumberParent}
@@ -185,16 +188,17 @@ export function StudentTable({
     {
       accessorKey: 'dob',
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column}>
             <Calendar className="size-4" />
             {t('dob')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm flex items-center justify-center gap-2">
+            <Calendar className="size-4 opacity-80" />
             {formatDate(row.original.dob)}
           </div>
         );
@@ -208,14 +212,14 @@ export function StudentTable({
     {
       id: 'payment',
       header: () => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-center gap-2">
           <DollarSign className="size-4" />
           {t('payment')}
         </div>
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-right space-y-1">
+          <div className="text-center space-y-1">
             {getPaymentBadge(row.original.paymentStatus)}
             <div className="text-xs text-slate-500 dark:text-slate-400">
               {formatCurrency(row.original.currentMonthPaidAmount ?? row.original.amountPaid)} /{' '}
@@ -229,16 +233,17 @@ export function StudentTable({
       id: 'joinedAt',
       accessorFn: (row) => row.class?.joinAt || '',
       header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
             <Calendar className="size-4" />
             {t('joinedDate')}
-          </div>
-        </SortableHeader>
+          </SortableHeader>
+        </div>
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm flex items-center justify-center gap-2">
+            <Calendar className="size-4 opacity-80" />
             {formatDate(row.original?.class?.joinAt || '')}
           </div>
         );
@@ -336,4 +341,3 @@ export function StudentTable({
     </Card>
   );
 }
-
