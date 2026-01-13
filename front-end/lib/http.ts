@@ -144,15 +144,17 @@ const request = async <Response>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url:
       throw new EntityError(data as { status: typeof ENTITY_ERROR_STATUS, payload: EntityErrorPayload })
     } else if (res.status === UNAUTHORIZED_ERROR_STATUS) {
       // Logout ở client-side
-      if (typeof window !== 'undefined') {
-        await fetch('/api/auth/logout', {
-          headers: { ...baseHeaders },
-          method: 'POST',
-          body: JSON.stringify({ force: true })
-        })
-        clientSessionToken.value = ''
-        // location.href = '/login'
-      }
+      // if (typeof window !== 'undefined') {
+      //   await fetch('/api/auth/logout', {
+      //     headers: { ...baseHeaders },
+      //     method: 'POST',
+      //     body: JSON.stringify({ force: true })
+      //   })
+      //   clientSessionToken.value = ''
+      // }
+      location.href = '/sign-in'
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('user')
       // Throw error để catch block có thể xử lý
       throw new HttpError(data)
     } else {

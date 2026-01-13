@@ -22,6 +22,8 @@ public class PaymentRequest {
     private Long amount; // Số tiền còn lại cần đóng (remaining amount) - sẽ được tính lại bởi backend
     private Long paid; // Số tiền đóng trong lần này
     private Long feeSnapshot; // Số tiền thành toán của lớp đó vào thời điểm đó
+    private Long bonus; // Thưởng (chỉ dùng cho teacher salary)
+    private Long deduction; // Khấu trừ (chỉ dùng cho teacher salary)
     private Instant billingMonth;
     private PaymentMethod paymentMethod;
     private PaymentType paymentType;

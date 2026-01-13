@@ -69,6 +69,7 @@ public class StudentService {
             // Tính toán trạng thái thanh toán của tất cả các tháng từ joinAt đến hiện tại
             List<MonthPaymentStatus> monthPaymentStatuses = calculateMonthPaymentStatuses(
                     studentResponse.getId(),
+                    classDB.getId(),
                     studentClass.getJoinedAt(),
                     classDB.getMonthlyFee()
             );
@@ -104,6 +105,7 @@ public class StudentService {
             // Tính toán trạng thái thanh toán của tất cả các tháng từ joinAt đến hiện tại
             List<MonthPaymentStatus> monthPaymentStatuses = calculateMonthPaymentStatuses(
                     studentResponse.getId(),
+                    classId,
                     studentClass.getJoinedAt(),
                     studentClassDB.getMonthlyFee()
             );
@@ -212,6 +214,7 @@ public class StudentService {
             // Tính toán trạng thái thanh toán của tất cả các tháng từ joinAt đến hiện tại
             List<MonthPaymentStatus> monthPaymentStatuses = calculateMonthPaymentStatuses(
                     student.getId(),
+                    classDB.getId(),
                     studentClass.getJoinedAt(),
                     classDB.getMonthlyFee()
             );
@@ -229,7 +232,7 @@ public class StudentService {
      * @param monthlyFee Học phí hàng tháng
      * @return Danh sách trạng thái thanh toán của tất cả các tháng
      */
-    private List<MonthPaymentStatus> calculateMonthPaymentStatuses(String studentId, Instant joinAt, int monthlyFee) {
+    private List<MonthPaymentStatus> calculateMonthPaymentStatuses(String studentId, String classId, Instant joinAt, int monthlyFee) {
         List<MonthPaymentStatus> monthPaymentStatuses = new ArrayList<>();
         
         if (joinAt == null) {
@@ -244,7 +247,7 @@ public class StudentService {
         YearMonth currentMonth = YearMonth.now();
         
         // Lấy tất cả payments của student để tìm các tháng có payment (có thể là tháng trước)
-        List<Payment> allPayments = paymentRepository.findByStudentId(studentId);
+        List<Payment> allPayments = paymentRepository.findByStudentIdAndClazzId(studentId, classId);
         Set<YearMonth> monthsWithPayments = new HashSet<>();
         
         // Tìm tất cả các tháng có payment
@@ -281,8 +284,8 @@ public class StudentService {
             Instant billingMonthInstant = firstDayOfMonth.atStartOfDay(ZoneOffset.UTC).toInstant();
             
             // Lấy tất cả payments của tháng này để tổng hợp
-            List<Payment> paymentsForMonth = paymentRepository.findAllByStudentIdAndBillingMonth(studentId, billingMonthInstant);
-            
+            List<Payment> paymentsForMonth = paymentRepository.findAllByStudentIdAndClassIdAndBillingMonth(studentId, classId, billingMonthInstant);
+
             MonthPaymentStatus monthPaymentStatus;
             if (!paymentsForMonth.isEmpty()) {
                 // Tổng hợp tất cả payments trong tháng

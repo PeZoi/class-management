@@ -24,6 +24,8 @@ public class PaymentResponse {
     private Long amount;
     private Long feeSnapshot;
     private Long paid;
+    private Long bonus; // Thưởng (chỉ dùng cho teacher salary)
+    private Long deduction; // Khấu trừ (chỉ dùng cho teacher salary)
     private Instant billingMonth;
     private PaymentStatus paymentStatus;
     private PaymentMethod paymentMethod;

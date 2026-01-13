@@ -29,6 +29,12 @@ public class PaymentController {
         return new ResponseEntity<>(payments, HttpStatus.OK);
     }
 
+    @GetMapping("/teacher/{teacherId}")
+    public ResponseEntity<List<PaymentResponse>> getPaymentsByTeacherId(@PathVariable String teacherId) {
+        List<PaymentResponse> payments = paymentService.getPaymentsByTeacherId(teacherId);
+        return new ResponseEntity<>(payments, HttpStatus.OK);
+    }
+
     @GetMapping
     public ResponseEntity<List<PaymentResponse>> getAllPayments() {
         List<PaymentResponse> payments = paymentService.getAllPayments();

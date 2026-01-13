@@ -5,8 +5,9 @@ import { TeacherTable } from './_components/teacher-table';
 import { TeacherDialog } from './_components/teacher-dialog';
 import { SalaryPaymentDialog } from './_components/salary-payment-dialog';
 import { teacherService } from '@/services';
+import { paymentService } from '@/services/payment-service';
 import { toast } from 'react-toastify';
-import { TeacherRequest, TeacherType } from '@/types';
+import { TeacherRequest, TeacherType, CreateTeacherPaymentData } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { PageLoading } from '@/components/page-loading';
@@ -109,32 +110,62 @@ export default function TeacherManagementPage() {
     setIsSalaryDialogOpen(true);
   };
 
-  const handleConfirmSalaryPayment = (
+  const handleConfirmSalaryPayment = async (
     teacherId: string,
     salaryData: {
       baseSalary: number;
       bonus: number;
       deduction: number;
       totalAmount: number;
-      paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
+      paymentMethod: 'cash' | 'bank_transfer';
       paymentDate: string;
       period: string;
       notes: string;
     },
   ) => {
-    // TODO: Tạo hóa đơn chi (lương) tự động ở đây
-    // Có thể gọi API để tạo salary payment invoice
-    console.log('Tạo hóa đơn lương cho giáo viên:', {
-      teacherId,
-      teacherName: teachers.find((t) => t.id === teacherId)?.fullName,
-      ...salaryData,
-    });
+    try {
+      // Parse period để lấy month và year
+      // Format: "Tháng {month}/{year}" hoặc "Tháng {monthName} {year}"
+      const periodMatch = salaryData.period.match(/Tháng\s+(\d+)\/(\d+)/);
+      const currentDate = new Date();
+      let month: number;
+      let year: number;
 
-    setIsSalaryDialogOpen(false);
-    setTeacherForSalary(null);
+      if (periodMatch) {
+        month = parseInt(periodMatch[1]);
+        year = parseInt(periodMatch[2]);
+      } else {
+        // Fallback: sử dụng tháng hiện tại
+        month = currentDate.getMonth() + 1;
+        year = currentDate.getFullYear();
+      }
 
-    // Show success message (có thể dùng toast notification)
-    alert(`Đã trả lương cho giáo viên thành công!\nSố tiền: ${salaryData.totalAmount.toLocaleString('vi-VN')} VNĐ`);
+      const paymentData: CreateTeacherPaymentData = {
+        teacherId,
+        month,
+        year,
+        baseSalary: salaryData.baseSalary,
+        bonus: salaryData.bonus,
+        deduction: salaryData.deduction,
+        totalAmount: salaryData.totalAmount,
+        paymentMethod: salaryData.paymentMethod,
+        paymentDate: salaryData.paymentDate,
+        notes: salaryData.notes,
+      };
+
+      const response = await paymentService.createTeacherPayment(paymentData);
+      
+      if (response.status === 201) {
+        toast.success(`Đã trả lương cho giáo viên thành công! Số tiền: ${salaryData.totalAmount.toLocaleString('vi-VN')} VNĐ`);
+        setIsSalaryDialogOpen(false);
+        setTeacherForSalary(null);
+      } else {
+        toast.error('Trả lương thất bại. Vui lòng thử lại.');
+      }
+    } catch (error) {
+      console.error('Error creating salary payment:', error);
+      toast.error('Trả lương thất bại. Vui lòng thử lại.');
+    }
   };
 
   if (isLoading) {

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { ArrowUpRight, BookOpen, DollarSign, Users } from 'lucide-react';
+import { ArrowUpRight, DollarSign, Users, Wallet } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 interface StatsCardsProps {
@@ -9,8 +9,10 @@ interface StatsCardsProps {
     totalClasses: number;
     totalStudents: number;
     totalTeachers: number;
+    totalSalaryExpense: number;
     revenueGrowth: number;
     studentGrowth: number;
+    salaryExpenseGrowth: number;
   };
   formatCurrency: (amount: number) => string;
   className?: string;
@@ -41,6 +43,30 @@ export function StatsCards({ statsData, formatCurrency, className }: StatsCardsP
         </CardContent>
       </Card>
 
+      {/* Total Salary Expense */}
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-purple-500">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('totalSalaryExpense')}</CardTitle>
+          <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+            <Wallet className="size-5 text-purple-600 dark:text-purple-400" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            {formatCurrency(statsData.totalSalaryExpense)}
+          </div>
+          {statsData.salaryExpenseGrowth !== undefined && (
+            <div className="flex items-center gap-1 mt-2">
+              <ArrowUpRight className={`size-4 ${statsData.salaryExpenseGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              <span className={`text-sm font-medium ${statsData.salaryExpenseGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {Math.abs(statsData.salaryExpenseGrowth).toFixed(1)}%
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">{t('vsLastMonth')}</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Total Students */}
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-green-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -58,19 +84,6 @@ export function StatsCards({ statsData, formatCurrency, className }: StatsCardsP
             <span className="text-sm font-medium text-green-600">{statsData.studentGrowth}%</span>
             <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">{t('vsLastMonth')}</span>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Total Classes */}
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-purple-500">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('totalClasses')}</CardTitle>
-          <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-            <BookOpen className="size-5 text-purple-600 dark:text-purple-400" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{statsData.totalClasses}</div>
         </CardContent>
       </Card>
 

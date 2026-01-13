@@ -24,7 +24,7 @@ interface SalaryPaymentData {
   bonus: number;
   deduction: number;
   totalAmount: number;
-  paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
+  paymentMethod: 'cash' | 'bank_transfer';
   paymentDate: string;
   period: string;
   notes: string;
@@ -225,18 +225,6 @@ export function SalaryPaymentDialog({ open, onOpenChange, teacher, onConfirm }: 
                         <div className="flex items-center gap-2">
                           <CreditCard className="size-4" />
                           {t('method_bank_transfer')}
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="credit_card">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="size-4" />
-                          {t('method_credit_card')}
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="e_wallet">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="size-4" />
-                          {t('method_e_wallet')}
                         </div>
                       </SelectItem>
                     </SelectContent>

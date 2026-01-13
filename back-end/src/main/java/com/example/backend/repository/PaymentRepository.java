@@ -21,10 +21,26 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     // Lấy tất cả payments của một student trong một tháng cụ thể (để tổng hợp)
     @Query("SELECT p FROM Payment p WHERE p.student.id = :studentId AND p.billingMonth = :billingMonth ORDER BY p.createdAt ASC")
     List<Payment> findAllByStudentIdAndBillingMonth(@Param("studentId") String studentId, @Param("billingMonth") Instant billingMonth);
+
+    // Lấy tất cả payments của một student và class trong một tháng cụ thể (để tổng hợp)
+    @Query("SELECT p FROM Payment p WHERE p.student.id = :studentId AND p.clazz.id = :classId AND p.billingMonth = :billingMonth ORDER BY p.createdAt ASC")
+    List<Payment> findAllByStudentIdAndClassIdAndBillingMonth(@Param("studentId") String studentId, @Param("classId") String classId, @Param("billingMonth") Instant billingMonth);
     
     // Lấy tất cả payments của một student
     @Query("SELECT p FROM Payment p WHERE p.student.id = :studentId ORDER BY p.billingMonth DESC, p.createdAt DESC")
     List<Payment> findByStudentId(@Param("studentId") String studentId);
+
+    // Lấy tất cả payments của một student và class
+    @Query("SELECT p FROM Payment p WHERE p.student.id = :studentId AND p.clazz.id = :classId ORDER BY p.billingMonth DESC, p.createdAt DESC")
+    List<Payment> findByStudentIdAndClazzId(@Param("studentId") String studentId, @Param("classId") String classId);
+
+    // Lấy tất cả payments của một teacher
+    @Query("SELECT p FROM Payment p WHERE p.teacher.id = :teacherId ORDER BY p.billingMonth DESC, p.createdAt DESC")
+    List<Payment> findByTeacherId(@Param("teacherId") String teacherId);
+
+    // Lấy tất cả payments của một teacher trong một tháng cụ thể (để tổng hợp)
+    @Query("SELECT p FROM Payment p WHERE p.teacher.id = :teacherId AND p.billingMonth = :billingMonth ORDER BY p.createdAt ASC")
+    List<Payment> findAllByTeacherIdAndBillingMonth(@Param("teacherId") String teacherId, @Param("billingMonth") Instant billingMonth);
 
     // Lấy tất cả payments, mới nhất trước
     List<Payment> findAllByOrderByCreatedAtDesc();

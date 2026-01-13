@@ -47,6 +47,14 @@ public class Payment extends Auditable {
     @Column(nullable = false)
     private Long paid; // Số tiền đã đóng
 
+    // Thưởng (chỉ dùng cho teacher salary)
+    @Column(name = "bonus")
+    private Long bonus;
+
+    // Khấu trừ (chỉ dùng cho teacher salary)
+    @Column(name = "deduction")
+    private Long deduction;
+
     // Đại diện cho tháng học phí (ví dụ: 2025-09-01)
     @Column(name = "billing_month", nullable = false)
     private Instant billingMonth;

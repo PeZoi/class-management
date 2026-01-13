@@ -9,10 +9,14 @@ import com.example.backend.entity.StudentClass;
 import com.example.backend.enums.PaymentStatus;
 import com.example.backend.enums.StudentClassStatus;
 import com.example.backend.exception.NotFoundException;
+import com.example.backend.entity.User;
+import com.example.backend.enums.PaymentDirection;
+import com.example.backend.enums.PaymentType;
 import com.example.backend.repository.ClassRepository;
 import com.example.backend.repository.PaymentRepository;
 import com.example.backend.repository.StudentClassRepository;
 import com.example.backend.repository.StudentRepository;
+import com.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +32,16 @@ public class PaymentService {
     private final StudentRepository studentRepository;
     private final ClassRepository classRepository;
     private final StudentClassRepository studentClassRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public PaymentResponse createPayment(PaymentRequest paymentRequest) {
+        // Xử lý teacher payment
+        if (paymentRequest.getTeacherId() != null) {
+            return createTeacherPayment(paymentRequest);
+        }
+
+        // Xử lý student payment (logic cũ)
         // Validate student exists
         Student student = null;
         if (paymentRequest.getStudentId() != null) {
@@ -105,9 +116,74 @@ public class PaymentService {
         return mapToPaymentResponse(savedPayment);
     }
 
+    private PaymentResponse createTeacherPayment(PaymentRequest paymentRequest) {
+        // Validate teacher exists
+        User teacher = userRepository.findById(paymentRequest.getTeacherId())
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+
+        // Tính total amount = baseSalary (feeSnapshot) + bonus - deduction
+        Long bonus = paymentRequest.getBonus() != null ? paymentRequest.getBonus() : 0L;
+        Long deduction = paymentRequest.getDeduction() != null ? paymentRequest.getDeduction() : 0L;
+        Long totalAmount = paymentRequest.getFeeSnapshot() + bonus - deduction;
+
+        // Tính remaining amount (nếu đã trả một phần trong tháng này)
+        Long remainingAmount = totalAmount;
+        if (paymentRequest.getBillingMonth() != null) {
+            List<Payment> existingPayments = paymentRepository.findAllByTeacherIdAndBillingMonth(
+                    paymentRequest.getTeacherId(),
+                    paymentRequest.getBillingMonth()
+            );
+
+            if (!existingPayments.isEmpty()) {
+                Long totalPaid = existingPayments.stream()
+                        .mapToLong(p -> p.getPaid() != null ? p.getPaid() : 0L)
+                        .sum();
+                remainingAmount = totalAmount - totalPaid;
+                if (remainingAmount < 0) {
+                    remainingAmount = 0L;
+                }
+            }
+        }
+
+        // Tạo payment cho teacher
+        Payment payment = Payment.builder()
+                .paymentId("PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .amount(remainingAmount)
+                .feeSnapshot(paymentRequest.getFeeSnapshot()) // baseSalary
+                .paid(paymentRequest.getPaid())
+                .bonus(bonus)
+                .deduction(deduction)
+                .billingMonth(paymentRequest.getBillingMonth())
+                .paymentMethod(paymentRequest.getPaymentMethod())
+                .paymentType(PaymentType.TEACHER_SALARY)
+                .direction(PaymentDirection.EXPENSE)
+                .teacher(teacher)
+                .note(paymentRequest.getNote())
+                .build();
+
+        // Set payment status
+        if (payment.getPaid() >= payment.getAmount()) {
+            payment.setPaymentStatus(PaymentStatus.COMPLETED);
+        } else {
+            payment.setPaymentStatus(PaymentStatus.INCOMPLETE);
+        }
+
+        Payment savedPayment = paymentRepository.save(payment);
+        return mapToPaymentResponse(savedPayment);
+    }
+
     @Transactional(readOnly = true)
     public List<PaymentResponse> getPaymentsByStudentId(String studentId) {
         List<Payment> payments = paymentRepository.findByStudentId(studentId);
+        
+        return payments.stream()
+                .map(this::mapToPaymentResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentResponse> getPaymentsByTeacherId(String teacherId) {
+        List<Payment> payments = paymentRepository.findByTeacherId(teacherId);
         
         return payments.stream()
                 .map(this::mapToPaymentResponse)
@@ -132,6 +208,8 @@ public class PaymentService {
         response.setAmount(payment.getAmount());
         response.setFeeSnapshot(payment.getFeeSnapshot());
         response.setPaid(payment.getPaid());
+        response.setBonus(payment.getBonus());
+        response.setDeduction(payment.getDeduction());
         response.setBillingMonth(payment.getBillingMonth());
         response.setPaymentStatus(payment.getPaymentStatus());
         response.setPaymentMethod(payment.getPaymentMethod());

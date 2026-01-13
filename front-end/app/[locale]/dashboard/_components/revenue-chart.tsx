@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -13,6 +13,7 @@ interface RevenueChartProps {
   currentRevenueData: Array<{
     month: string;
     revenue: number;
+    expense: number;
     label: string;
   }>;
   formatCurrency: (amount: number) => string;
@@ -85,6 +86,10 @@ export function RevenueChart({
               label: 'Doanh Thu',
               color: 'hsl(var(--chart-1))',
             },
+            expense: {
+              label: 'Chi Trả',
+              color: 'hsl(var(--chart-2))',
+            },
           }}
           className="h-[300px] w-full"
         >
@@ -109,6 +114,13 @@ export function RevenueChart({
                   return value.toString();
                 }}
               />
+              <Legend
+                wrapperStyle={{ paddingTop: '20px' }}
+                iconType="rect"
+                formatter={(value) => {
+                  return value === 'revenue' ? 'Doanh Thu' : 'Chi Trả';
+                }}
+              />
               <ChartTooltip
                 content={
                   <ChartTooltipContent
@@ -117,10 +129,11 @@ export function RevenueChart({
                       const item = currentRevenueData.find((d) => d.month === label);
                       return item?.label || label;
                     }}
-                    formatter={(value) => {
+                    formatter={(value, name) => {
+                      const label = name === 'revenue' ? 'Doanh thu' : 'Chi trả';
                       return (
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-300 text-xs">Doanh thu:</span>
+                          <span className="text-slate-300 text-xs">{label}:</span>
                           <span className="font-bold text-white">{formatCurrency(Number(value))}</span>
                         </div>
                       );
@@ -134,10 +147,32 @@ export function RevenueChart({
                   <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
                   <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.7} />
                 </linearGradient>
+                <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#f97316" stopOpacity={0.7} />
+                </linearGradient>
               </defs>
               <Bar
                 dataKey="revenue"
                 fill="url(#colorRevenue)"
+                radius={[8, 8, 0, 0]}
+                animationDuration={800}
+                className="drop-shadow-md"
+                label={{
+                  position: 'top',
+                  fill: '#475569',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  formatter: (value: number) => {
+                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                    return value.toString();
+                  },
+                }}
+              />
+              <Bar
+                dataKey="expense"
+                fill="url(#colorExpense)"
                 radius={[8, 8, 0, 0]}
                 animationDuration={800}
                 className="drop-shadow-md"

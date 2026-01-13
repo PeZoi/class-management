@@ -5,7 +5,9 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -15,6 +17,7 @@ import com.example.backend.dto.dashboard.DashboardRevenueDataResponse;
 import com.example.backend.dto.dashboard.DashboardStatsResponse;
 import com.example.backend.dto.student.StudentResponse;
 import com.example.backend.enums.PaymentDirection;
+import com.example.backend.enums.PaymentType;
 import com.example.backend.enums.Status;
 import com.example.backend.repository.ClassRepository;
 import com.example.backend.repository.PaymentRepository;
@@ -90,13 +93,77 @@ public class DashboardService {
         // Calculate student growth
         Double studentGrowth = calculateGrowth(currentMonthStudents, previousMonthStudents);
 
+        // Calculate total salary expense for current month
+        // Tổng lương giáo viên cần trả = tổng totalAmount (feeSnapshot + bonus - deduction) cho tất cả giáo viên
+        // Nhóm payments theo teacherId và billingMonth
+        Map<String, Long> teacherTotalAmountMap = new HashMap<>();
+        Map<String, Long> teacherPaidAmountMap = new HashMap<>();
+        
+        paymentRepository.findAll().stream()
+                .filter(payment -> payment.getPaymentType() == PaymentType.TEACHER_SALARY)
+                .filter(payment -> payment.getBillingMonth() != null && 
+                        payment.getBillingMonth().equals(currentMonthStart))
+                .filter(payment -> payment.getTeacher() != null)
+                .forEach(payment -> {
+                    String teacherId = payment.getTeacher().getId();
+                    
+                    // Tính totalAmount từ payment (feeSnapshot + bonus - deduction)
+                    Long feeSnapshot = payment.getFeeSnapshot() != null ? payment.getFeeSnapshot() : 0L;
+                    Long bonus = payment.getBonus() != null ? payment.getBonus() : 0L;
+                    Long deduction = payment.getDeduction() != null ? payment.getDeduction() : 0L;
+                    Long totalAmount = feeSnapshot + bonus - deduction;
+                    
+                    // Lưu totalAmount lớn nhất cho mỗi giáo viên (nếu có nhiều payments với totalAmount khác nhau)
+                    teacherTotalAmountMap.put(teacherId, 
+                            Math.max(teacherTotalAmountMap.getOrDefault(teacherId, 0L), totalAmount));
+                    
+                    // Tổng hợp paidAmount cho mỗi giáo viên
+                    Long paidAmount = payment.getPaid() != null ? payment.getPaid() : 0L;
+                    teacherPaidAmountMap.put(teacherId, 
+                            teacherPaidAmountMap.getOrDefault(teacherId, 0L) + paidAmount);
+                });
+        
+        // Tính tổng lương cần trả = tổng totalAmount của tất cả giáo viên
+        Long totalSalaryExpense = teacherTotalAmountMap.values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+        
+        // Calculate total salary expense for previous month (for growth calculation)
+        Map<String, Long> prevTeacherTotalAmountMap = new HashMap<>();
+        
+        paymentRepository.findAll().stream()
+                .filter(payment -> payment.getPaymentType() == PaymentType.TEACHER_SALARY)
+                .filter(payment -> payment.getBillingMonth() != null && 
+                        payment.getBillingMonth().equals(previousMonthStart))
+                .filter(payment -> payment.getTeacher() != null)
+                .forEach(payment -> {
+                    String teacherId = payment.getTeacher().getId();
+                    
+                    Long feeSnapshot = payment.getFeeSnapshot() != null ? payment.getFeeSnapshot() : 0L;
+                    Long bonus = payment.getBonus() != null ? payment.getBonus() : 0L;
+                    Long deduction = payment.getDeduction() != null ? payment.getDeduction() : 0L;
+                    Long totalAmount = feeSnapshot + bonus - deduction;
+                    
+                    prevTeacherTotalAmountMap.put(teacherId, 
+                            Math.max(prevTeacherTotalAmountMap.getOrDefault(teacherId, 0L), totalAmount));
+                });
+        
+        Long previousMonthSalaryExpense = prevTeacherTotalAmountMap.values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+        
+        // Calculate salary expense growth
+        Double salaryExpenseGrowth = calculateGrowth(totalSalaryExpense, previousMonthSalaryExpense);
+
         DashboardStatsResponse response = new DashboardStatsResponse();
         response.setTotalRevenue(currentMonthRevenue); // Doanh thu tháng hiện tại
         response.setTotalClasses(totalClasses);
         response.setTotalStudents(totalStudents);
         response.setTotalTeachers(totalTeachers);
+        response.setTotalSalaryExpense(totalSalaryExpense > 0 ? totalSalaryExpense : 0L);
         response.setRevenueGrowth(revenueGrowth);
         response.setStudentGrowth(studentGrowth);
+        response.setSalaryExpenseGrowth(salaryExpenseGrowth);
 
         return response;
     }
@@ -157,6 +224,30 @@ public class DashboardService {
                 revenue = 0L;
             }
 
+            // Tính tổng expense (lương giáo viên) cho tháng này
+            Map<String, Long> teacherTotalAmountMap = new HashMap<>();
+            
+            paymentRepository.findAll().stream()
+                    .filter(payment -> payment.getPaymentType() == PaymentType.TEACHER_SALARY)
+                    .filter(payment -> payment.getBillingMonth() != null && 
+                            payment.getBillingMonth().equals(billingMonth))
+                    .filter(payment -> payment.getTeacher() != null)
+                    .forEach(payment -> {
+                        String teacherId = payment.getTeacher().getId();
+                        
+                        Long feeSnapshot = payment.getFeeSnapshot() != null ? payment.getFeeSnapshot() : 0L;
+                        Long bonus = payment.getBonus() != null ? payment.getBonus() : 0L;
+                        Long deduction = payment.getDeduction() != null ? payment.getDeduction() : 0L;
+                        Long totalAmount = feeSnapshot + bonus - deduction;
+                        
+                        teacherTotalAmountMap.put(teacherId, 
+                                Math.max(teacherTotalAmountMap.getOrDefault(teacherId, 0L), totalAmount));
+                    });
+            
+            Long expense = teacherTotalAmountMap.values().stream()
+                    .mapToLong(Long::longValue)
+                    .sum();
+
             // Tạo label cho tháng
             String monthShort = "T" + targetDate.getMonthValue();
             String monthLabel = "Tháng " + targetDate.getMonthValue();
@@ -165,6 +256,7 @@ public class DashboardService {
                     .month(monthShort)
                     .label(monthLabel)
                     .revenue(revenue)
+                    .expense(expense)
                     .build();
 
             revenueDataList.add(revenueData);

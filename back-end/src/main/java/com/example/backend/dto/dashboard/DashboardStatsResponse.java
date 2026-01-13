@@ -14,7 +14,9 @@ public class DashboardStatsResponse {
     private Long totalClasses;
     private Long totalStudents;
     private Long totalTeachers;
+    private Long totalSalaryExpense; // Tổng lương giáo viên cần trả trong tháng này
     private Double revenueGrowth;
     private Double studentGrowth;
+    private Double salaryExpenseGrowth; // % tăng trưởng lương so với tháng trước
 }
 

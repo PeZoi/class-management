@@ -24,8 +24,10 @@ export default function DashboardPage() {
     totalClasses: 0,
     totalStudents: 0,
     totalTeachers: 0,
+    totalSalaryExpense: 0,
     revenueGrowth: 0,
     studentGrowth: 0,
+    salaryExpenseGrowth: 0,
   });
   const [loading, setLoading] = useState(true);
 

@@ -15,5 +15,6 @@ public class DashboardRevenueDataResponse {
     private String month; // "T1", "T2", etc.
     private String label; // "Tháng 1", "Tháng 2", etc.
     private Long revenue; // Tổng revenue trong tháng này (tổng tất cả classes)
+    private Long expense; // Tổng chi trả lương giáo viên trong tháng này
 }
 

@@ -10,6 +10,8 @@ export interface PaymentRequest {
   paid: number;
   billingMonth: string; // ISO date string for the first day of the month
   feeSnapshot: number;
+  bonus?: number; // Thưởng (chỉ dùng cho teacher salary)
+  deduction?: number; // Khấu trừ (chỉ dùng cho teacher salary)
   paymentMethod: PaymentMethod;
   paymentType: PaymentType;
   direction: PaymentDirection;
@@ -44,6 +46,8 @@ export interface PaymentResponse {
   amount: number;
   feeSnapshot: number;
   paid: number;
+  bonus?: number; // Thưởng (chỉ dùng cho teacher salary)
+  deduction?: number; // Khấu trừ (chỉ dùng cho teacher salary)
   billingMonth: string; // ISO date string
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
@@ -68,6 +72,20 @@ export interface CreateStudentPaymentData {
   month: number;
   year: number;
   amount: number;
+  paymentMethod: 'cash' | 'bank_transfer';
+  paymentDate: string;
+  notes: string;
+}
+
+// Helper type for creating teacher salary payment
+export interface CreateTeacherPaymentData {
+  teacherId: string;
+  month: number;
+  year: number;
+  baseSalary: number;
+  bonus: number;
+  deduction: number;
+  totalAmount: number;
   paymentMethod: 'cash' | 'bank_transfer';
   paymentDate: string;
   notes: string;
