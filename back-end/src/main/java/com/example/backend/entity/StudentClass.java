@@ -50,4 +50,10 @@ public class StudentClass extends Auditable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "class_id", nullable = false)
     private Class clazz;
+
+    // ===== CLASS SHIFT (CA HỌC) =====
+    // Một bản ghi StudentClass có thể gắn với một ca học cụ thể trong lớp
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "class_shift_id")
+    private ClassShift classShift;
 }

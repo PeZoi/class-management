@@ -51,6 +51,20 @@ public interface StudentClassRepository extends JpaRepository<StudentClass,Long>
         ); // Lấy tất cả học sinh của 1 lớp học
 
     @Query("""
+        SELECT sc.student
+        FROM StudentClass sc
+        WHERE sc.classShift.id = :classShiftId
+        AND sc.leftAt IS NULL
+        AND sc.status = :classStatus
+        AND sc.student.status = :studentStatus
+    """)
+    List<Student> findStudentsByClassShift(
+            @Param("classShiftId") String classShiftId,
+            @Param("classStatus") StudentClassStatus classStatus,
+            @Param("studentStatus") StudentStatus studentStatus
+    ); // Lấy tất cả học sinh của 1 ca học trong lớp
+
+    @Query("""
         SELECT sc
         FROM StudentClass sc
         WHERE sc.student.id = :studentId

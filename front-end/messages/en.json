@@ -168,7 +168,8 @@
     "period_3months": "Last 3 Months",
     "period_6months": "Last 6 Months",
     "period_12months": "Last 12 Months",
-    "viewDetail": "View detail"
+    "viewDetail": "View detail",
+    "noSchedule": "No schedule"
   },
   "classroom-detail": {
     "back": "Back to Classes",

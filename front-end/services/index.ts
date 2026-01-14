@@ -4,3 +4,4 @@ export * from './student-service';
 export * from './class-service';
 export * from './payment-service';
 export * from './dashboard-service';
+export * from './class-shift-service';

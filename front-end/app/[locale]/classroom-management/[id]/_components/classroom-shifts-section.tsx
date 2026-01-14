@@ -1,0 +1,550 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { classShiftService, studentService } from '@/services';
+import { ClassShiftType } from '@/types/class-type';
+import { StudentType } from '@/types';
+import { toast } from 'react-toastify';
+import { Plus, RefreshCw, Users, Mail, Calendar, DollarSign, Phone, CheckCircle, Clock } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { useTranslations } from 'next-intl';
+import { formatCurrency, formatDate } from '@/utils/helper';
+
+interface ClassroomShiftsSectionProps {
+  classId: string;
+}
+
+export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps) {
+  const tClassDetail = useTranslations('classroom-detail');
+
+  const [shifts, setShifts] = useState<ClassShiftType[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [studentsByShift, setStudentsByShift] = useState<Record<string, StudentType[]>>({});
+  const [loadingStudentsShiftId, setLoadingStudentsShiftId] = useState<string | null>(null);
+  const [openShiftId, setOpenShiftId] = useState<string | null>(null);
+
+  const getCurrentMonthPaymentStatus = (
+    monthPaymentStatuses?: Array<{
+      month: string;
+      expectedAmount: number;
+      paidAmount: number;
+      remainingAmount: number;
+      status: 'PAID' | 'PARTIAL' | 'UNPAID';
+    }>,
+    monthlyFee?: number,
+  ): {
+    paymentStatus: 'paid' | 'unpaid' | 'partial';
+    paidAmount: number;
+    expectedAmount: number;
+  } => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+
+    if (monthPaymentStatuses && monthPaymentStatuses.length > 0) {
+      for (const paymentStatus of monthPaymentStatuses) {
+        const paymentDate = new Date(paymentStatus.month);
+        const paymentYear = paymentDate.getFullYear();
+        const paymentMonth = paymentDate.getMonth() + 1;
+
+        if (paymentYear === currentYear && paymentMonth === currentMonth) {
+          const statusMap: Record<'PAID' | 'PARTIAL' | 'UNPAID', 'paid' | 'unpaid' | 'partial'> = {
+            PAID: 'paid',
+            PARTIAL: 'partial',
+            UNPAID: 'unpaid',
+          };
+
+          return {
+            paymentStatus: statusMap[paymentStatus.status] || 'unpaid',
+            paidAmount: paymentStatus.paidAmount || 0,
+            expectedAmount: paymentStatus.expectedAmount || monthlyFee || 0,
+          };
+        }
+      }
+    }
+
+    return {
+      paymentStatus: 'unpaid',
+      paidAmount: 0,
+      expectedAmount: monthlyFee || 0,
+    };
+  };
+
+  type ShiftType = 'MORNING' | 'EVENING';
+
+  const [shiftType, setShiftType] = useState<ShiftType>('MORNING');
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+
+  const dayOptions: { key: string; label: string; order: number }[] = [
+    { key: 'MON', label: 'T2', order: 1 },
+    { key: 'TUE', label: 'T3', order: 2 },
+    { key: 'WED', label: 'T4', order: 3 },
+    { key: 'THU', label: 'T5', order: 4 },
+    { key: 'FRI', label: 'T6', order: 5 },
+    { key: 'SAT', label: 'T7', order: 6 },
+    { key: 'SUN', label: 'CN', order: 7 },
+  ];
+
+  const fetchShifts = async () => {
+    if (!classId) return;
+    try {
+      setLoading(true);
+      const res = await classShiftService.getByClassId(classId);
+      if (res.status === 200 && res.data) {
+        setShifts(res.data);
+      }
+    } catch (error) {
+      console.error('Error fetching class shifts', error);
+      toast.error('Không thể tải danh sách ca học');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchShifts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classId]);
+
+  const fetchStudentsByShift = async (shiftId: string) => {
+    try {
+      setLoadingStudentsShiftId(shiftId);
+      const res = await studentService.getStudentsByClassShift(shiftId);
+      if (res.status === 200 && res.data) {
+        setStudentsByShift((prev) => ({
+          ...prev,
+          [shiftId]: res.data || [],
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching students by class shift', error);
+      toast.error('Không thể tải danh sách học sinh của ca này');
+    } finally {
+      setLoadingStudentsShiftId(null);
+    }
+  };
+
+  const handleCreateShift = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!shiftType) {
+      toast.warning('Vui lòng chọn loại ca (sáng/tối)');
+      return;
+    }
+
+    if (selectedDays.length === 0) {
+      toast.warning('Vui lòng chọn ít nhất một thứ');
+      return;
+    }
+
+    if (!startTime || !endTime) {
+      toast.warning('Vui lòng chọn thời gian bắt đầu và kết thúc');
+      return;
+    }
+
+    const typeLabel = shiftType === 'MORNING' ? 'Ca sáng' : 'Ca tối';
+
+    const orderedDays = [...selectedDays].sort((a, b) => {
+      const da = dayOptions.find((d) => d.key === a)?.order ?? 0;
+      const db = dayOptions.find((d) => d.key === b)?.order ?? 0;
+      return da - db;
+    });
+
+    const dayLabel = orderedDays
+      .map((key) => dayOptions.find((d) => d.key === key)?.label ?? '')
+      .filter(Boolean)
+      .join(', ');
+
+    const timeLabel = `${startTime} - ${endTime}`;
+    const name = `${typeLabel} - ${dayLabel} - ${timeLabel}`;
+
+    try {
+      setCreating(true);
+      const res = await classShiftService.create({
+        name,
+        classId,
+      });
+      if (res.status === 201 && res.data) {
+        toast.success('Thêm ca học thành công');
+        // reset form
+        setShiftType('MORNING');
+        setSelectedDays([]);
+        setStartTime('');
+        setEndTime('');
+        setOpen(false);
+        // Cập nhật list
+        setShifts((prev) => [...prev, res.data as ClassShiftType]);
+      }
+    } catch (error) {
+      console.error('Error creating class shift', error);
+      toast.error('Không thể thêm ca học');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <>
+      <Card className="border-0 shadow-lg bg-white dark:bg-slate-900">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              Ca học của lớp
+            </CardTitle>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
+              Quản lý các ca học (Ca sáng/Ca tối, theo thứ và khung giờ) để phục vụ điểm danh và theo dõi lịch dạy.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={fetchShifts}
+              disabled={loading}
+              title="Tải lại danh sách ca"
+            >
+              <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="size-4 mr-1" />
+              Thêm ca
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Danh sách ca học (collapse + danh sách học sinh) */}
+          <div className="space-y-2">
+            {loading ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Đang tải danh sách ca học...</p>
+            ) : shifts.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Chưa có ca học nào cho lớp này. Hãy nhấn &quot;Thêm ca&quot; để tạo ca đầu tiên.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {shifts.map((shift) => {
+                  const students = studentsByShift[shift.id] || [];
+                  const isLoadingStudents = loadingStudentsShiftId === shift.id;
+
+                  return (
+                    <li key={shift.id}>
+                      <Collapsible
+                        open={openShiftId === shift.id}
+                        onOpenChange={(isOpen) => {
+                          setOpenShiftId(isOpen ? shift.id : (openShiftId === shift.id ? null : openShiftId));
+                          if (isOpen && !studentsByShift[shift.id]) {
+                            fetchStudentsByShift(shift.id);
+                          }
+                        }}
+                        className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40"
+                      >
+                        <CollapsibleTrigger asChild>
+                          <button className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-slate-800 dark:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 transition-colors">
+                            <div className="flex items-center gap-2 text-left">
+                              <Users className="size-4 text-blue-500" />
+                              <span>{shift.name}</span>
+                            </div>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                              {students.length > 0 ? `${students.length} học sinh` : 'Nhấn để xem học sinh'}
+                            </span>
+                          </button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="border-t border-slate-200 dark:border-slate-800 px-3 py-2 bg-white/60 dark:bg-slate-950/40">
+                          {isLoadingStudents ? (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Đang tải danh sách học sinh...
+                            </p>
+                          ) : students.length === 0 ? (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Chưa có học sinh nào trong ca này.
+                            </p>
+                          ) : (
+                            <div className="overflow-x-auto rounded-md border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950/60">
+                              <Table className="min-w-full text-xs">
+                                <TableHeader className="bg-slate-100/80 dark:bg-slate-900/80">
+                                  <TableRow className="text-left text-slate-600 dark:text-slate-300">
+                                    <TableHead className="px-3 py-2 font-semibold">
+                                      <div className="flex items-center gap-1.5">
+                                        <Users className="size-3.5" />
+                                        {tClassDetail('studentName')}
+                                      </div>
+                                    </TableHead>
+                                    <TableHead className="px-3 py-2 font-semibold">
+                                      <div className="flex items-center gap-1.5">
+                                        <Mail className="size-3.5" />
+                                        {tClassDetail('contact')}
+                                      </div>
+                                    </TableHead>
+                                    <TableHead className="px-3 py-2 font-semibold">
+                                      <div className="flex items-center gap-1.5">
+                                        <Users className="size-3.5" />
+                                        {tClassDetail('parent')}
+                                      </div>
+                                    </TableHead>
+                                    <TableHead className="px-3 py-2 font-semibold">
+                                      <div className="flex items-center gap-1.5">
+                                        <Calendar className="size-3.5" />
+                                        {tClassDetail('dob')}
+                                      </div>
+                                    </TableHead>
+                                    <TableHead className="px-3 py-2 font-semibold">
+                                      <div className="flex items-center gap-1.5">
+                                        <Calendar className="size-3.5" />
+                                        {tClassDetail('joinedAt')}
+                                      </div>
+                                    </TableHead>
+                                    <TableHead className="px-3 py-2 font-semibold">
+                                      <div className="flex items-center gap-1.5">
+                                        <Calendar className="size-3.5" />
+                                        {tClassDetail('unpaidMonths')}
+                                      </div>
+                                    </TableHead>
+                                    <TableHead className="px-3 py-2 font-semibold">
+                                      <div className="flex items-center gap-1.5">
+                                        <DollarSign className="size-3.5" />
+                                        {tClassDetail('payment')}
+                                      </div>
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {students.map((student) => (
+                                    <TableRow
+                                      key={student.id}
+                                      className="border-t border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900/70 transition-colors"
+                                    >
+                                      {(() => {
+                                        const monthlyFee = student.class?.monthlyFee || 0;
+                                        const currentPayment = getCurrentMonthPaymentStatus(
+                                          student.monthPaymentStatuses,
+                                          monthlyFee,
+                                        );
+                                        const unpaidMonths =
+                                          student.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+
+                                        const paymentStatus = currentPayment.paymentStatus;
+                                        const paymentConfig = {
+                                          paid: {
+                                            label: tClassDetail('payment_paid'),
+                                            className:
+                                              'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+                                            icon: CheckCircle,
+                                          },
+                                          partial: {
+                                            label: tClassDetail('payment_partial'),
+                                            className:
+                                              'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+                                            icon: Clock,
+                                          },
+                                          unpaid: {
+                                            label: tClassDetail('payment_unpaid'),
+                                            className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                                            icon: Clock,
+                                          },
+                                        } as const;
+                                        const paymentCfg = paymentConfig[paymentStatus];
+                                        const PaymentIcon = paymentCfg.icon;
+
+                                        const genderKey = `gender_${student.gender.toLowerCase()}` as
+                                          | 'gender_male'
+                                          | 'gender_female'
+                                          | 'gender_other';
+                                        return (
+                                          <>
+                                            <TableCell className="px-3 py-2 font-medium">
+                                              <div className="flex flex-col">
+                                                <span>{student.fullName}</span>
+                                                <span className="text-[10px] text-slate-500">
+                                                  {tClassDetail(genderKey)}
+                                                </span>
+                                              </div>
+                                            </TableCell>
+                                            <TableCell className="px-3 py-2">
+                                              <div className="flex flex-col gap-0.5">
+                                                <span className="inline-flex items-center gap-1">
+                                                  <Mail className="size-3 text-slate-500" />
+                                                  <span>{student.email}</span>
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300">
+                                                  <Phone className="size-3 text-slate-500" />
+                                                  <span>{student.phoneNumber}</span>
+                                                </span>
+                                              </div>
+                                            </TableCell>
+                                            <TableCell className="px-3 py-2">
+                                              <div className="flex flex-col gap-0.5">
+                                                <span>{student.fullNameParent}</span>
+                                                <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300">
+                                                  <Phone className="size-3 text-slate-500" />
+                                                  <span>{student.phoneNumberParent}</span>
+                                                </span>
+                                              </div>
+                                            </TableCell>
+                                            <TableCell className="px-3 py-2 whitespace-nowrap">
+                                              {formatDate(student.dob)}
+                                            </TableCell>
+                                            <TableCell className="px-3 py-2 whitespace-nowrap">
+                                              {student.class?.joinAt ? formatDate(student.class.joinAt) : '-'}
+                                            </TableCell>
+                                            <TableCell className="px-3 py-2 text-center whitespace-nowrap">
+                                              {unpaidMonths}
+                                            </TableCell>
+                                            <TableCell className="px-3 py-2 text-right whitespace-nowrap">
+                                              <div className="flex flex-col items-end gap-1">
+                                                <span
+                                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium ${paymentCfg.className}`}
+                                                >
+                                                  <PaymentIcon className="size-3" />
+                                                  {paymentCfg.label}
+                                                </span>
+                                                <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                                                  {formatCurrency(currentPayment.paidAmount)}{' '}
+                                                  <span className="text-[10px] text-slate-500">
+                                                    / {formatCurrency(currentPayment.expectedAmount)}
+                                                  </span>
+                                                </span>
+                                              </div>
+                                            </TableCell>
+                                          </>
+                                        );
+                                      })()}
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          )}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dialog tạo ca học */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Thêm ca học</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateShift} className="space-y-4">
+            {/* Loại ca */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Loại ca</p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={shiftType === 'MORNING' ? 'default' : 'outline'}
+                  onClick={() => setShiftType('MORNING')}
+                  className="flex-1"
+                >
+                  Ca sáng
+                </Button>
+                <Button
+                  type="button"
+                  variant={shiftType === 'EVENING' ? 'default' : 'outline'}
+                  onClick={() => setShiftType('EVENING')}
+                  className="flex-1"
+                >
+                  Ca tối
+                </Button>
+              </div>
+            </div>
+
+            {/* Chọn thứ */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Thứ trong tuần</p>
+              <div className="flex flex-wrap gap-2">
+                {dayOptions.map((day) => {
+                  const isSelected = selectedDays.includes(day.key);
+                  return (
+                    <Button
+                      key={day.key}
+                      type="button"
+                      size="sm"
+                      variant={isSelected ? 'default' : 'outline'}
+                      className="px-3"
+                      onClick={() => {
+                        setSelectedDays((prev) =>
+                          prev.includes(day.key)
+                            ? prev.filter((k) => k !== day.key)
+                            : [...prev, day.key],
+                        );
+                      }}
+                    >
+                      {day.label}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Thời gian */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Khung giờ</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Giờ bắt đầu</p>
+                  <Input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Giờ kết thúc</p>
+                  <Input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Hủy
+              </Button>
+              <Button type="submit" disabled={creating}>
+                Lưu ca học
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+

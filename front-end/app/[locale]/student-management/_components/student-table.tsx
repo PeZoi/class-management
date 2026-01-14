@@ -186,6 +186,22 @@ export function StudentTable({
       },
     },
     {
+      id: 'shift',
+      header: () => (
+        <div className="flex items-center justify-center gap-2">
+          <Clock className="size-4" />
+          <span>Ca học</span>
+        </div>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+            {row.original.class?.shiftName || '-'}
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: 'dob',
       header: ({ column }) => (
         <div className="flex items-center justify-center gap-2">

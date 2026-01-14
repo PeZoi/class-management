@@ -146,7 +146,7 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
         return (
           <div className="font-medium text-slate-900 dark:text-slate-100">
             <div className="space-y-0.5">
-              <div>{row.original.fullName}</div>
+              <Link href={`/student-management/${row.original.id}`} className="hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{row.original.fullName}</Link>
               <div className="text-xs text-slate-500">
                 {t(`gender_${row.original.gender.toLowerCase()}`)}
               </div>
@@ -216,6 +216,22 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
             <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-medium">
               {row.original.class?.name || t('noClass')}
             </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'shift',
+      header: () => (
+        <div className="flex items-center justify-center gap-2">
+          <Clock className="size-4" />
+          <span>Ca học</span>
+        </div>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+            {row.original.class?.shiftName || '-'}
           </div>
         );
       },

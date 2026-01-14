@@ -3,6 +3,9 @@ export interface StudentClassResponse {
   name: string;
   monthlyFee: number;
   joinAt: string;
+  // Thông tin ca học hiện tại của học sinh (nếu có)
+  shiftId?: string;
+  shiftName?: string;
 }
 
 export interface MonthPaymentStatus {
@@ -35,6 +38,8 @@ export interface StudentRequest {
   fullNameParent: string;
   phoneNumberParent: string;
   classId: string;
+  // Id ca học trong lớp (tùy chọn)
+  classShiftId?: string;
 }
 
 export interface ClassHistoryResponse {

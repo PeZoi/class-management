@@ -8,6 +8,7 @@ import { ClassroomRevenueChart } from './_components/classroom-revenue-chart';
 import { useTranslations } from 'next-intl';
 import { ClassRequest, ClassType, ClassRevenueDataResponse } from '@/types/class-type';
 import { classService } from '@/services/class-service';
+import { classShiftService } from '@/services';
 import { toast } from 'react-toastify';
 import { PageLoading } from '@/components/page-loading';
 
@@ -35,6 +36,7 @@ export default function ClassroomManagementPage() {
   const [selectedClass, setSelectedClass] = useState<ClassType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
+  const [classShiftSummaryByClassId, setClassShiftSummaryByClassId] = useState<Record<string, string>>({});
 
   // Chart state
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
@@ -96,6 +98,45 @@ export default function ClassroomManagementPage() {
     fetchClasses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch shifts for each class to xây dựng lịch học từ ca
+  useEffect(() => {
+    const fetchShiftsForClasses = async () => {
+      if (!classes || classes.length === 0) {
+        setClassShiftSummaryByClassId({});
+        return;
+      }
+
+      try {
+        const results = await Promise.allSettled(
+          classes.map((cls) => classShiftService.getByClassId(cls.id)),
+        );
+
+        const summaryMap: Record<string, string> = {};
+
+        results.forEach((result, index) => {
+          const classId = classes[index].id;
+          if (result.status === 'fulfilled' && result.value.status === 200 && result.value.data) {
+            const shifts = result.value.data;
+            if (!shifts || shifts.length === 0) return;
+
+            // Ghép tên các ca lại, giới hạn để không quá dài
+            const names = shifts.map((s) => s.name);
+            const preview = names.slice(0, 2).join('\n');
+            const moreCount = names.length - 2;
+
+            summaryMap[classId] = moreCount > 0 ? `${preview} (+${moreCount} ca khác)` : preview;
+          }
+        });
+
+        setClassShiftSummaryByClassId(summaryMap);
+      } catch (error) {
+        console.error('Error fetching class shifts for classes', error);
+      }
+    };
+
+    fetchShiftsForClasses();
+  }, [classes]);
 
   // Fetch revenue data when period changes
   useEffect(() => {
@@ -178,6 +219,7 @@ export default function ClassroomManagementPage() {
       <ClassroomTable
         classes={classes}
         formatCurrency={formatCurrency}
+        classShiftSummaryByClassId={classShiftSummaryByClassId}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onAdd={handleAdd}

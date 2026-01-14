@@ -5,4 +5,5 @@ export { ClassroomStatsCards } from './classroom-stats-cards';
 export { ClassroomStudentsList } from './classroom-students-list';
 export { ClassroomTeacherInfo } from './classroom-teacher-info';
 export { ClassroomStudentAttendance } from './classroom-student-attendance';
+export { ClassroomShiftsSection } from './classroom-shifts-section';
 

@@ -5,6 +5,7 @@ import com.example.backend.dto.student.MonthPaymentStatus;
 import com.example.backend.dto.student.StudentRequest;
 import com.example.backend.dto.student.StudentResponse;
 import com.example.backend.entity.Class;
+import com.example.backend.entity.ClassShift;
 import com.example.backend.entity.Payment;
 import com.example.backend.entity.Student;
 import com.example.backend.entity.StudentClass;
@@ -12,6 +13,7 @@ import com.example.backend.enums.StudentClassStatus;
 import com.example.backend.enums.StudentStatus;
 import com.example.backend.exception.NotFoundException;
 import com.example.backend.repository.ClassRepository;
+import com.example.backend.repository.ClassShiftRepository;
 import com.example.backend.repository.PaymentRepository;
 import com.example.backend.repository.StudentClassRepository;
 import com.example.backend.repository.StudentRepository;
@@ -38,6 +40,7 @@ public class StudentService {
     private final StudentClassRepository studentClassRepository;
     private final ClassRepository classRepository;
     private final PaymentRepository paymentRepository;
+    private final ClassShiftRepository classShiftRepository;
     private final ModelMapper modelMapper;
 
     public StudentClass getClassByStudent(String studentId) {
@@ -63,6 +66,10 @@ public class StudentService {
             studentClassResponse.setName(classDB.getName());
             studentClassResponse.setJoinAt(studentClass.getJoinedAt());
             studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
+            if (studentClass.getClassShift() != null) {
+                studentClassResponse.setShiftId(studentClass.getClassShift().getId());
+                studentClassResponse.setShiftName(studentClass.getClassShift().getName());
+            }
 
             studentResponse.setClazz(studentClassResponse);
             
@@ -99,6 +106,10 @@ public class StudentService {
             studentClassResponse.setName(studentClassDB.getName());
             studentClassResponse.setJoinAt(studentClass.getJoinedAt());
             studentClassResponse.setMonthlyFee(studentClassDB.getMonthlyFee());
+            if (studentClass.getClassShift() != null) {
+                studentClassResponse.setShiftId(studentClass.getClassShift().getId());
+                studentClassResponse.setShiftName(studentClass.getClassShift().getName());
+            }
 
             studentResponse.setClazz(studentClassResponse);
             
@@ -116,6 +127,46 @@ public class StudentService {
         return studentResponseList;
     }
 
+    @Transactional(readOnly = true)
+    public List<StudentResponse> getStudentsByClassShift(String classShiftId) {
+        List<StudentResponse> studentResponseList = new ArrayList<>();
+        List<Student> studentList = studentClassRepository.findStudentsByClassShift(
+                classShiftId,
+                StudentClassStatus.STUDYING,
+                StudentStatus.ACTIVE
+        );
+
+        for (Student s : studentList) {
+            StudentResponse studentResponse = modelMapper.map(s, StudentResponse.class);
+            StudentClass studentClass = getClassByStudent(studentResponse.getId());
+            if (studentClass != null) {
+                Class classDB = studentClass.getClazz();
+                StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
+                studentClassResponse.setId(classDB.getId());
+                studentClassResponse.setName(classDB.getName());
+                studentClassResponse.setJoinAt(studentClass.getJoinedAt());
+                studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
+                if (studentClass.getClassShift() != null) {
+                    studentClassResponse.setShiftId(studentClass.getClassShift().getId());
+                    studentClassResponse.setShiftName(studentClass.getClassShift().getName());
+                }
+                studentResponse.setClazz(studentClassResponse);
+
+                List<MonthPaymentStatus> monthPaymentStatuses = calculateMonthPaymentStatuses(
+                        studentResponse.getId(),
+                        classDB.getId(),
+                        studentClass.getJoinedAt(),
+                        classDB.getMonthlyFee()
+                );
+                studentResponse.setMonthPaymentStatuses(monthPaymentStatuses);
+            }
+
+            studentResponseList.add(studentResponse);
+        }
+
+        return studentResponseList;
+    }
+
     @Transactional
     public StudentResponse create(StudentRequest studentRequest) {
         Class classDB = classRepository.findById(studentRequest.getClassId()).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
@@ -130,6 +181,16 @@ public class StudentService {
         studentClass.setClazz(classDB);
         studentClass.setJoinedAt(Instant.now());
         studentClass.setStatus(StudentClassStatus.STUDYING);
+        // Gán ca học nếu có
+        if (studentRequest.getClassShiftId() != null) {
+            ClassShift shift = classShiftRepository.findById(studentRequest.getClassShiftId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy ca học"));
+            // đảm bảo ca thuộc đúng lớp
+            if (!shift.getClazz().getId().equals(classDB.getId())) {
+                throw new NotFoundException("Ca học không thuộc lớp đã chọn");
+            }
+            studentClass.setClassShift(shift);
+        }
         StudentClass studentClassDB = studentClassRepository.save(studentClass);
 
         StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
@@ -137,6 +198,11 @@ public class StudentService {
         studentClassResponse.setId(classDB.getId());
         studentClassResponse.setName(classDB.getName());
         studentClassResponse.setJoinAt(studentClassDB.getJoinedAt());
+        studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
+        if (studentClassDB.getClassShift() != null) {
+            studentClassResponse.setShiftId(studentClassDB.getClassShift().getId());
+            studentClassResponse.setShiftName(studentClassDB.getClassShift().getName());
+        }
         studentResponse.setClazz(studentClassResponse);
         return studentResponse;
     }
@@ -164,12 +230,25 @@ public class StudentService {
             studentClass.setClazz(classDB);
             studentClass.setJoinedAt(Instant.now());
             studentClass.setStatus(StudentClassStatus.STUDYING);
+            if (studentRequest.getClassShiftId() != null) {
+                ClassShift shift = classShiftRepository.findById(studentRequest.getClassShiftId())
+                        .orElseThrow(() -> new NotFoundException("Không tìm thấy ca học"));
+                if (!shift.getClazz().getId().equals(classDB.getId())) {
+                    throw new NotFoundException("Ca học không thuộc lớp đã chọn");
+                }
+                studentClass.setClassShift(shift);
+            }
             studentClassDB = studentClassRepository.save(studentClass);
 
             StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
             studentClassResponse.setId(classDB.getId());
             studentClassResponse.setName(classDB.getName());
             studentClassResponse.setJoinAt(studentClassDB.getJoinedAt());
+            studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
+            if (studentClassDB.getClassShift() != null) {
+                studentClassResponse.setShiftId(studentClassDB.getClassShift().getId());
+                studentClassResponse.setShiftName(studentClassDB.getClassShift().getName());
+            }
             studentResponse.setClazz(studentClassResponse);
         } else if (studentClassDB != null && !studentId.equals(studentClassDB.getClazz().getId())) {
             studentClassDB.setLeftAt(Instant.now());
@@ -182,12 +261,25 @@ public class StudentService {
             studentClass.setStatus(StudentClassStatus.STUDYING);
             studentClass.setClazz(classDB);
             studentClass.setStudent(studentDB);
+            if (studentRequest.getClassShiftId() != null) {
+                ClassShift shift = classShiftRepository.findById(studentRequest.getClassShiftId())
+                        .orElseThrow(() -> new NotFoundException("Không tìm thấy ca học"));
+                if (!shift.getClazz().getId().equals(classDB.getId())) {
+                    throw new NotFoundException("Ca học không thuộc lớp đã chọn");
+                }
+                studentClass.setClassShift(shift);
+            }
             StudentClass studentClassResponseDB = studentClassRepository.save(studentClass);
 
             StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
             studentClassResponse.setId(classDB.getId());
             studentClassResponse.setName(classDB.getName());
-            studentClassResponse.setJoinAt(studentClassDB.getJoinedAt());
+            studentClassResponse.setJoinAt(studentClassResponseDB.getJoinedAt());
+            studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
+            if (studentClassResponseDB.getClassShift() != null) {
+                studentClassResponse.setShiftId(studentClassResponseDB.getClassShift().getId());
+                studentClassResponse.setShiftName(studentClassResponseDB.getClassShift().getName());
+            }
             studentResponse.setClazz(studentClassResponse);
         }
 
@@ -209,6 +301,10 @@ public class StudentService {
             studentClassResponse.setName(classDB.getName());
             studentClassResponse.setJoinAt(studentClass.getJoinedAt());
             studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
+            if (studentClass.getClassShift() != null) {
+                studentClassResponse.setShiftId(studentClass.getClassShift().getId());
+                studentClassResponse.setShiftName(studentClass.getClassShift().getName());
+            }
             studentResponse.setClazz(studentClassResponse);
             
             // Tính toán trạng thái thanh toán của tất cả các tháng từ joinAt đến hiện tại

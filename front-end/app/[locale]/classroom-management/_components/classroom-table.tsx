@@ -42,6 +42,8 @@ interface ClassroomTableProps {
   description?: string;
   showActions?: boolean;
   className?: string;
+  // Lịch học lớp lấy theo ca: map classId -> chuỗi mô tả ca (ví dụ: "Ca tối - T2, T4, T6 - 19:00 - 21:00")
+  classShiftSummaryByClassId?: Record<string, string>;
 }
 
 export function ClassroomTable({
@@ -54,8 +56,10 @@ export function ClassroomTable({
   description,
   showActions = true,
   className,
+  classShiftSummaryByClassId,
 }: ClassroomTableProps) {
   const t = useTranslations('classroom-management');
+  const tDashboard = useTranslations('dashboard');
   const locale = useLocale();
 
   const displayTitle = title || t('title');
@@ -100,7 +104,13 @@ export function ClassroomTable({
           <div className="font-medium text-slate-900 dark:text-slate-100">
             <div className="space-y-0.5">
               <div>{row.original.teacher.fullName}</div>
-              <div className="text-xs text-slate-500">{row.original.teacher.gender === 'MALE' ? 'Nam' : 'Nữ'}</div>
+              <div className="text-xs text-slate-500">
+                {row.original.teacher.gender === 'MALE'
+                  ? tDashboard('gender_male')
+                  : row.original.teacher.gender === 'FEMALE'
+                    ? tDashboard('gender_female')
+                    : tDashboard('gender_other')}
+              </div>
             </div>
           </div>
         );
@@ -140,10 +150,23 @@ export function ClassroomTable({
         </SortableHeader>
       ),
       cell: ({ row }) => {
+        const shiftSummary = classShiftSummaryByClassId?.[row.original.id];
+        const shiftSummaryArr = shiftSummary?.split('\n');
+        
         return (
-          <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
-            <Calendar className="size-3.5" />
-            <span>{row.original.schedule}</span>
+          <div className="flex flex-col gap-1.5 text-sm text-slate-600 dark:text-slate-400">
+            {shiftSummaryArr?.map((item) => (
+              <div className="flex items-center gap-1.5" key={item}>
+                <Calendar className="size-3.5 mt-0.5" />
+                {item}
+              </div>
+            ))}
+            {(!shiftSummaryArr || shiftSummaryArr.length === 0) && (
+              <div className="flex items-center gap-1.5 italic">
+                <Calendar className="size-3.5 mt-0.5" />
+                {t('noSchedule')}
+              </div>
+            )}
           </div>
         );
       },

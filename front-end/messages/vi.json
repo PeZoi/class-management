@@ -168,7 +168,8 @@
     "period_3months": "3 Tháng Gần Đây",
     "period_6months": "6 Tháng Gần Đây",
     "period_12months": "12 Tháng Gần Đây",
-    "viewDetail": "Xem chi tiết"
+    "viewDetail": "Xem chi tiết",
+    "noSchedule": "Chưa có lịch học"
   },
   "classroom-detail": {
     "back": "Quay lại Danh sách Lớp",

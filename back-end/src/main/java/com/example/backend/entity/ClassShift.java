@@ -1,6 +1,5 @@
 package com.example.backend.entity;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -24,28 +23,23 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table
-public class Class extends Auditable {
+@Table(name = "class_shift")
+public class ClassShift extends Auditable {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(length = 45, nullable = false, unique = true)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "monthly_fee", nullable = false)
-    private int monthlyFee;
+    // Mỗi ca thuộc về một lớp
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "class_id", nullable = false)
+    private Class clazz;
 
-    private String schedule;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "teacher_id", nullable = false)
-    private User teacher;
-
-    @OneToMany(mappedBy = "clazz", cascade = CascadeType.ALL)
+    // Một ca có thể có nhiều học sinh thông qua bảng trung gian StudentClass
+    @OneToMany(mappedBy = "classShift")
     private List<StudentClass> studentClasses = new ArrayList<>();
-
-    // Danh sách các ca học của lớp (1 lớp có nhiều ca)
-    @OneToMany(mappedBy = "clazz", cascade = CascadeType.ALL)
-    private List<ClassShift> classShifts = new ArrayList<>();
 }
+
+

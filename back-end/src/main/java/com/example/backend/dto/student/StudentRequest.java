@@ -1,7 +1,6 @@
 package com.example.backend.dto.student;
 
 import com.example.backend.enums.Genders;
-import com.nimbusds.openid.connect.sdk.claims.Gender;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -28,4 +27,7 @@ public class StudentRequest {
     private String phoneNumberParent;
 
     private String classId;
+
+    // Id ca học trong lớp (tùy chọn)
+    private String classShiftId;
 }

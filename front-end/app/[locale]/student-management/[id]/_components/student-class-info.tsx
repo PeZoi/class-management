@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, BookOpen } from 'lucide-react';
+import { Calendar, BookOpen, Clock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { StudentType } from '@/types/student-type';
 import { formatDate } from '@/utils/helper';
@@ -30,6 +30,15 @@ export function StudentClassInfo({ student }: StudentClassInfoProps) {
               <p className="text-sm text-slate-600 dark:text-slate-400">{t('className')}</p>
               <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{student.class.name}</p>
             </div>
+            {student.class.shiftName && (
+              <div className="flex items-center gap-2">
+                <Clock className="size-4 text-slate-500" />
+                <span className="text-sm text-slate-500 dark:text-slate-400">Ca học:</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {student.class.shiftName}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Calendar className="size-4 text-slate-500" />
               <span className="text-sm text-slate-500 dark:text-slate-400">{t('joinedDate')}: </span>

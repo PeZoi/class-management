@@ -10,6 +10,7 @@ import {
   ClassroomStudentsList,
   ClassroomTeacherInfo,
   ClassroomStudentAttendance,
+  ClassroomShiftsSection,
 } from './_components';
 import { classService, studentService } from '@/services';
 import { ClassType, StudentType, TeacherType, ClassSingleRevenueDataResponse } from '@/types';
@@ -152,6 +153,11 @@ export default function ClassroomDetailPage() {
         />
         <ClassroomScheduleInfo schedule={currentClassData.schedule} time={currentClassData.time} duration={currentClassData.duration} />
       </div>
+
+      {/* Class Shifts Management */}
+      {classId && (
+        <ClassroomShiftsSection classId={classId as string} />
+      )}
 
       {/* Revenue Chart */}
       {!isLoadingRevenue && revenueData.length > 0 && (

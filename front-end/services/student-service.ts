@@ -18,6 +18,8 @@ export const studentService = {
   },
   getStudents: () => http.get<ResponseType<StudentType[], StudentType[]>>('/api/student/get-all'),
   getStudentsByClass: (classId: string) => http.get<ResponseType<StudentType[], StudentType[]>>(`/api/student/get-students-by-class/${classId}`),
+  getStudentsByClassShift: (classShiftId: string) =>
+    http.get<ResponseType<StudentType[], StudentType[]>>(`/api/student/get-students-by-class-shift/${classShiftId}`),
   getStudentById: (studentId: string) => http.get<ResponseType<StudentType, StudentType>>(`/api/student/get/${studentId}`),
   getClassHistory: (studentId: string) => http.get<ResponseType<ClassHistoryResponse[], ClassHistoryResponse[]>>(`/api/student/class-history/${studentId}`),
 };

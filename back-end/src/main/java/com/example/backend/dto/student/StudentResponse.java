@@ -44,5 +44,8 @@ public class StudentResponse {
         private String name;
         private int monthlyFee;
         private Instant joinAt;
+        // Thông tin ca học của học sinh trong lớp (nếu có)
+        private String shiftId;
+        private String shiftName;
     }
 }

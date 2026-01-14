@@ -13,8 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { StudentType, StudentRequest } from '@/types/student-type';
-import { ClassType } from '@/types/class-type';
-import { classService } from '@/services/class-service';
+import { ClassType, ClassShiftType } from '@/types/class-type';
+import { classService, classShiftService } from '@/services';
 
 interface StudentDialogProps {
   open: boolean;
@@ -27,6 +27,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
   const t = useTranslations('student-management');
 
   const [classes, setClasses] = useState<ClassType[]>([]);
+  const [shifts, setShifts] = useState<ClassShiftType[]>([]);
   const [formData, setFormData] = useState<StudentRequest>({
     fullName: '',
     email: '',
@@ -36,6 +37,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
     fullNameParent: '',
     phoneNumberParent: '',
     classId: '',
+    classShiftId: '',
   });
 
   // Fetch classes
@@ -69,6 +71,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
         fullNameParent: student.fullNameParent || '',
         phoneNumberParent: student.phoneNumberParent || '',
         classId: student.class?.id || '',
+        classShiftId: student.class?.shiftId || '',
       });
     } else {
       setFormData({
@@ -80,9 +83,30 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
         fullNameParent: '',
         phoneNumberParent: '',
         classId: '',
+        classShiftId: '',
       });
     }
   }, [student, open]);
+
+  // Fetch shifts when classId changes
+  useEffect(() => {
+    const fetchShifts = async () => {
+      if (!formData.classId) {
+        setShifts([]);
+        return;
+      }
+      try {
+        const response = await classShiftService.getByClassId(formData.classId);
+        if (response.status === 200) {
+          setShifts(response.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching class shifts:', error);
+      }
+    };
+
+    fetchShifts();
+  }, [formData.classId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,6 +266,29 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                       {classes.map((cls) => (
                         <SelectItem key={cls.id} value={cls.id}>
                           {cls.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Class Shift Selection */}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="classShiftId" className="text-right">
+                    Ca học
+                  </Label>
+                  <Select
+                    value={formData.classShiftId || ''}
+                    onValueChange={(value) => handleChange('classShiftId', value)}
+                    disabled={!formData.classId || shifts.length === 0}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder={shifts.length === 0 ? 'Chưa có ca cho lớp này' : 'Chọn ca học'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {shifts.map((shift) => (
+                        <SelectItem key={shift.id} value={shift.id}>
+                          {shift.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

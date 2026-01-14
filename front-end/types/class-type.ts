@@ -20,6 +20,13 @@ export interface ClassType {
   teacher: TeacherType;
 }
 
+export interface ClassShiftType {
+  id: string;
+  name: string;
+  classId: string;
+  className: string;
+}
+
 export interface ClassRevenueDataResponse {
   month: string; // "T1", "T2", etc.
   label: string; // "Tháng 1", "Tháng 2", etc.

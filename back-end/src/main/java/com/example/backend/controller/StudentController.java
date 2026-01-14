@@ -31,6 +31,12 @@ public class StudentController {
         return new ResponseEntity<>(studentResponseList, HttpStatus.OK);
     }
 
+    @GetMapping("/get-students-by-class-shift/{classShiftId}")
+    public ResponseEntity<List<StudentResponse>> getStudentsByClassShift(@PathVariable String classShiftId) {
+        List<StudentResponse> studentResponseList = studentService.getStudentsByClassShift(classShiftId);
+        return new ResponseEntity<>(studentResponseList, HttpStatus.OK);
+    }
+
     @GetMapping("/get/{id}")
     public ResponseEntity<StudentResponse> getStudentById(@PathVariable String id) {
         StudentResponse studentResponse = studentService.getStudentById(id);
