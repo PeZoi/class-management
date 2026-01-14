@@ -4,6 +4,7 @@ import com.example.backend.enums.PaymentMethod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -24,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 @Slf4j
 public class EmailService {
     private final JavaMailSender mailSender;
+    private final InvoiceService invoiceService;
     
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("MM/yyyy")
             .withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
@@ -35,14 +37,15 @@ public class EmailService {
     }
     
     /**
-     * Gửi email thông báo thanh toán học phí cho học viên
+     * Gửi email thông báo thanh toán học phí cho học viên (có PDF đính kèm)
      * Chạy bất đồng bộ để không làm chậm quá trình thanh toán
      */
     @Async("emailTaskExecutor")
     public void sendStudentPaymentNotification(String studentEmail, String studentName, 
                                                 Long paidAmount, PaymentMethod paymentMethod, 
                                                 String className, Instant billingMonth, 
-                                                String note, String paymentId) {
+                                                String note, String paymentId, 
+                                                com.example.backend.dto.payment.PaymentResponse paymentResponse) {
         if (studentEmail == null || studentEmail.trim().isEmpty()) {
             log.warn("Email học viên không tồn tại, bỏ qua gửi email");
             return;
@@ -70,6 +73,20 @@ public class EmailService {
             }
             
             helper.setText(htmlContent, true);
+            
+            // Đính kèm PDF hóa đơn nếu có paymentResponse
+            if (paymentResponse != null) {
+                try {
+                    byte[] pdfBytes = invoiceService.generateStudentInvoice(paymentResponse);
+                    String fileName = "HoaDon_" + paymentId + ".pdf";
+                    helper.addAttachment(fileName, new ByteArrayResource(pdfBytes), "application/pdf");
+                    log.debug("Đã đính kèm PDF hóa đơn vào email: {}", fileName);
+                } catch (Exception e) {
+                    log.error("Lỗi khi tạo PDF hóa đơn để đính kèm email: {}", e.getMessage(), e);
+                    // Tiếp tục gửi email dù không có PDF
+                }
+            }
+            
             log.debug("Đang gửi email đến SMTP server...");
             mailSender.send(message);
             log.info("Email thông báo thanh toán đã được gửi thành công đến học viên: {}", studentEmail);
@@ -84,14 +101,15 @@ public class EmailService {
     }
     
     /**
-     * Gửi email thông báo thanh toán lương cho giáo viên
+     * Gửi email thông báo thanh toán lương cho giáo viên (có PDF đính kèm)
      * Chạy bất đồng bộ để không làm chậm quá trình thanh toán
      */
     @Async("emailTaskExecutor")
     public void sendTeacherPaymentNotification(String teacherEmail, String teacherName,
                                                 Long paidAmount, Long baseSalary, Long bonus, Long deduction,
                                                 PaymentMethod paymentMethod, Instant billingMonth,
-                                                String note, String paymentId) {
+                                                String note, String paymentId,
+                                                com.example.backend.dto.payment.PaymentResponse paymentResponse) {
         if (teacherEmail == null || teacherEmail.trim().isEmpty()) {
             log.warn("Email giáo viên không tồn tại, bỏ qua gửi email");
             return;
@@ -111,6 +129,20 @@ public class EmailService {
             );
             
             helper.setText(htmlContent, true);
+            
+            // Đính kèm PDF hóa đơn nếu có paymentResponse
+            if (paymentResponse != null) {
+                try {
+                    byte[] pdfBytes = invoiceService.generateTeacherInvoice(paymentResponse);
+                    String fileName = "HoaDonLuong_" + paymentId + ".pdf";
+                    helper.addAttachment(fileName, new ByteArrayResource(pdfBytes), "application/pdf");
+                    log.debug("Đã đính kèm PDF hóa đơn vào email: {}", fileName);
+                } catch (Exception e) {
+                    log.error("Lỗi khi tạo PDF hóa đơn để đính kèm email: {}", e.getMessage(), e);
+                    // Tiếp tục gửi email dù không có PDF
+                }
+            }
+            
             mailSender.send(message);
             log.info("Email thông báo thanh toán lương đã được gửi thành công đến giáo viên: {}", teacherEmail);
         } catch (MessagingException e) {

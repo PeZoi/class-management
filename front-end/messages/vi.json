@@ -735,6 +735,11 @@
     "notesDescription": "Chi tiết ghi chú về khoản thanh toán",
     "male": "Nam",
     "female": "Nữ",
-    "other": "Khác"
+    "other": "Khác",
+    "downloadInvoice": "Tải hóa đơn",
+    "errorPaymentIdNotFound": "Không tìm thấy mã thanh toán",
+    "errorDownloadInvoice": "Không thể tải hóa đơn: {status} - {error}",
+    "errorInvalidFile": "File không hợp lệ hoặc rỗng",
+    "errorDownloadInvoiceGeneric": "Không thể tải hóa đơn. Vui lòng thử lại. {error}"
   }
 }

@@ -244,6 +244,17 @@ export default function StudentDetailPage() {
       if (response.status === 201 && response.data) {
         toast.success(`Đã ghi nhận thanh toán ${formatCurrency(data.amount)} cho tháng ${data.month}/${data.year}`);
 
+        // Tự động tải hóa đơn PDF
+        if (response.data.paymentId || response.data.id) {
+          try {
+            const paymentId = response.data.paymentId || response.data.id;
+            await paymentService.downloadInvoiceAndSave(paymentId, `HoaDon_${paymentId}.pdf`);
+          } catch (error) {
+            console.error('Lỗi khi tải hóa đơn:', error);
+            // Không hiển thị lỗi để không làm gián đoạn flow
+          }
+        }
+
         // Refresh student data to update payment status
         const studentResponse = await studentService.getStudentById(data.studentId);
         if (studentResponse.status === 200 && studentResponse.data) {

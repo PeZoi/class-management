@@ -327,8 +327,19 @@ export default function TeacherDetailPage() {
 
       const response = await paymentService.createTeacherPayment(paymentData);
 
-      if (response.status === 201) {
+      if (response.status === 201 && response.data) {
         toast.success(`Đã trả lương cho giáo viên thành công!`);
+        
+        // Tự động tải hóa đơn PDF
+        if (response.data.paymentId || response.data.id) {
+          try {
+            const paymentId = response.data.paymentId || response.data.id;
+            await paymentService.downloadInvoiceAndSave(paymentId, `HoaDonLuong_${paymentId}.pdf`);
+          } catch (error) {
+            console.error('Lỗi khi tải hóa đơn:', error);
+            // Không hiển thị lỗi để không làm gián đoạn flow
+          }
+        }
         
         // Refresh payment history
         const paymentsResponse = await paymentService.getPaymentsByTeacherId(teacherId as string);

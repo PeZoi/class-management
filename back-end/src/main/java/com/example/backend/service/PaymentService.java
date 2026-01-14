@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -113,7 +114,10 @@ public class PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
         
-        // Gửi email thông báo cho học viên (chạy bất đồng bộ)
+        // Map to response using helper method
+        PaymentResponse paymentResponse = mapToPaymentResponse(savedPayment);
+        
+        // Gửi email thông báo cho học viên với PDF đính kèm (chạy bất đồng bộ)
         if (student != null && student.getEmail() != null) {
             String className = clazz != null ? clazz.getName() : null;
             emailService.sendStudentPaymentNotification(
@@ -124,12 +128,12 @@ public class PaymentService {
                 className,
                 savedPayment.getBillingMonth(),
                 savedPayment.getNote(),
-                savedPayment.getPaymentId()
+                savedPayment.getPaymentId(),
+                paymentResponse  // Truyền PaymentResponse để tạo PDF
             );
         }
         
-        // Map to response using helper method
-        return mapToPaymentResponse(savedPayment);
+        return paymentResponse;
     }
 
     private PaymentResponse createTeacherPayment(PaymentRequest paymentRequest) {
@@ -186,7 +190,10 @@ public class PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
         
-        // Gửi email thông báo cho giáo viên (chạy bất đồng bộ)
+        // Map to response using helper method
+        PaymentResponse paymentResponse = mapToPaymentResponse(savedPayment);
+        
+        // Gửi email thông báo cho giáo viên với PDF đính kèm (chạy bất đồng bộ)
         if (teacher.getEmail() != null) {
             emailService.sendTeacherPaymentNotification(
                 teacher.getEmail(),
@@ -198,11 +205,12 @@ public class PaymentService {
                 savedPayment.getPaymentMethod(),
                 savedPayment.getBillingMonth(),
                 savedPayment.getNote(),
-                savedPayment.getPaymentId()
+                savedPayment.getPaymentId(),
+                paymentResponse  // Truyền PaymentResponse để tạo PDF
             );
         }
         
-        return mapToPaymentResponse(savedPayment);
+        return paymentResponse;
     }
 
     @Transactional(readOnly = true)
@@ -229,6 +237,23 @@ public class PaymentService {
         return payments.stream()
                 .map(this::mapToPaymentResponse)
                 .collect(Collectors.toList());
+    }
+    
+    @Transactional(readOnly = true)
+    public PaymentResponse getPaymentById(String paymentId) {
+        // Tìm theo ID trước
+        Optional<Payment> paymentOpt = paymentRepository.findById(paymentId);
+        
+        // Nếu không tìm thấy, thử tìm theo paymentId
+        if (paymentOpt.isEmpty()) {
+            paymentOpt = paymentRepository.findByPaymentId(paymentId);
+        }
+        
+        if (paymentOpt.isEmpty()) {
+            return null;
+        }
+        
+        return mapToPaymentResponse(paymentOpt.get());
     }
 
     private PaymentResponse mapToPaymentResponse(Payment payment) {

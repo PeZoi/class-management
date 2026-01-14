@@ -44,6 +44,9 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     // Lấy tất cả payments, mới nhất trước
     List<Payment> findAllByOrderByCreatedAtDesc();
+    
+    // Tìm payment theo paymentId
+    Optional<Payment> findByPaymentId(String paymentId);
 
     // Tính tổng số tiền đã thu (collected) và doanh thu (revenue) cho một class từ payments có direction = INCOME
     @Query("SELECT COALESCE(SUM(p.paid), 0) FROM Payment p WHERE p.clazz.id = :classId AND p.direction = :direction")

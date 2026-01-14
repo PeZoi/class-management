@@ -724,6 +724,11 @@
     "notesDescription": "Full notes content about the payment",
     "male": "Male",
     "female": "Female",
-    "other": "Other"
+    "other": "Other",
+    "downloadInvoice": "Download Invoice",
+    "errorPaymentIdNotFound": "Payment ID not found",
+    "errorDownloadInvoice": "Cannot download invoice: {status} - {error}",
+    "errorInvalidFile": "Invalid or empty file",
+    "errorDownloadInvoiceGeneric": "Cannot download invoice. Please try again. {error}"
   }
 }

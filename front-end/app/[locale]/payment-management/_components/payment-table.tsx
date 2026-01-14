@@ -28,6 +28,7 @@ import {
   CheckCircle,
   Clock,
   CreditCard,
+  Download,
   Edit,
   FileText,
   MessageSquare,
@@ -427,6 +428,29 @@ export function PaymentTable({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={async () => {
+                    try {
+                      // Sử dụng backendId (ID thực sự từ backend) hoặc invoiceId (paymentId)
+                      const paymentId = payment.backendId || payment.invoiceId;
+                      
+                      if (!paymentId) {
+                        throw new Error(t('errorPaymentIdNotFound'));
+                      }
+                      
+                      const { paymentService } = await import('@/services/payment-service');
+                      await paymentService.downloadInvoiceAndSave(paymentId, `invoice_${payment.invoiceId}.pdf`);
+                    } catch (error) {
+                      console.error('Lỗi khi tải hóa đơn:', error);
+                      const errorMessage = error instanceof Error ? error.message : '';
+                      alert(t('errorDownloadInvoiceGeneric', { error: errorMessage }));
+                    }
+                  }}
+                >
+                  <Download className="size-4 mr-2" />
+                  {t('downloadInvoice')}
+                </DropdownMenuItem>
                 {onEdit && (
                   <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(payment)}>
                     <Edit className="size-4 mr-2" />
@@ -480,7 +504,7 @@ export function PaymentTable({
         {isLoading ? (
           <div className="text-center py-8">
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {t('loading') ?? 'Đang tải dữ liệu...'}
+              {t('loading')}
             </p>
           </div>
         ) : error ? (

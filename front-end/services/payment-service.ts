@@ -82,5 +82,61 @@ export const paymentService = {
   getAllPayments: () => {
     return http.get<ResponseType<PaymentResponse[], PaymentResponse[]>>('/api/payment');
   },
+
+  /**
+   * Download invoice PDF
+   * @param paymentId - Payment ID or paymentId
+   * @returns Promise<Blob> - PDF file as blob
+   */
+  downloadInvoice: async (paymentId: string): Promise<Blob> => {
+    const { API_URL } = await import('@/constants/env');
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('access_token') || '';
+    const url = `${API_URL}/api/payment/${paymentId}/invoice`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to download invoice: ${response.status} - ${errorText}`);
+    }
+    
+    const blob = await response.blob();
+    
+    // Validate PDF
+    if (!blob.type.includes('pdf') && blob.size === 0) {
+      throw new Error('Invalid or empty PDF file');
+    }
+    
+    return blob;
+  },
+
+  /**
+   * Download invoice PDF and automatically save to disk
+   * @param paymentId - Payment ID or paymentId
+   * @param fileName - Optional custom file name (default: invoice_{paymentId}.pdf)
+   * @returns Promise<void>
+   */
+  downloadInvoiceAndSave: async (paymentId: string, fileName?: string): Promise<void> => {
+    try {
+      const blob = await paymentService.downloadInvoice(paymentId);
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = fileName || `invoice_${paymentId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      throw error;
+    }
+  },
 };
 

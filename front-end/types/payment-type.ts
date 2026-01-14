@@ -93,8 +93,9 @@ export interface CreateTeacherPaymentData {
 
 // Payment item for UI (transformed from PaymentResponse)
 export interface PaymentItem {
-  id: number;
-  invoiceId: string;
+  id: number; // Index for display
+  backendId?: string; // Real ID from backend (PaymentResponse.id)
+  invoiceId: string; // Payment ID from backend (PaymentResponse.paymentId)
   type: 'income' | 'expense'; // Thu (học phí) hoặc Chi (lương)
   studentId?: string; // For fetching student detail
   teacherId?: string; // For fetching teacher detail

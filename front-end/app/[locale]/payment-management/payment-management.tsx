@@ -178,6 +178,7 @@ export default function PaymentManagementPage() {
 
           return {
             id: index + 1,
+            backendId: p.id, // Real ID from backend
             invoiceId: p.paymentId,
             type,
             studentId: p.student?.id,
@@ -375,7 +376,7 @@ export default function PaymentManagementPage() {
       <PaymentTable
         payments={filteredPayments}
         onPersonClick={handlePersonClick}
-        showActions={false}
+        showActions={true}
         isLoading={false}
         error={error || undefined}
       />
