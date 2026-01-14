@@ -33,6 +33,7 @@ public class PaymentService {
     private final ClassRepository classRepository;
     private final StudentClassRepository studentClassRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     @Transactional
     public PaymentResponse createPayment(PaymentRequest paymentRequest) {
@@ -112,6 +113,21 @@ public class PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
         
+        // Gửi email thông báo cho học viên (chạy bất đồng bộ)
+        if (student != null && student.getEmail() != null) {
+            String className = clazz != null ? clazz.getName() : null;
+            emailService.sendStudentPaymentNotification(
+                student.getEmail(),
+                student.getFullName(),
+                savedPayment.getPaid(),
+                savedPayment.getPaymentMethod(),
+                className,
+                savedPayment.getBillingMonth(),
+                savedPayment.getNote(),
+                savedPayment.getPaymentId()
+            );
+        }
+        
         // Map to response using helper method
         return mapToPaymentResponse(savedPayment);
     }
@@ -169,6 +185,23 @@ public class PaymentService {
         }
 
         Payment savedPayment = paymentRepository.save(payment);
+        
+        // Gửi email thông báo cho giáo viên (chạy bất đồng bộ)
+        if (teacher.getEmail() != null) {
+            emailService.sendTeacherPaymentNotification(
+                teacher.getEmail(),
+                teacher.getFullName(),
+                savedPayment.getPaid(),
+                savedPayment.getFeeSnapshot(),
+                savedPayment.getBonus(),
+                savedPayment.getDeduction(),
+                savedPayment.getPaymentMethod(),
+                savedPayment.getBillingMonth(),
+                savedPayment.getNote(),
+                savedPayment.getPaymentId()
+            );
+        }
+        
         return mapToPaymentResponse(savedPayment);
     }
 

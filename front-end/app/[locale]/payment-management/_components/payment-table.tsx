@@ -260,7 +260,7 @@ export function PaymentTable({
         const displayClass = payment.type === 'income' ? payment.className : '-';
         
         return (
-          <div>
+          <div className='text-center'>
             {displayClass !== '-' ? (
               <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-medium">
                 {displayClass}
