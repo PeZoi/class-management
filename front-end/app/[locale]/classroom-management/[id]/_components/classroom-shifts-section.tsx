@@ -8,14 +8,8 @@ import { classShiftService, studentService } from '@/services';
 import { ClassShiftType } from '@/types/class-type';
 import { StudentType } from '@/types';
 import { toast } from 'react-toastify';
-import { Plus, RefreshCw, Users, Mail, Calendar, DollarSign, Phone, CheckCircle, Clock } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Plus, RefreshCw, Users, Mail, Calendar, DollarSign, Phone, CheckCircle, Clock, Pencil, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -24,11 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useTranslations } from 'next-intl';
 import { formatCurrency, formatDate } from '@/utils/helper';
 
@@ -43,6 +33,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState<ClassShiftType | null>(null);
   const [studentsByShift, setStudentsByShift] = useState<Record<string, StudentType[]>>({});
   const [loadingStudentsShiftId, setLoadingStudentsShiftId] = useState<string | null>(null);
   const [openShiftId, setOpenShiftId] = useState<string | null>(null);
@@ -186,26 +177,116 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
 
     try {
       setCreating(true);
-      const res = await classShiftService.create({
-        name,
-        classId,
-      });
-      if (res.status === 201 && res.data) {
-        toast.success('Thêm ca học thành công');
-        // reset form
-        setShiftType('MORNING');
-        setSelectedDays([]);
-        setStartTime('');
-        setEndTime('');
-        setOpen(false);
-        // Cập nhật list
-        setShifts((prev) => [...prev, res.data as ClassShiftType]);
+      // Nếu đang chỉnh sửa thì gọi update, ngược lại gọi create
+      if (editingShift) {
+        const res = await classShiftService.update(editingShift.id, {
+          id: editingShift.id,
+          name,
+          classId,
+        });
+        if (res.status === 200 && res.data) {
+          toast.success('Cập nhật ca học thành công');
+          setShifts((prev) =>
+            prev.map((s) => (s.id === editingShift.id ? (res.data as ClassShiftType) : s)),
+          );
+        }
+      } else {
+        const res = await classShiftService.create({
+          name,
+          classId,
+        });
+        if (res.status === 201 && res.data) {
+          toast.success('Thêm ca học thành công');
+          setShifts((prev) => [...prev, res.data as ClassShiftType]);
+        }
       }
+
+      // reset form
+      setShiftType('MORNING');
+      setSelectedDays([]);
+      setStartTime('');
+      setEndTime('');
+      setEditingShift(null);
+      setOpen(false);
     } catch (error) {
-      console.error('Error creating class shift', error);
-      toast.error('Không thể thêm ca học');
+      console.error('Error creating/updating class shift', error);
+      toast.error('Không thể lưu ca học');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleEditShift = (shift: ClassShiftType) => {
+    // name format: "Ca sáng - T2, T4, T6 - 08:00 - 10:00"
+    const parts = shift.name.split(' - ');
+
+    // Loại ca
+    const typeLabel = parts[0] || '';
+    if (typeLabel.toLowerCase().includes('sáng')) {
+      setShiftType('MORNING');
+    } else if (typeLabel.toLowerCase().includes('tối')) {
+      setShiftType('EVENING');
+    } else {
+      setShiftType('MORNING');
+    }
+
+    // Thứ trong tuần
+    const daysLabel = parts[1] || '';
+    if (daysLabel) {
+      const labels = daysLabel.split(',').map((s) => s.trim());
+      const keys = labels
+        .map((label) => dayOptions.find((d) => d.label === label)?.key)
+        .filter((k): k is string => !!k);
+      setSelectedDays(keys);
+    } else {
+      setSelectedDays([]);
+    }
+
+    // Khung giờ
+    // Với format hiện tại khi tạo: `${typeLabel} - ${dayLabel} - ${startTime} - ${endTime}`
+    // => mảng parts: [typeLabel, dayLabel, startTime, endTime]
+    const timeParts = parts.slice(-2); // lấy 2 phần cuối
+    const timeRegex = /^\d{2}:\d{2}$/;
+
+    if (timeParts.length === 2 && timeRegex.test(timeParts[0]) && timeRegex.test(timeParts[1])) {
+      setStartTime(timeParts[0]);
+      setEndTime(timeParts[1]);
+    } else {
+      setStartTime('');
+      setEndTime('');
+    }
+
+    setEditingShift(shift);
+    setOpen(true);
+  };
+
+  const handleDeleteShift = async (shiftId: string) => {
+    const confirmDelete = window.confirm(
+      'Bạn có chắc muốn xóa ca học này? Tất cả học sinh của ca này sẽ được chuyển về trạng thái chưa có ca học.',
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const res = await classShiftService.delete(shiftId);
+      if (res.status === 204 || res.status === 200) {
+        toast.success('Xóa ca học thành công');
+        setShifts((prev) => prev.filter((s) => s.id !== shiftId));
+        // Xóa luôn cache học sinh của ca đó trên FE (backend đã set classShift = null)
+        setStudentsByShift((prev) => {
+          const next = { ...prev };
+          delete next[shiftId];
+          return next;
+        });
+        // Nếu ca đang mở là ca vừa xóa thì đóng lại
+        if (openShiftId === shiftId) {
+          setOpenShiftId(null);
+        }
+      } else {
+        toast.error('Xóa ca học thất bại');
+      }
+    } catch (error) {
+      console.error('Error deleting class shift', error);
+      toast.error('Không thể xóa ca học');
     }
   };
 
@@ -231,7 +312,16 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
             >
               <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-            <Button onClick={() => setOpen(true)}>
+            <Button
+              onClick={() => {
+                setEditingShift(null);
+                setShiftType('MORNING');
+                setSelectedDays([]);
+                setStartTime('');
+                setEndTime('');
+                setOpen(true);
+              }}
+            >
               <Plus className="size-4 mr-1" />
               Thêm ca
             </Button>
@@ -264,17 +354,39 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
                         }}
                         className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40"
                       >
-                        <CollapsibleTrigger asChild>
-                          <button className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-slate-800 dark:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 transition-colors">
-                            <div className="flex items-center gap-2 text-left">
-                              <Users className="size-4 text-blue-500" />
-                              <span>{shift.name}</span>
-                            </div>
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {students.length > 0 ? `${students.length} học sinh` : 'Nhấn để xem học sinh'}
-                            </span>
-                          </button>
-                        </CollapsibleTrigger>
+                        <div className="flex items-center justify-between px-3 py-2 gap-2">
+                          <CollapsibleTrigger asChild>
+                            <button className="flex flex-1 items-center justify-between text-sm font-medium text-slate-800 dark:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 rounded-md px-2 py-1 transition-colors">
+                              <div className="flex items-center gap-2 text-left">
+                                <Users className="size-4 text-blue-500" />
+                                <span>{shift.name}</span>
+                              </div>
+                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                                {students.length > 0 ? `${students.length} học sinh` : 'Nhấn để xem học sinh'}
+                              </span>
+                            </button>
+                          </CollapsibleTrigger>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-7 text-slate-500 hover:text-slate-800 dark:hover:text-slate-100"
+                              onClick={() => handleEditShift(shift)}
+                              type="button"
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-7 text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                              onClick={() => handleDeleteShift(shift.id)}
+                              type="button"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </div>
                         <CollapsibleContent className="border-t border-slate-200 dark:border-slate-800 px-3 py-2 bg-white/60 dark:bg-slate-950/40">
                           {isLoadingStudents ? (
                             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -451,11 +563,19 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
         </CardContent>
       </Card>
 
-      {/* Dialog tạo ca học */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      {/* Dialog tạo / sửa ca học */}
+      <Dialog
+        open={open}
+        onOpenChange={(isOpen) => {
+          setOpen(isOpen);
+          if (!isOpen) {
+            setEditingShift(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Thêm ca học</DialogTitle>
+            <DialogTitle>{editingShift ? 'Cập nhật ca học' : 'Thêm ca học'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateShift} className="space-y-4">
             {/* Loại ca */}
@@ -537,12 +657,13 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
                 Hủy
               </Button>
               <Button type="submit" disabled={creating}>
-                Lưu ca học
+                {creating ? 'Đang lưu...' : 'Lưu ca học'}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
     </>
   );
 }

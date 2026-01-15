@@ -12,8 +12,9 @@ import {
   ClassroomStudentAttendance,
   ClassroomShiftsSection,
 } from './_components';
+import { StudentDialog } from '../../student-management/_components/student-dialog';
 import { classService, studentService } from '@/services';
-import { ClassType, StudentType, TeacherType, ClassSingleRevenueDataResponse } from '@/types';
+import { ClassType, StudentRequest, StudentType, TeacherType, ClassSingleRevenueDataResponse } from '@/types';
 import { toast } from 'react-toastify';
 import { PageLoading } from '@/components/page-loading';
 
@@ -29,6 +30,8 @@ export default function ClassroomDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
   const [revenueData, setRevenueData] = useState<Array<{ month: string; revenue: number; label: string }>>([]);
+  const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<StudentType | null>(null);
 
   // Fetch revenue data from BE
   const fetchRevenueData = useCallback(async (classIdParam: string, period: TimePeriod) => {
@@ -53,19 +56,21 @@ export default function ClassroomDetailPage() {
     }
   }, []);
 
-  // Initialize students state
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const response = await studentService.getStudentsByClass(classId as string);
-        if (response.status === 200 && response.data) {
-          setStudents(response.data);
-        }
-      } catch (error) {
-        console.log('Lỗi fetch danh sách học sinh', error);
-        toast.error('Không thể tải danh sách học sinh.');
+  const fetchStudents = useCallback(async () => {
+    if (!classId) return;
+    try {
+      const response = await studentService.getStudentsByClass(classId as string);
+      if (response.status === 200 && response.data) {
+        setStudents(response.data);
       }
-    };
+    } catch (error) {
+      console.log('Lỗi fetch danh sách học sinh', error);
+      toast.error('Không thể tải danh sách học sinh.');
+    }
+  }, [classId]);
+
+  // Initialize students & class state
+  useEffect(() => {
     const fetchClass = async () => {
       try {
         const response = await classService.getClassById(classId as string);
@@ -83,7 +88,7 @@ export default function ClassroomDetailPage() {
       fetchClass();
       fetchStudents();
     }
-  }, [classId]);
+  }, [classId, fetchStudents]);
 
   // Fetch revenue data when period or classId changes
   useEffect(() => {
@@ -134,6 +139,29 @@ export default function ClassroomDetailPage() {
 
   const currentClassData = getClassDataForUI(classData);
 
+  const handleEditStudent = (student: StudentType) => {
+    setSelectedStudent(student);
+    setIsStudentDialogOpen(true);
+  };
+
+  const handleSaveStudent = async (studentData: StudentRequest) => {
+    if (!selectedStudent) return;
+    try {
+      const response = await studentService.updateStudent(studentData, selectedStudent.id);
+      if (response.status === 200 && response.data) {
+        await fetchStudents();
+        toast.success('Cập nhật học viên thành công');
+        setIsStudentDialogOpen(false);
+        setSelectedStudent(null);
+      } else {
+        toast.error('Cập nhật học viên thất bại');
+      }
+    } catch (error) {
+      console.error('Error updating student from classroom detail:', error);
+      toast.error('Cập nhật học viên thất bại');
+    }
+  };
+
   if (loading) {
     return <PageLoading />;
   }
@@ -148,10 +176,8 @@ export default function ClassroomDetailPage() {
 
       {/* Class Info & Schedule */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ClassroomTeacherInfo
-          teacher={classData?.teacher as TeacherType}
-        />
-        <ClassroomScheduleInfo schedule={currentClassData.schedule} time={currentClassData.time} duration={currentClassData.duration} />
+        <ClassroomTeacherInfo teacher={classData?.teacher as TeacherType} />
+        {classId && <ClassroomScheduleInfo classId={classId as string} />}
       </div>
 
       {/* Class Shifts Management */}
@@ -170,10 +196,23 @@ export default function ClassroomDetailPage() {
       )}
 
       {/* Students List */}
-      <ClassroomStudentsList students={students} />
+      <ClassroomStudentsList students={students} onEditStudent={handleEditStudent} />
 
       {/* Student Attendance */}
       <ClassroomStudentAttendance students={students} />
+
+      {/* Student Edit Dialog */}
+      <StudentDialog
+        open={isStudentDialogOpen}
+        onOpenChange={(open) => {
+          setIsStudentDialogOpen(open);
+          if (!open) {
+            setSelectedStudent(null);
+          }
+        }}
+        student={selectedStudent}
+        onSave={handleSaveStudent}
+      />
     </div>
   );
 }

@@ -2,6 +2,15 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { StudentType } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/helper';
@@ -12,8 +21,10 @@ import {
   CheckCircle,
   Clock,
   DollarSign,
+  Edit,
   Eye,
   Mail,
+  MoreHorizontal,
   Phone,
   User,
   Users,
@@ -23,6 +34,7 @@ import Link from 'next/link';
 
 interface ClassroomStudentsListProps {
   students: StudentType[];
+  onEditStudent?: (student: StudentType) => void;
 }
 
 interface ClassroomStudentItem extends StudentType {
@@ -79,7 +91,7 @@ const getCurrentMonthPaymentStatus = (
   };
 };
 
-export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) {
+export function ClassroomStudentsList({ students, onEditStudent }: ClassroomStudentsListProps) {
   const t = useTranslations('classroom-detail');
   const locale = useLocale();
 
@@ -343,14 +355,35 @@ export function ClassroomStudentsList({ students }: ClassroomStudentsListProps) 
       cell: ({ row }) => {
         const student = row.original;
         return (
-          <div className="text-center">
-            <Link
-              href={`/${locale}/student-management/${student.id}`}
-              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              <Eye className="size-4" />
-              {t('viewDetail')}
-            </Link>
+          <div className="flex justify-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="size-8 p-0">
+                  <span className="sr-only">Mở menu hành động</span>
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer" asChild>
+                  <Link
+                    href={`/${locale}/student-management/${student.id}`}
+                    className="flex items-center"
+                  >
+                    <Eye className="size-4 mr-2" />
+                    {t('viewDetail')}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => onEditStudent && onEditStudent(student)}
+                >
+                  <Edit className="size-4 mr-2" />
+                  Sửa thông tin
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         );
       },

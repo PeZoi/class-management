@@ -224,6 +224,7 @@ public class StudentService {
         StudentClass studentClassDB = studentClassRepository.findCurrentClassByStudent(studentId, StudentClassStatus.STUDYING);
 
         if (studentClassDB == null) {
+            // Student has no current class, create new one
             Class classDB = classRepository.findById(studentRequest.getClassId()).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
             StudentClass studentClass = new StudentClass();
             studentClass.setStudent(student);
@@ -250,7 +251,8 @@ public class StudentService {
                 studentClassResponse.setShiftName(studentClassDB.getClassShift().getName());
             }
             studentResponse.setClazz(studentClassResponse);
-        } else if (studentClassDB != null && !studentId.equals(studentClassDB.getClazz().getId())) {
+        } else if (studentClassDB != null && !studentRequest.getClassId().equals(studentClassDB.getClazz().getId())) {
+            // Student is changing class, create new StudentClass entry
             studentClassDB.setLeftAt(Instant.now());
             studentClassDB.setStatus(StudentClassStatus.CHANGING);
             studentClassRepository.save(studentClassDB);
@@ -279,6 +281,31 @@ public class StudentService {
             if (studentClassResponseDB.getClassShift() != null) {
                 studentClassResponse.setShiftId(studentClassResponseDB.getClassShift().getId());
                 studentClassResponse.setShiftName(studentClassResponseDB.getClassShift().getName());
+            }
+            studentResponse.setClazz(studentClassResponse);
+        } else if (studentClassDB != null && studentRequest.getClassId().equals(studentClassDB.getClazz().getId())) {
+            // Student stays in the same class, only update shift if provided
+            if (studentRequest.getClassShiftId() != null) {
+                ClassShift shift = classShiftRepository.findById(studentRequest.getClassShiftId())
+                        .orElseThrow(() -> new NotFoundException("Không tìm thấy ca học"));
+                if (!shift.getClazz().getId().equals(studentClassDB.getClazz().getId())) {
+                    throw new NotFoundException("Ca học không thuộc lớp đã chọn");
+                }
+                studentClassDB.setClassShift(shift);
+            } else {
+                // If classShiftId is null or empty, remove the shift
+                studentClassDB.setClassShift(null);
+            }
+            studentClassDB = studentClassRepository.save(studentClassDB);
+
+            StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
+            studentClassResponse.setId(studentClassDB.getClazz().getId());
+            studentClassResponse.setName(studentClassDB.getClazz().getName());
+            studentClassResponse.setJoinAt(studentClassDB.getJoinedAt());
+            studentClassResponse.setMonthlyFee(studentClassDB.getClazz().getMonthlyFee());
+            if (studentClassDB.getClassShift() != null) {
+                studentClassResponse.setShiftId(studentClassDB.getClassShift().getId());
+                studentClassResponse.setShiftName(studentClassDB.getClassShift().getName());
             }
             studentResponse.setClazz(studentClassResponse);
         }

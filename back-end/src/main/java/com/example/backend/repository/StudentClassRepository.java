@@ -71,4 +71,7 @@ public interface StudentClassRepository extends JpaRepository<StudentClass,Long>
         ORDER BY sc.joinedAt DESC
     """)
     List<StudentClass> findAllByStudentId(@Param("studentId") String studentId); // Lấy tất cả lịch sử lớp học của học viên
+
+    // Tìm tất cả bản ghi StudentClass đang gắn với một ca học cụ thể
+    List<StudentClass> findByClassShift_Id(String classShiftId);
 }

@@ -6,6 +6,7 @@ import com.example.backend.service.ClassShiftService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,6 +41,12 @@ public class ClassShiftController {
     public ResponseEntity<List<ClassShiftResponse>> getByClass(@PathVariable("classId") String classId) {
         List<ClassShiftResponse> responses = classShiftService.getByClassId(classId);
         return new ResponseEntity<>(responses, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable("id") String id) {
+        classShiftService.delete(id);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }
 

@@ -188,6 +188,19 @@ export default function StudentDetailPage() {
     fetchStudentData();
   }, [studentId]);
 
+  // Helper: refresh student data (used in multiple places)
+  const refreshStudentData = async () => {
+    if (!studentId) return;
+    try {
+      const response = await studentService.getStudentById(studentId as string);
+      if (response.status === 200 && response.data) {
+        setStudentData(response.data);
+      }
+    } catch (error) {
+      console.error('Error refreshing student data:', error);
+    }
+  };
+
   // Fetch payment history
   useEffect(() => {
     const fetchPaymentHistory = async () => {
@@ -301,7 +314,10 @@ export default function StudentDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <StudentPersonalInfo student={studentData} />
         <StudentParentInfo student={studentData} />
-        <StudentClassInfo student={studentData} />
+        <StudentClassInfo
+          student={studentData}
+          onUpdate={refreshStudentData}
+        />
       </div>
 
       {/* Payment Status Calendar - Quick Overview */}

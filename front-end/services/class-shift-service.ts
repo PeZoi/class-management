@@ -15,6 +15,7 @@ export const classShiftService = {
     http.post<ResponseType<ClassShiftType, ClassShiftType>>('/api/class-shift/create', data),
   update: (id: string, data: ClassShiftRequest) =>
     http.put<ResponseType<ClassShiftType, ClassShiftType>>(`/api/class-shift/update/${id}`, data),
+  delete: (id: string) => http.delete<ResponseType<null, null>>(`/api/class-shift/${id}`),
 };
 
 
