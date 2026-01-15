@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useScrollToTopOnRouteChange } from '@/hooks/use-scroll-to-top';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { GraduationCap, Mail, Lock, Eye, EyeOff, Info, Loader2 } from 'lucide-react';
@@ -17,6 +18,7 @@ export default function SignInPage() {
   const t = useTranslations('auth');
   const router = useRouter();
   const { handleLoginSuccess } = useAuthStore();
+  useScrollToTopOnRouteChange();
   
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

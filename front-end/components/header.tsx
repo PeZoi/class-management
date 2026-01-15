@@ -16,11 +16,15 @@ import { Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useScrollToTopOnRouteChange } from '@/hooks/use-scroll-to-top';
 
 export default function Header() {
   const t = useTranslations('common');
   const locale = useLocale();
   const { user, logout } = useAuthStore();
+
+  // Scroll to top whenever route changes
+  useScrollToTopOnRouteChange();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">

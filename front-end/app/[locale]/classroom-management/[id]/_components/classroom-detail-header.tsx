@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface ClassroomDetailHeaderProps {
   classData: {
@@ -16,17 +16,22 @@ interface ClassroomDetailHeaderProps {
 export function ClassroomDetailHeader({ classData }: ClassroomDetailHeaderProps) {
   const t = useTranslations('classroom-detail');
   const locale = useLocale();
+  const router = useRouter();
 
   return (
     <>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
-        <Link href={`/${locale}/classroom-management`}>
-          <Button variant="ghost" size="sm" className="gap-2">
-            <ArrowLeft className="size-4" />
-            {t('back')}
-          </Button>
-        </Link>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-2"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft className="size-4" />
+          {t('back')}
+        </Button>
       </div>
 
       {/* Header */}

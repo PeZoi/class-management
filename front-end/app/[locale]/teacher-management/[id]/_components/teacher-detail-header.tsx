@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { TeacherType } from '@/types';
 import { ArrowLeft } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface TeacherDetailHeaderProps {
   teacherData: TeacherType;
@@ -12,17 +12,22 @@ interface TeacherDetailHeaderProps {
 export function TeacherDetailHeader({ teacherData }: TeacherDetailHeaderProps) {
   const t = useTranslations('teacher-detail');
   const locale = useLocale();
+  const router = useRouter();
 
   return (
     <>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
-        <Link href={`/${locale}/teacher-management`}>
-          <Button variant="ghost" size="sm" className="gap-2">
-            <ArrowLeft className="size-4" />
-            {t('back') || 'Quay lại'}
-          </Button>
-        </Link>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-2"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft className="size-4" />
+          {t('back') || 'Quay lại'}
+        </Button>
       </div>
 
       {/* Header */}
