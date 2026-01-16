@@ -60,6 +60,7 @@ export function StudentTable({
   className,
 }: StudentTableProps) {
   const t = useTranslations('student-management');
+  const tCommon = useTranslations('common');
   const locale = useLocale();
 
   const displayTitle = title || t('title');
@@ -181,7 +182,7 @@ export function StudentTable({
         return (
           <div className="text-center">
             <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-medium">
-              {row.original.class?.name || 'Chưa có lớp'}
+              {row.original.class?.name || tCommon('noClass')}
             </span>
           </div>
         );
@@ -301,7 +302,7 @@ export function StudentTable({
                 {onPayment && (
                   <DropdownMenuItem className="cursor-pointer" onClick={() => onPayment(student)}>
                     <CreditCard className="size-4 mr-2" />
-                    {t('payment') || 'Đóng tiền'}
+                    {t('payment')}
                   </DropdownMenuItem>
                 )}
                 {onEdit && (

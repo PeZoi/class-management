@@ -37,6 +37,7 @@ interface PaymentActionDialogProps {
 export function PaymentActionDialog({ open, onOpenChange, student, onConfirm }: PaymentActionDialogProps) {
   const t = useTranslations('student-management');
   const tPayment = useTranslations('payment-management');
+  const tCommon = useTranslations('common');
 
   const [formData, setFormData] = useState<PaymentData>({
     amount: 0,
@@ -96,7 +97,7 @@ export function PaymentActionDialog({ open, onOpenChange, student, onConfirm }: 
                 </div>
                 <div>
                   <span className="text-slate-500">Lớp học:</span>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{student.class?.name || 'Chưa có lớp'}</div>
+                  <div className="font-medium text-slate-900 dark:text-slate-100">{student.class?.name || tCommon('noClass')}</div>
                 </div>
                 <div>
                   <span className="text-slate-500">Học phí:</span>

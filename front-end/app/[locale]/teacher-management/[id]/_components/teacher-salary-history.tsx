@@ -75,7 +75,7 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
       paid: {
-        label: t('paid') || 'Đã thanh toán',
+        label: t('paid'),
         icon: CheckCircle,
         className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
       },
@@ -324,7 +324,7 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
         if (!hasNotes) {
           return (
             <div className="text-sm text-slate-400 dark:text-slate-500 italic">
-              {t('noNotes') || 'Không có ghi chú'}
+              {t('noNotes')}
             </div>
           );
         }
@@ -381,7 +381,7 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
         {salaryHistory.length === 0 ? (
           <div className="text-center py-12">
             <CreditCard className="size-12 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-600 dark:text-slate-400">{t('noSalaryHistory') || 'Chưa có lịch sử thanh toán'}</p>
+            <p className="text-slate-600 dark:text-slate-400">{t('noSalaryHistory')}</p>
           </div>
         ) : (
           <DataTable columns={columns} data={salaryHistory} />
@@ -401,7 +401,7 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
           <div className="py-4">
             <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-4">
               <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap wrap-break-word">
-                {selectedNotes || t('noNotes') || 'Không có ghi chú'}
+                {selectedNotes || t('noNotes')}
               </p>
             </div>
           </div>

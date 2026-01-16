@@ -26,7 +26,7 @@ export function TeacherDetailHeader({ teacherData }: TeacherDetailHeaderProps) {
           onClick={() => router.back()}
         >
           <ArrowLeft className="size-4" />
-          {t('back') || 'Quay lại'}
+          {t('back')}
         </Button>
       </div>
 

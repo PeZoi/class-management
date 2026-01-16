@@ -40,7 +40,7 @@ export function StudentClassHistory({ classHistory }: StudentClassHistoryProps) 
 
     const variants: Record<string, { label: string; className: string }> = {
       studying: {
-        label: t('statusStudying') || 'Đang học',
+        label: t('statusStudying'),
         className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
       },
       completed: {

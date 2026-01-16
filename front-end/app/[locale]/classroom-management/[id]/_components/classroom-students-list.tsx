@@ -12,8 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { StudentType } from '@/types';
+import { StudentType, StudentRequest } from '@/types';
+import { ClassShiftType } from '@/types/class-type';
 import { formatCurrency, formatDate } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
 import {
@@ -32,15 +35,23 @@ import {
   User,
   Users,
   X,
+  ArrowRight,
+  Check,
+  UserMinus,
+  AlertTriangle,
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { classShiftService, studentService } from '@/services';
+import { toast } from 'react-toastify';
 
 interface ClassroomStudentsListProps {
   students: StudentType[];
+  classId?: string;
   onEditStudent?: (student: StudentType) => void;
   onPayment?: (student: StudentType) => void;
+  onStudentsUpdate?: () => void;
 }
 
 interface ClassroomStudentItem extends StudentType {
@@ -97,10 +108,19 @@ const getCurrentMonthPaymentStatus = (
   };
 };
 
-export function ClassroomStudentsList({ students, onEditStudent, onPayment }: ClassroomStudentsListProps) {
+export function ClassroomStudentsList({ students, classId, onEditStudent, onPayment, onStudentsUpdate }: ClassroomStudentsListProps) {
   const t = useTranslations('classroom-detail');
+  const tCommon = useTranslations('common');
+  const tNotif = useTranslations('notifications');
   const locale = useLocale();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const [isShiftDialogOpen, setIsShiftDialogOpen] = useState(false);
+  const [shifts, setShifts] = useState<ClassShiftType[]>([]);
+  const [selectedShiftId, setSelectedShiftId] = useState<string>('__none__');
+  const [isUpdatingShift, setIsUpdatingShift] = useState(false);
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const mappedStudents: ClassroomStudentItem[] = students.map((student) => {
     const monthlyFee = student.class?.monthlyFee || 0;
@@ -174,7 +194,198 @@ export function ClassroomStudentsList({ students, onEditStudent, onPayment }: Cl
     );
   };
 
+  // Fetch shifts when dialog opens
+  useEffect(() => {
+    const fetchShifts = async () => {
+      if (isShiftDialogOpen && classId) {
+        try {
+          const res = await classShiftService.getByClassId(classId);
+          if (res.status === 200 && res.data) {
+            setShifts(res.data || []);
+          }
+        } catch (error) {
+          console.error('Error fetching shifts', error);
+          toast.error(tNotif('errorLoadShifts'));
+        }
+      }
+    };
+    fetchShifts();
+  }, [isShiftDialogOpen, classId, tNotif]);
+
+  // Handle select/deselect all
+  const handleSelectAll = () => {
+    const filteredIds = new Set(filteredStudents.map(s => s.id));
+    const allFilteredSelected = filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.id));
+    
+    if (allFilteredSelected) {
+      // Deselect all filtered students, but keep others selected
+      const newSelected = new Set(selectedStudentIds);
+      filteredIds.forEach(id => newSelected.delete(id));
+      setSelectedStudentIds(newSelected);
+    } else {
+      // Select all filtered students
+      const newSelected = new Set(selectedStudentIds);
+      filteredIds.forEach(id => newSelected.add(id));
+      setSelectedStudentIds(newSelected);
+    }
+  };
+
+  // Check if all filtered students are selected
+  const allFilteredSelected = filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.id));
+
+  // Handle toggle single student selection
+  const handleToggleStudent = (studentId: string) => {
+    const newSelected = new Set(selectedStudentIds);
+    if (newSelected.has(studentId)) {
+      newSelected.delete(studentId);
+    } else {
+      newSelected.add(studentId);
+    }
+    setSelectedStudentIds(newSelected);
+  };
+
+  // Handle remove students from class
+  const handleRemoveFromClass = async () => {
+    if (selectedStudentIds.size === 0) {
+      toast.warning(tNotif('warningSelectStudents'));
+      return;
+    }
+
+    try {
+      setIsRemoving(true);
+      const studentIds = Array.from(selectedStudentIds);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const studentId of studentIds) {
+        try {
+          // Get current student data
+          const studentResponse = await studentService.getStudentById(studentId);
+          if (studentResponse.status !== 200 || !studentResponse.data) {
+            throw new Error(tNotif('errorGetStudentInfo'));
+          }
+
+          const student = studentResponse.data;
+          // Update student with empty classId to remove from class
+          const updateData: StudentRequest = {
+            fullName: student.fullName,
+            email: student.email,
+            phoneNumber: student.phoneNumber,
+            dob: student.dob,
+            gender: student.gender,
+            fullNameParent: student.fullNameParent,
+            phoneNumberParent: student.phoneNumberParent,
+            classId: '', // Empty string to remove from class
+            classShiftId: undefined,
+          };
+
+          await studentService.updateStudent(updateData, studentId);
+          successCount++;
+        } catch (error) {
+          console.error(`Error removing student ${studentId} from class`, error);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(tNotif('successRemoveStudents', { count: successCount }));
+        setSelectedStudentIds(new Set());
+        setIsRemoveDialogOpen(false);
+        if (onStudentsUpdate) {
+          onStudentsUpdate();
+        }
+      }
+
+      if (errorCount > 0) {
+        toast.error(tNotif('errorRemoveStudentsFail', { count: errorCount }));
+      }
+    } catch (error) {
+      console.error('Error removing students from class', error);
+      toast.error(tNotif('errorRemoveStudents'));
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
+  // Handle update shift for multiple students
+  const handleUpdateShift = async () => {
+    if (selectedStudentIds.size === 0) {
+      toast.warning(tNotif('warningSelectStudents'));
+      return;
+    }
+
+    if (!classId) {
+      toast.error(tNotif('errorGetClassInfo'));
+      return;
+    }
+
+    try {
+      setIsUpdatingShift(true);
+      const studentIds = Array.from(selectedStudentIds);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const studentId of studentIds) {
+        try {
+          await studentService.updateStudentShift({
+            studentId,
+            classId,
+            classShiftId: selectedShiftId === '__none__' ? undefined : (selectedShiftId || undefined),
+          });
+          successCount++;
+        } catch (error) {
+          console.error(`Error updating shift for student ${studentId}`, error);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(tNotif('successUpdateShift', { count: successCount }));
+        setSelectedStudentIds(new Set());
+        setSelectedShiftId('__none__');
+        setIsShiftDialogOpen(false);
+        if (onStudentsUpdate) {
+          onStudentsUpdate();
+        }
+      }
+
+      if (errorCount > 0) {
+        toast.error(tNotif('errorUpdateShiftFail', { count: errorCount }));
+      }
+    } catch (error) {
+      console.error('Error updating shifts', error);
+      toast.error(tNotif('errorUpdateShift'));
+    } finally {
+      setIsUpdatingShift(false);
+    }
+  };
+
   const columns: ColumnDef<ClassroomStudentItem>[] = [
+    {
+      id: 'select',
+      header: () => (
+        <div className="flex justify-center">
+          <input
+            type="checkbox"
+            checked={allFilteredSelected}
+            onChange={handleSelectAll}
+            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <input
+            type="checkbox"
+            checked={selectedStudentIds.has(row.original.id)}
+            onChange={() => handleToggleStudent(row.original.id)}
+            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+          />
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: 'fullName',
       header: ({ column }) => (
@@ -390,7 +601,7 @@ export function ClassroomStudentsList({ students, onEditStudent, onPayment }: Cl
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="size-8 p-0">
-                  <span className="sr-only">{t('openMenu') || 'Mở menu hành động'}</span>
+                  <span className="sr-only">{t('openMenu')}</span>
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -409,7 +620,7 @@ export function ClassroomStudentsList({ students, onEditStudent, onPayment }: Cl
                 {onPayment && (
                   <DropdownMenuItem className="cursor-pointer" onClick={() => onPayment(student)}>
                     <CreditCard className="size-4 mr-2" />
-                    {t('payment') || 'Đóng tiền'}
+                    {t('payment')}
                   </DropdownMenuItem>
                 )}
                 {onEditStudent && (
@@ -418,9 +629,20 @@ export function ClassroomStudentsList({ students, onEditStudent, onPayment }: Cl
                     onClick={() => onEditStudent(student)}
                   >
                     <Edit className="size-4 mr-2" />
-                    {t('editInfo') || 'Sửa thông tin'}
+                    {t('editInfo')}
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                  onClick={() => {
+                    setSelectedStudentIds(new Set([student.id]));
+                    setIsRemoveDialogOpen(true);
+                  }}
+                >
+                  <UserMinus className="size-4 mr-2" />
+                  {tCommon('removeFromClass')}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -453,6 +675,29 @@ export function ClassroomStudentsList({ students, onEditStudent, onPayment }: Cl
                 {t('studentsListDescription')}
               </p>
             </div>
+            {classId && (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => setIsShiftDialogOpen(true)}
+                  disabled={selectedStudentIds.size === 0}
+                  className="text-xs"
+                >
+                  <ArrowRight className="size-3 mr-1" />
+                  {tCommon('changeShift')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setIsRemoveDialogOpen(true)}
+                  disabled={selectedStudentIds.size === 0}
+                  className="text-xs"
+                >
+                  <UserMinus className="size-3 mr-1" />
+                  {tCommon('removeFromClass')}
+                </Button>
+              </div>
+            )}
           </div>
           
           {/* Search Bar */}
@@ -472,10 +717,32 @@ export function ClassroomStudentsList({ students, onEditStudent, onPayment }: Cl
                 className="absolute right-1 top-1/2 -translate-y-1/2 size-8 h-8 w-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="size-4 text-slate-400" />
-                <span className="sr-only">{t('clearSearch') || 'Xóa tìm kiếm'}</span>
+                <span className="sr-only">{t('clearSearch')}</span>
               </Button>
             )}
           </div>
+
+          {/* Selection Toolbar */}
+          {selectedStudentIds.size > 0 && (
+            <div className="flex items-center justify-between gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+                <Check className="size-4" />
+                <span className="font-medium">
+                  {tCommon('selectedCount', { count: selectedStudentIds.size })}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedStudentIds(new Set())}
+                  className="text-xs"
+                >
+                  {tCommon('deselect')}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -486,7 +753,7 @@ export function ClassroomStudentsList({ students, onEditStudent, onPayment }: Cl
         ) : filteredStudents.length === 0 && searchQuery ? (
           <div className="text-center py-8">
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {t('noSearchResults') || 'Không tìm thấy học viên nào phù hợp với'} &quot;{searchQuery}&quot;
+              {t('noSearchResults')} &quot;{searchQuery}&quot;
             </p>
             <Button
               variant="ghost"
@@ -495,13 +762,156 @@ export function ClassroomStudentsList({ students, onEditStudent, onPayment }: Cl
               className="mt-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
             >
               <X className="size-4 mr-1" />
-              {t('clearFilter') || 'Xóa bộ lọc'}
+              {t('clearFilter')}
             </Button>
           </div>
         ) : (
           <DataTable columns={columns} data={filteredStudents} />
         )}
       </CardContent>
+
+      {/* Dialog chọn ca học */}
+      <Dialog open={isShiftDialogOpen} onOpenChange={setIsShiftDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="size-5" />
+              {tCommon('shiftTitle', { count: selectedStudentIds.size })}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                {tCommon('selectShift')}
+              </label>
+              <Select value={selectedShiftId} onValueChange={setSelectedShiftId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={tCommon('selectShiftPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">
+                    <span className="text-slate-500 italic">{tCommon('noShift')}</span>
+                  </SelectItem>
+                  {shifts.map((shift) => (
+                    <SelectItem key={shift.id} value={shift.id}>
+                      {shift.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {shifts.length === 0 && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {tCommon('noShiftsForClass')}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsShiftDialogOpen(false);
+                setSelectedShiftId('__none__');
+              }}
+              disabled={isUpdatingShift}
+            >
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleUpdateShift}
+              disabled={isUpdatingShift || shifts.length === 0}
+            >
+              {isUpdatingShift ? tCommon('updating') : tCommon('confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog xác nhận loại bỏ học sinh */}
+      <Dialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <AlertTriangle className="size-5" />
+              {tCommon('confirmRemoveTitle')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              {(() => {
+                const pluralText = selectedStudentIds.size === 1 
+                  ? tCommon('confirmRemoveMessageSingle') 
+                  : tCommon('confirmRemoveMessagePlural');
+                
+                const count = selectedStudentIds.size;
+                const message = tCommon('confirmRemoveMessage', {
+                  count: count,
+                  plural: pluralText
+                });
+                
+                // Find the position of count number in the message and wrap it with strong tag
+                const countStr = String(count);
+                const index = message.indexOf(countStr);
+                
+                if (index !== -1) {
+                  const before = message.substring(0, index);
+                  const after = message.substring(index + countStr.length);
+                  return (
+                    <>
+                      {before}
+                      <strong>{count}</strong>
+                      {after}
+                    </>
+                  );
+                }
+                
+                // Fallback: render message as is if count not found
+                return message;
+              })()}
+            </p>
+            {selectedStudentIds.size <= 5 && (
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 space-y-1">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
+                  {tCommon('listToRemove')}
+                </p>
+                <ul className="space-y-1">
+                  {Array.from(selectedStudentIds).map((studentId) => {
+                    const student = students.find((s) => s.id === studentId);
+                    return (
+                      <li key={studentId} className="text-xs text-slate-700 dark:text-slate-300">
+                        • {student?.fullName || studentId}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {tCommon('removeWarning')}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsRemoveDialogOpen(false)}
+              disabled={isRemoving}
+            >
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleRemoveFromClass}
+              disabled={isRemoving}
+            >
+              {isRemoving ? tCommon('processing') : tCommon('confirmRemove')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

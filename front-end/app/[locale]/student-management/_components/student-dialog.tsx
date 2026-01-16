@@ -25,6 +25,7 @@ interface StudentDialogProps {
 
 export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDialogProps) {
   const t = useTranslations('student-management');
+  const tCommon = useTranslations('common');
 
   const [classes, setClasses] = useState<ClassType[]>([]);
   const [shifts, setShifts] = useState<ClassShiftType[]>([]);
@@ -283,7 +284,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                     disabled={!formData.classId || shifts.length === 0}
                   >
                     <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder={shifts.length === 0 ? 'Chưa có ca cho lớp này' : 'Chọn ca học'} />
+                      <SelectValue placeholder={shifts.length === 0 ? tCommon('noShiftForClass') : tCommon('selectShiftForClass')} />
                     </SelectTrigger>
                     <SelectContent>
                       {shifts.map((shift) => (

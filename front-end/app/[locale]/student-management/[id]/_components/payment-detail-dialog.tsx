@@ -104,20 +104,20 @@ export function PaymentDetailDialog({
                 </div>
               </div>
               <div>
-                <span className="text-slate-500">Đã thanh toán:</span>
+                <span className="text-slate-500">{t('paidAmount')}:</span>
                 <div className="font-medium text-green-600 dark:text-green-400">
                   {formatCurrency(payment.paidAmount || 0)}
                 </div>
               </div>
               <div>
-                <span className="text-slate-500">Trạng thái:</span>
+                <span className="text-slate-500">{t('statusLabel')}:</span>
                 <div>
                   <Badge
                     className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                     variant="outline"
                   >
                     <CheckCircle className="size-3 mr-1" />
-                    {t('statusPaid') || 'Đã đóng'}
+                    {t('statusPaid')}
                   </Badge>
                 </div>
               </div>
@@ -129,7 +129,7 @@ export function PaymentDetailDialog({
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <CreditCard className="size-4" />
-                Lịch Sử Thanh Toán
+                {t('paymentHistory')}
               </h3>
               <div className="space-y-3">
                 {monthPayments.map((p) => (
@@ -165,7 +165,7 @@ export function PaymentDetailDialog({
             </div>
           ) : (
             <div className="text-center py-4 text-slate-500 dark:text-slate-400">
-              <p className="text-sm">Không có lịch sử thanh toán chi tiết</p>
+              <p className="text-sm">{t('noPaymentHistory')}</p>
             </div>
           )}
         </div>

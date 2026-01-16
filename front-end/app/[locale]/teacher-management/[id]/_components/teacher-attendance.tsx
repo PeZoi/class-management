@@ -83,7 +83,7 @@ export function TeacherAttendance({ attendanceRecords }: TeacherAttendanceProps)
         <CardContent className="py-12 text-center">
           <Calendar className="size-12 text-slate-400 mx-auto mb-4" />
           <p className="text-slate-600 dark:text-slate-400">
-            {t('noAttendanceRecords') || 'Chưa có bản ghi điểm danh'}
+            {t('noAttendanceRecords')}
           </p>
         </CardContent>
       </Card>
@@ -133,13 +133,13 @@ export function TeacherAttendance({ attendanceRecords }: TeacherAttendanceProps)
             <TableHeader>
               <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-700">
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                  {t('date') || 'Ngày'}
+                  {t('date')}
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                  {t('className') || 'Lớp học'}
+                  {t('className')}
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                  {t('checkIn') || 'Giờ vào'}
+                  {t('checkIn')}
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
                   {t('checkOut') || 'Giờ ra'}

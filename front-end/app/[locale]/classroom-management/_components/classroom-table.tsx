@@ -338,7 +338,7 @@ export function ClassroomTable({
       <CardContent>
         {classes.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('noClassesFound') || 'Chưa có lớp học nào'}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('noClassesFound')}</p>
           </div>
         ) : (
           <DataTable columns={columns} data={classes} />

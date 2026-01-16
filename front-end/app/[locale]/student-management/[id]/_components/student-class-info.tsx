@@ -21,6 +21,8 @@ interface StudentClassInfoProps {
 
 export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
   const t = useTranslations('student-detail');
+  const tNotif = useTranslations('notifications');
+  const tCommon = useTranslations('common');
   const locale = useLocale();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [shifts, setShifts] = useState<ClassShiftType[]>([]);
@@ -50,7 +52,7 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
         }
       } catch (error) {
         console.error('Error fetching class shifts:', error);
-        toast.error('Không thể tải danh sách ca học');
+        toast.error(tNotif('errorLoadShifts'));
         setShifts([]);
         setSelectedShiftId('NONE');
       } finally {
@@ -63,7 +65,7 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
 
   const handleUpdateShift = async () => {
     if (!student.class?.id || !student.id) {
-      toast.error('Thông tin không hợp lệ');
+      toast.error(tNotif('errorInvalidInfo'));
       return;
     }
 
@@ -86,17 +88,17 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
       });
 
       if (response.status === 200 && response.data) {
-        toast.success('Cập nhật ca học thành công');
+        toast.success(tNotif('successUpdateShiftDialog'));
         setIsDialogOpen(false);
         if (onUpdate) {
           onUpdate();
         }
       } else {
-        toast.error('Cập nhật ca học thất bại');
+        toast.error(tNotif('errorUpdateShift'));
       }
     } catch (error) {
       console.error('Error updating student shift:', error);
-      toast.error('Cập nhật ca học thất bại');
+      toast.error(tNotif('errorUpdateShift'));
     } finally {
       setUpdating(false);
     }
@@ -140,7 +142,7 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
               )}
               {!student.class.shiftName && student.class.id && (
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-slate-500 dark:text-slate-400">Chưa có ca học</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">{tCommon('noShift')}</span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -148,7 +150,7 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
                     className="h-7 px-2 text-xs"
                   >
                     <Edit className="size-3 mr-1" />
-                    Thêm ca học
+                    {tCommon('addShift')}
                   </Button>
                 </div>
               )}
@@ -179,14 +181,14 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Cập nhật ca học</DialogTitle>
+            <DialogTitle>{tCommon('updateShift')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="shift">Chọn ca học</Label>
+              <Label htmlFor="shift">{tCommon('selectShift')}</Label>
               {loadingShifts ? (
                 <div className="flex items-center justify-center py-4">
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Đang tải danh sách ca học...</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{tCommon('loadingShifts')}</p>
                 </div>
               ) : (
                 <>
@@ -219,10 +221,10 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
               onClick={() => setIsDialogOpen(false)}
               disabled={updating}
             >
-              Hủy
+              {tCommon('cancel')}
             </Button>
             <Button type="button" onClick={handleUpdateShift} disabled={updating || loadingShifts}>
-              {updating ? 'Đang cập nhật...' : 'Cập nhật'}
+              {updating ? tCommon('updating') : tCommon('update')}
             </Button>
           </DialogFooter>
         </DialogContent>

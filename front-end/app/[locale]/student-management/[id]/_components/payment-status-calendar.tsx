@@ -63,17 +63,17 @@ export function PaymentStatusCalendar({
   const getStatusBadge = (status: string, amount?: number, paidAmount?: number) => {
     const variants: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
       paid: {
-        label: t('statusPaid') || 'Đã đóng',
+        label: t('statusPaid'),
         icon: CheckCircle,
         className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
       },
       unpaid: {
-        label: t('statusUnpaid') || 'Chưa đóng',
+        label: t('statusUnpaid'),
         icon: XCircle,
         className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
       },
       partial: {
-        label: t('statusPartial') || 'Đóng một phần',
+        label: t('statusPartial'),
         icon: CheckCircle,
         className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
       },
@@ -253,7 +253,7 @@ export function PaymentStatusCalendar({
                         {monthNames[month - 1]}
                         {isCurrentMonth && (
                           <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400">
-                            ({t('current') || 'Hiện tại'})
+                            ({t('current')})
                           </span>
                         )}
                       </div>

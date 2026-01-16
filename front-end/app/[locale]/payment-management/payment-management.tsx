@@ -139,6 +139,7 @@ export default function PaymentManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations('payment-management');
+  const tNotif = useTranslations('notifications');
 
   useEffect(() => {
     const fetchPayments = async () => {
@@ -200,7 +201,7 @@ export default function PaymentManagementPage() {
 
         setPayments(mapped);
       } catch (err) {
-        setError('Không thể tải dữ liệu thanh toán');
+        setError(tNotif('errorLoadPaymentData'));
         console.error(err);
       } finally {
         setIsLoading(false);

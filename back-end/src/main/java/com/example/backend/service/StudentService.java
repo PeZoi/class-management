@@ -223,6 +223,18 @@ public class StudentService {
 
         StudentClass studentClassDB = studentClassRepository.findCurrentClassByStudent(studentId, StudentClassStatus.STUDYING);
 
+        // Check if classId is empty or null - remove student from class
+        if (studentRequest.getClassId() == null || studentRequest.getClassId().trim().isEmpty()) {
+            // Remove student from current class
+            if (studentClassDB != null) {
+                studentClassDB.setLeftAt(Instant.now());
+                studentClassDB.setStatus(StudentClassStatus.DROPPED);
+                studentClassRepository.save(studentClassDB);
+            }
+            // Don't set class in response - student has no class
+            return studentResponse;
+        }
+
         if (studentClassDB == null) {
             // Student has no current class, create new one
             Class classDB = classRepository.findById(studentRequest.getClassId()).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));

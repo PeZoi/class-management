@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { StudentTable } from './_components/student-table';
 import { StudentDialog } from './_components/student-dialog';
 import { StudentFilter, FilterState } from './_components/student-filter';
@@ -93,6 +94,8 @@ const mapStudentTypeToStudentItem = (student: StudentType, index: number): Stude
 };
 
 export default function StudentManagementPage() {
+  const tNotif = useTranslations('notifications');
+  const tCommon = useTranslations('common');
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -121,11 +124,11 @@ export default function StudentManagementPage() {
           );
           setStudents(mappedStudents);
         } else {
-          toast.error('Không thể tải danh sách học viên');
+          toast.error(tNotif('errorLoadStudentsList'));
         }
       } catch (error) {
         console.error('Error fetching students:', error);
-        toast.error('Lỗi khi tải danh sách học viên');
+        toast.error(tNotif('errorLoadStudentsListGeneric'));
       } finally {
         setIsLoading(false);
       }
@@ -190,13 +193,13 @@ export default function StudentManagementPage() {
         const response = await studentService.updateStudent(studentData, selectedStudent.id);
         if (response.status === 200 && response.data) {
           await reloadStudents();
-          toast.success('Cập nhật học viên thành công');
+          toast.success(tNotif('successUpdateStudent'));
           setIsDialogOpen(false);
           setSelectedStudent(null);
         }
       } catch (error) {
         console.error('Error updating student:', error);
-        toast.error('Cập nhật học viên thất bại');
+        toast.error(tNotif('errorUpdateStudent'));
       }
       return;
     }
@@ -206,21 +209,21 @@ export default function StudentManagementPage() {
       const response = await studentService.createStudent(studentData);
       if (response.status === 201 && response.data) {
         await reloadStudents();
-        toast.success('Thêm học viên thành công');
+        toast.success(tNotif('successCreateStudent'));
         setIsDialogOpen(false);
         setSelectedStudent(null);
       }
     } catch (error) {
       console.error('Error creating student:', error);
-      toast.error('Thêm học viên thất bại');
+      toast.error(tNotif('errorCreateStudent'));
     }
   };
 
   // Get unique class names for filter
   const availableClasses = useMemo(() => {
-    const classes = [...new Set(students.map((s) => s.class?.name || 'Chưa có lớp'))];
+    const classes = [...new Set(students.map((s) => s.class?.name || tCommon('noClass')))];
     return classes.sort();
-  }, [students]);
+  }, [students, tCommon]);
 
   // Filter and sort students
   const filteredStudents = useMemo(() => {
@@ -246,7 +249,7 @@ export default function StudentManagementPage() {
 
     // Apply class filter
     if (filters.className !== 'all') {
-      result = result.filter((student) => (student.class?.name || 'Chưa có lớp') === filters.className);
+      result = result.filter((student) => (student.class?.name || tCommon('noClass')) === filters.className);
     }
 
     // Apply gender filter
@@ -282,7 +285,7 @@ export default function StudentManagementPage() {
   }, [students, filters]);
 
   if (isLoading) {
-    return <PageLoading message="Đang tải danh sách học viên..." />;
+    return <PageLoading message={tCommon('loadingStudents')} />;
   }
 
   return (

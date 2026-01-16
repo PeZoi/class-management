@@ -15,6 +15,7 @@ type TimePeriod = '3months' | '6months' | '12months';
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
+  const tNotif = useTranslations('notifications');
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
   const [topClasses, setTopClasses] = useState<ClassType[]>([]);
   const [overdueStudents, setOverdueStudents] = useState<StudentType[]>([]);
@@ -40,9 +41,9 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
-      toast.error('Không thể tải dữ liệu thống kê');
+      toast.error(tNotif('errorLoadStats'));
     }
-  }, []);
+  }, [tNotif]);
 
   // Fetch revenue data by period
   const fetchRevenueData = useCallback(async (period: TimePeriod) => {
@@ -53,10 +54,10 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Error fetching revenue data:', error);
-      toast.error('Không thể tải dữ liệu doanh thu');
+      toast.error(tNotif('errorLoadRevenueData'));
       setRevenueData([]);
     }
-  }, []);
+  }, [tNotif]);
 
   // Fetch top 3 classes by revenue
   const fetchTop3Classes = useCallback(async () => {
@@ -67,10 +68,10 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Error fetching top 3 classes:', error);
-      toast.error('Không thể tải dữ liệu top 3 lớp học');
+      toast.error(tNotif('errorLoadTopClasses'));
       setTopClasses([]);
     }
-  }, []);
+  }, [tNotif]);
 
   // Fetch students with unpaid fees
   const fetchOverdueStudents = useCallback(async () => {
@@ -81,10 +82,10 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Error fetching overdue students:', error);
-      toast.error('Không thể tải danh sách học viên chưa đóng tiền');
+      toast.error(tNotif('errorLoadOverdueStudents'));
       setOverdueStudents([]);
     }
-  }, []);
+  }, [tNotif]);
 
   // Initial data fetch
   useEffect(() => {

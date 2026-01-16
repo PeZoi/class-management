@@ -87,6 +87,7 @@ export function PaymentCalendarDialog({
   onPaymentSuccess,
 }: PaymentCalendarDialogProps) {
   const t = useTranslations('student-detail');
+  const tNotif = useTranslations('notifications');
   const [studentData, setStudentData] = useState<StudentType | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,11 +112,11 @@ export function PaymentCalendarDialog({
         if (response.status === 200 && response.data) {
           setStudentData(response.data);
         } else {
-          toast.error('Không thể tải thông tin học viên.');
+          toast.error(tNotif('errorLoadStudentInfo'));
         }
       } catch (error) {
         console.error('Lỗi fetch thông tin học viên', error);
-        toast.error('Không thể tải thông tin học viên.');
+        toast.error(tNotif('errorLoadStudentInfo'));
       } finally {
         setLoading(false);
       }
@@ -150,7 +151,7 @@ export function PaymentCalendarDialog({
   const handlePaymentSubmit = async (data: CreateStudentPaymentData) => {
     try {
       if (!studentData?.class?.monthlyFee) {
-        toast.error('Không thể lấy thông tin học phí.');
+        toast.error(tNotif('errorGetFeeInfo'));
         return;
       }
 
@@ -158,7 +159,7 @@ export function PaymentCalendarDialog({
       const response = await paymentService.createStudentPayment(data, studentData.class.monthlyFee);
 
       if (response.status === 201 && response.data) {
-        toast.success(`Đã ghi nhận thanh toán ${formatCurrency(data.amount)} cho tháng ${data.month}/${data.year}`);
+        toast.success(tNotif('successRecordPayment', { amount: formatCurrency(data.amount), month: data.month, year: data.year }));
 
         // Tự động tải hóa đơn PDF
         if (response.data.paymentId || response.data.id) {
@@ -191,11 +192,11 @@ export function PaymentCalendarDialog({
           onPaymentSuccess();
         }
       } else {
-        toast.error('Không thể ghi nhận thanh toán.');
+        toast.error(tNotif('errorRecordPayment'));
       }
     } catch (error) {
       console.error('Lỗi khi ghi nhận thanh toán', error);
-      toast.error('Không thể ghi nhận thanh toán.');
+      toast.error(tNotif('errorRecordPayment'));
     }
   };
 
@@ -206,10 +207,10 @@ export function PaymentCalendarDialog({
       <DialogContent className="max-w-[95vw] lg:max-w-7xl xl:max-w-[90vw] 2xl:max-w-[85vw] max-h-[90vh] overflow-y-auto p-0 sm:p-6">
         <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-0">
           <DialogTitle className="text-xl sm:text-2xl font-bold">
-            {t('paymentStatusCalendar') || 'Lịch Thanh Toán'} - {student.fullName}
+            {t('paymentStatusCalendar')} - {student.fullName}
           </DialogTitle>
           <DialogDescription>
-            {t('paymentStatusCalendarDesc') || 'Quản lý thanh toán học phí theo tháng'}
+            {t('paymentStatusCalendarDesc')}
           </DialogDescription>
         </DialogHeader>
 

@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   ClassroomDetailHeader,
   ClassroomDetailRevenueChart,
@@ -24,6 +25,8 @@ type TimePeriod = '3months' | '6months' | '12months';
 export default function ClassroomDetailPage() {
   const params = useParams();
   const classId = params.id;
+  const tNotif = useTranslations('notifications');
+  const tCommon = useTranslations('common');
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
   const [students, setStudents] = useState<StudentType[]>([]);
@@ -52,12 +55,12 @@ export default function ClassroomDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching revenue data:', error);
-      toast.error('Không thể tải dữ liệu doanh thu');
+      toast.error(tNotif('errorLoadRevenue'));
       setRevenueData([]);
     } finally {
       setIsLoadingRevenue(false);
     }
-  }, []);
+  }, [tNotif]);
 
   const fetchStudents = useCallback(async () => {
     if (!classId) return;
@@ -68,9 +71,9 @@ export default function ClassroomDetailPage() {
       }
     } catch (error) {
       console.log('Lỗi fetch danh sách học sinh', error);
-      toast.error('Không thể tải danh sách học sinh.');
+      toast.error(tNotif('errorLoadStudents'));
     }
-  }, [classId]);
+  }, [classId, tNotif]);
 
   // Initialize students & class state
   useEffect(() => {
@@ -82,7 +85,7 @@ export default function ClassroomDetailPage() {
         }
       } catch (error) {
         console.log('Lỗi fetch thông tin lớp học', error);
-        toast.error('Không thể tải thông tin lớp học.');
+        toast.error(tNotif('errorGetClassInfo'));
       } finally {
         setLoading(false);
       }
@@ -91,7 +94,7 @@ export default function ClassroomDetailPage() {
       fetchClass();
       fetchStudents();
     }
-  }, [classId, fetchStudents]);
+  }, [classId, fetchStudents, tNotif]);
 
   // Fetch revenue data when period or classId changes
   useEffect(() => {
@@ -101,17 +104,17 @@ export default function ClassroomDetailPage() {
   }, [classId, selectedPeriod, fetchRevenueData]);
 
   // Transform ClassType to UI format with additional static fields
-  const getClassDataForUI = (data: ClassType | null) => {
+  const getClassDataForUI = useCallback((data: ClassType | null) => {
     if (!data) {
       return {
         id: 0,
-        name: 'Chưa có tên',
-        teacher: 'Chưa có giáo viên',
+        name: tCommon('noName'),
+        teacher: tCommon('noTeacher'),
         teacherEmail: '',
         teacherPhone: '',
         students: 0,
         revenue: 0,
-        schedule: 'Chưa có lịch học',
+        schedule: tCommon('noSchedule'),
         time: '19:00 - 21:00', // Dữ liệu tĩnh
         duration: '3 tháng', // Dữ liệu tĩnh
         monthlyFee: 0,
@@ -123,13 +126,13 @@ export default function ClassroomDetailPage() {
     }
     return {
       id: Number(data.id) || 0,
-      name: data.name || 'Chưa có tên',
-      teacher: data.teacher?.fullName || 'Chưa có giáo viên',
+      name: data.name || tCommon('noName'),
+      teacher: data.teacher?.fullName || tCommon('noTeacher'),
       teacherEmail: data.teacher?.email || '',
       teacherPhone: data.teacher?.phoneNumber || '',
       students: data.studentCount || 0,
       revenue: data.revenue || 0,
-      schedule: data.schedule || 'Chưa có lịch học',
+      schedule: data.schedule || tCommon('noSchedule'),
       time: '19:00 - 21:00', // Dữ liệu tĩnh
       duration: '3 tháng', // Dữ liệu tĩnh
       monthlyFee: data.monthlyFee || 0,
@@ -138,7 +141,7 @@ export default function ClassroomDetailPage() {
       description: data.name || '', // Dùng name làm description
       color: '#3b82f6', // Dữ liệu tĩnh
     };
-  };
+  }, [tCommon]);
 
   const currentClassData = getClassDataForUI(classData);
 
@@ -167,15 +170,15 @@ export default function ClassroomDetailPage() {
       const response = await studentService.updateStudent(studentData, selectedStudent.id);
       if (response.status === 200 && response.data) {
         await fetchStudents();
-        toast.success('Cập nhật học viên thành công');
+        toast.success(tNotif('successUpdateStudent'));
         setIsStudentDialogOpen(false);
         setSelectedStudent(null);
       } else {
-        toast.error('Cập nhật học viên thất bại');
+        toast.error(tNotif('errorUpdateStudent'));
       }
     } catch (error) {
       console.error('Error updating student from classroom detail:', error);
-      toast.error('Cập nhật học viên thất bại');
+      toast.error(tNotif('errorUpdateStudent'));
     }
   };
 
@@ -213,7 +216,13 @@ export default function ClassroomDetailPage() {
       )}
 
       {/* Students List */}
-      <ClassroomStudentsList students={students} onEditStudent={handleEditStudent} onPayment={handlePayment} />
+      <ClassroomStudentsList 
+        students={students} 
+        classId={classId as string}
+        onEditStudent={handleEditStudent} 
+        onPayment={handlePayment}
+        onStudentsUpdate={fetchStudents}
+      />
 
       {/* Student Attendance */}
       <ClassroomStudentAttendance students={students} />

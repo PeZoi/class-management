@@ -31,6 +31,8 @@ const colorPalette = [
 
 export default function ClassroomManagementPage() {
   const t = useTranslations('classroom-management');
+  const tNotif = useTranslations('notifications');
+  const tCommon = useTranslations('common');
   const [classes, setClasses] = useState<ClassType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassType | null>(null);
@@ -55,11 +57,11 @@ export default function ClassroomManagementPage() {
       }
     } catch (error) {
       console.error(error);
-      toast.error('Không thể tải danh sách lớp học');
+      toast.error(tNotif('errorLoadClasses'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [tNotif]);
 
   // Fetch revenue data from BE
   const fetchRevenueData = useCallback(async (period: TimePeriod) => {
@@ -86,12 +88,12 @@ export default function ClassroomManagementPage() {
       }
     } catch (error) {
       console.error('Error fetching revenue data:', error);
-      toast.error('Không thể tải dữ liệu doanh thu');
+      toast.error(tNotif('errorLoadRevenue'));
       setRevenueData([]);
     } finally {
       setIsLoadingRevenue(false);
     }
-  }, []);
+  }, [tNotif]);
 
   // Call API to get all classes
   useEffect(() => {
@@ -166,7 +168,7 @@ export default function ClassroomManagementPage() {
         const response = await classService.updateClass(id, formData);
         if (response.status === 200 && response.data) {
           const updatedClass = response.data;
-          toast.success("Cập nhật lớp học thành công");
+          toast.success(tNotif('successUpdateClass'));
           setIsDialogOpen(false);
           setSelectedClass(null);
           setClasses((prevClasses) => 
@@ -175,24 +177,24 @@ export default function ClassroomManagementPage() {
         }
       } catch (error) {
         console.error(error);
-        toast.error("Cập nhật lớp học thất bại");
+        toast.error(tNotif('errorUpdateClass'));
       }
     } else {
       try {
         const response = await classService.createClass(formData);
         if (response.status === 201 && response.data) {
           const newClass = response.data;
-          toast.success("Thêm lớp học thành công");
+          toast.success(tNotif('successCreateClass'));
           setIsDialogOpen(false);
           setSelectedClass(null);
           setClasses((prevClasses) => [...prevClasses, newClass]);
         }
       } catch (error) {
         console.error(error);
-        toast.error("Thêm lớp học thất bại");
+        toast.error(tNotif('errorCreateClass'));
       }
     }
-  }, []);
+  }, [tNotif]);
 
   // Map classes to classColors dynamically
   // Sort classes by id to match BE order (BE sorts classes by id before mapping to class_1, class_2, ...)
@@ -211,7 +213,7 @@ export default function ClassroomManagementPage() {
   }, []);
 
   if (isLoading) {
-    return <PageLoading message="Đang tải danh sách lớp học..." />;
+    return <PageLoading message={tCommon('loadingClasses')} />;
   }
 
   return (

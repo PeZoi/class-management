@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { TeacherType } from '@/types/teacher-type';
 import {
   TeacherAttendance,
@@ -229,6 +230,7 @@ const convertToSalaryMonthStatus = (
 };
 
 export default function TeacherDetailPage() {
+  const tNotif = useTranslations('notifications');
   const params = useParams();
   const teacherId = params.id;
 
@@ -328,7 +330,7 @@ export default function TeacherDetailPage() {
       const response = await paymentService.createTeacherPayment(paymentData);
 
       if (response.status === 201 && response.data) {
-        toast.success(`Đã trả lương cho giáo viên thành công!`);
+        toast.success(tNotif('successPaySalary'));
         
         // Tự động tải hóa đơn PDF
         if (response.data.paymentId || response.data.id) {
@@ -354,11 +356,11 @@ export default function TeacherDetailPage() {
           setPaymentHistory(teacherPayments);
         }
       } else {
-        toast.error('Trả lương thất bại. Vui lòng thử lại.');
+        toast.error(tNotif('errorPaySalary'));
       }
     } catch (error) {
       console.error('Error creating salary payment:', error);
-      toast.error('Trả lương thất bại. Vui lòng thử lại.');
+      toast.error(tNotif('errorPaySalary'));
     }
   };
 

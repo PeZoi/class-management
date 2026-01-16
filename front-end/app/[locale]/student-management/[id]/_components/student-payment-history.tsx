@@ -78,7 +78,7 @@ export function StudentPaymentHistory({ paymentHistory }: StudentPaymentHistoryP
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
       paid: {
-        label: t('statusPaid') || 'Đã thanh toán đủ',
+        label: t('statusPaid'),
         icon: CheckCircle,
         className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
       },

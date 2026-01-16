@@ -3,7 +3,7 @@
 import { PageLoading } from '@/components/page-loading';
 import { teacherService } from '@/services';
 import { TeacherRequest, TeacherType } from '@/types';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -13,6 +13,8 @@ import { TeacherTable } from './_components/teacher-table';
 export default function TeacherManagementPage() {
   const router = useRouter();
   const locale = useLocale();
+  const tNotif = useTranslations('notifications');
+  const tCommon = useTranslations('common');
   const [teachers, setTeachers] = useState<TeacherType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherType | null>(null);
@@ -26,12 +28,12 @@ export default function TeacherManagementPage() {
         setTeachers(response.data || []);
       }
     } catch (error) {
-      toast.error('Không thể tải danh sách giáo viên');
+      toast.error(tNotif('errorLoadTeachers'));
       console.error('Error fetching teachers:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [tNotif]);
 
   useEffect(() => {
     fetchTeachers();
@@ -70,32 +72,32 @@ export default function TeacherManagementPage() {
           const response = await teacherService.updateTeacher(selectedTeacher.id, teacherRequest);
           if (response.status === 200 && response.data) {
             const updatedTeacher = response.data;
-            toast.success('Cập nhật giảng viên thành công');
+            toast.success(tNotif('successUpdateTeacher'));
             setIsDialogOpen(false);
             setSelectedTeacher(null);
             setTeachers((prev) => prev.map((t) => (t.id === selectedTeacher.id ? { ...t, ...updatedTeacher } : t)));
           }
         } catch (error) {
           console.error('Error updating teacher:', error);
-          toast.error('Cập nhật giảng viên thất bại');
+          toast.error(tNotif('errorUpdateTeacher'));
         }
       } else {
         try {
           const response = await teacherService.createTeacher(teacherRequest);
           if (response.status === 201 && response.data) {
             const newTeacher = response.data;
-            toast.success('Thêm giảng viên thành công');
+            toast.success(tNotif('successCreateTeacher'));
             setIsDialogOpen(false);
             setSelectedTeacher(null);
             setTeachers((prev) => [...prev, newTeacher]);
           }
         } catch (error) {
           console.error('Error creating teacher:', error);
-          toast.error('Thêm giảng viên thất bại');
+          toast.error(tNotif('errorCreateTeacher'));
         }
       }
     },
-    [selectedTeacher],
+    [selectedTeacher, tNotif],
   );
 
   const handleViewDetail = useCallback(
@@ -106,7 +108,7 @@ export default function TeacherManagementPage() {
   );
 
   if (isLoading) {
-    return <PageLoading message="Đang tải danh sách giáo viên..." />;
+    return <PageLoading message={tCommon('loadingTeachers')} />;
   }
 
   return (

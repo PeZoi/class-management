@@ -70,12 +70,12 @@ export function TeacherSalaryPaymentCalendar({
   const getStatusBadge = (status: string, totalAmount?: number, paidAmount?: number) => {
     const variants: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
       paid: {
-        label: t('paid') || 'Đã trả',
+        label: t('paid'),
         icon: CheckCircle,
         className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
       },
       unpaid: {
-        label: t('unpaid') || 'Chưa trả',
+        label: t('unpaid'),
         icon: XCircle,
         className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
       },
@@ -211,13 +211,13 @@ export function TeacherSalaryPaymentCalendar({
               <div className="flex items-center gap-2">
                 <CheckCircle className="size-4 text-green-600" />
                 <span className="text-slate-600 dark:text-slate-400">
-                  {t('paid') || 'Đã trả'}: <span className="font-bold text-green-600">{yearPaid}</span>
+                  {t('paid')}: <span className="font-bold text-green-600">{yearPaid}</span>
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <XCircle className="size-4 text-red-600" />
                 <span className="text-slate-600 dark:text-slate-400">
-                  {t('unpaid') || 'Chưa trả'}: <span className="font-bold text-red-600">{yearUnpaid}</span>
+                  {t('unpaid')}: <span className="font-bold text-red-600">{yearUnpaid}</span>
                 </span>
               </div>
               {yearPartial > 0 && (
@@ -274,7 +274,7 @@ export function TeacherSalaryPaymentCalendar({
                         variant="outline"
                         className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                       >
-                        {t('noData') || 'Chưa có dữ liệu'}
+                        {t('noData')}
                       </Badge>
                     </div>
                   )}

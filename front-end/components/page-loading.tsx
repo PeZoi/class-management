@@ -1,10 +1,15 @@
+'use client';
+
 import { Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface PageLoadingProps {
   message?: string;
 }
 
 export function PageLoading({ message }: PageLoadingProps) {
+  const t = useTranslations('common');
+
   return (
     <div className="relative flex h-screen items-center justify-center overflow-hidden bg-linear-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
       
@@ -17,11 +22,11 @@ export function PageLoading({ message }: PageLoadingProps) {
 
         {/* Main text */}
         <h2 className="mb-2 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-          Đang tải dữ liệu
+          {t('loadingData')}
         </h2>
 
         <p className="mb-6 max-w-md text-sm text-slate-600 dark:text-slate-400">
-          {message ?? 'Vui lòng đợi trong giây lát, hệ thống đang đồng bộ thông tin mới nhất cho bạn.'}
+          {message ?? t('loadingMessage')}
         </p>
 
         {/* Skeleton lines */}

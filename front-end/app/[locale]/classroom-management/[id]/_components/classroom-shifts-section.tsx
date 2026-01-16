@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,8 @@ interface ClassroomShiftsSectionProps {
 
 export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps) {
   const tClassDetail = useTranslations('classroom-detail');
+  const tCommon = useTranslations('common');
+  const tNotif = useTranslations('notifications');
 
   const [shifts, setShifts] = useState<ClassShiftType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -92,15 +94,28 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
 
-  const dayOptions: { key: string; label: string; order: number }[] = [
-    { key: 'MON', label: 'T2', order: 1 },
-    { key: 'TUE', label: 'T3', order: 2 },
-    { key: 'WED', label: 'T4', order: 3 },
-    { key: 'THU', label: 'T5', order: 4 },
-    { key: 'FRI', label: 'T6', order: 5 },
-    { key: 'SAT', label: 'T7', order: 6 },
-    { key: 'SUN', label: 'CN', order: 7 },
-  ];
+  const getDayLabel = (key: string): string => {
+    const labels: Record<string, string> = {
+      'MON': tCommon('dayMonday'),
+      'TUE': tCommon('dayTuesday'),
+      'WED': tCommon('dayWednesday'),
+      'THU': tCommon('dayThursday'),
+      'FRI': tCommon('dayFriday'),
+      'SAT': tCommon('daySaturday'),
+      'SUN': tCommon('daySunday'),
+    };
+    return labels[key] || key;
+  };
+
+  const dayOptions: { key: string; label: string; order: number }[] = useMemo(() => [
+    { key: 'MON', label: getDayLabel('MON'), order: 1 },
+    { key: 'TUE', label: getDayLabel('TUE'), order: 2 },
+    { key: 'WED', label: getDayLabel('WED'), order: 3 },
+    { key: 'THU', label: getDayLabel('THU'), order: 4 },
+    { key: 'FRI', label: getDayLabel('FRI'), order: 5 },
+    { key: 'SAT', label: getDayLabel('SAT'), order: 6 },
+    { key: 'SUN', label: getDayLabel('SUN'), order: 7 },
+  ], [tCommon]);
 
   const fetchShifts = async () => {
     if (!classId) return;
@@ -112,7 +127,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
       }
     } catch (error) {
       console.error('Error fetching class shifts', error);
-      toast.error('Không thể tải danh sách ca học');
+      toast.error(tNotif('errorLoadShifts'));
     } finally {
       setLoading(false);
     }
@@ -135,7 +150,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
       }
     } catch (error) {
       console.error('Error fetching students by class shift', error);
-      toast.error('Không thể tải danh sách học sinh của ca này');
+      toast.error(tNotif('errorLoadStudentsByShift'));
     } finally {
       setLoadingStudentsShiftId(null);
     }
@@ -145,21 +160,21 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
     e.preventDefault();
 
     if (!shiftType) {
-      toast.warning('Vui lòng chọn loại ca (sáng/tối)');
+      toast.warning(tNotif('warningSelectShiftType'));
       return;
     }
 
     if (selectedDays.length === 0) {
-      toast.warning('Vui lòng chọn ít nhất một thứ');
+      toast.warning(tNotif('warningSelectDays'));
       return;
     }
 
     if (!startTime || !endTime) {
-      toast.warning('Vui lòng chọn thời gian bắt đầu và kết thúc');
+      toast.warning(tNotif('warningSelectTime'));
       return;
     }
 
-    const typeLabel = shiftType === 'MORNING' ? 'Ca sáng' : 'Ca tối';
+    const typeLabel = shiftType === 'MORNING' ? tCommon('morningShift') : tCommon('eveningShift');
 
     const orderedDays = [...selectedDays].sort((a, b) => {
       const da = dayOptions.find((d) => d.key === a)?.order ?? 0;
@@ -185,7 +200,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
           classId,
         });
         if (res.status === 200 && res.data) {
-          toast.success('Cập nhật ca học thành công');
+          toast.success(tNotif('successUpdateShiftDialog'));
           setShifts((prev) =>
             prev.map((s) => (s.id === editingShift.id ? (res.data as ClassShiftType) : s)),
           );
@@ -196,7 +211,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
           classId,
         });
         if (res.status === 201 && res.data) {
-          toast.success('Thêm ca học thành công');
+          toast.success(tNotif('successCreateShift'));
           setShifts((prev) => [...prev, res.data as ClassShiftType]);
         }
       }
@@ -210,7 +225,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
       setOpen(false);
     } catch (error) {
       console.error('Error creating/updating class shift', error);
-      toast.error('Không thể lưu ca học');
+      toast.error(tNotif('errorSaveShift'));
     } finally {
       setCreating(false);
     }
@@ -261,15 +276,13 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
   };
 
   const handleDeleteShift = async (shiftId: string) => {
-    const confirmDelete = window.confirm(
-      'Bạn có chắc muốn xóa ca học này? Tất cả học sinh của ca này sẽ được chuyển về trạng thái chưa có ca học.',
-    );
+    const confirmDelete = window.confirm(tNotif('confirmDeleteShift'));
     if (!confirmDelete) return;
 
     try {
       const res = await classShiftService.delete(shiftId);
       if (res.status === 204 || res.status === 200) {
-        toast.success('Xóa ca học thành công');
+        toast.success(tNotif('successDeleteShift'));
         setShifts((prev) => prev.filter((s) => s.id !== shiftId));
         // Xóa luôn cache học sinh của ca đó trên FE (backend đã set classShift = null)
         setStudentsByShift((prev) => {
@@ -282,11 +295,11 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
           setOpenShiftId(null);
         }
       } else {
-        toast.error('Xóa ca học thất bại');
+        toast.error(tNotif('errorDeleteShift'));
       }
     } catch (error) {
       console.error('Error deleting class shift', error);
-      toast.error('Không thể xóa ca học');
+      toast.error(tNotif('errorDeleteShiftFail'));
     }
   };
 
@@ -296,10 +309,10 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              Ca học của lớp
+              {tCommon('shiftsTitle')}
             </CardTitle>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
-              Quản lý các ca học (Ca sáng/Ca tối, theo thứ và khung giờ) để phục vụ điểm danh và theo dõi lịch dạy.
+              {tCommon('shiftsDescription')}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -308,7 +321,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
               size="icon"
               onClick={fetchShifts}
               disabled={loading}
-              title="Tải lại danh sách ca"
+              title={tCommon('refreshShifts')}
             >
               <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
@@ -323,7 +336,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
               }}
             >
               <Plus className="size-4 mr-1" />
-              Thêm ca
+              {tCommon('addShift')}
             </Button>
           </div>
         </CardHeader>
@@ -331,10 +344,10 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
           {/* Danh sách ca học (collapse + danh sách học sinh) */}
           <div className="space-y-2">
             {loading ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Đang tải danh sách ca học...</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{tCommon('loadingShifts')}</p>
             ) : shifts.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Chưa có ca học nào cho lớp này. Hãy nhấn &quot;Thêm ca&quot; để tạo ca đầu tiên.
+                {tCommon('noShifts')}
               </p>
             ) : (
               <ul className="space-y-2">
@@ -362,7 +375,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
                                 <span>{shift.name}</span>
                               </div>
                               <span className="text-xs text-slate-500 dark:text-slate-400">
-                                {students.length > 0 ? `${students.length} học sinh` : 'Nhấn để xem học sinh'}
+                                {students.length > 0 ? tCommon('studentsCount', { count: students.length }) : tCommon('clickToViewStudents')}
                               </span>
                             </button>
                           </CollapsibleTrigger>
@@ -390,11 +403,11 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
                         <CollapsibleContent className="border-t border-slate-200 dark:border-slate-800 px-3 py-2 bg-white/60 dark:bg-slate-950/40">
                           {isLoadingStudents ? (
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                              Đang tải danh sách học sinh...
+                              {tCommon('loadingStudentList')}
                             </p>
                           ) : students.length === 0 ? (
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                              Chưa có học sinh nào trong ca này.
+                              {tCommon('noStudentsInShift')}
                             </p>
                           ) : (
                             <div className="overflow-x-auto rounded-md border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950/60">
@@ -524,11 +537,11 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
                                             <TableCell className="px-3 py-2 whitespace-nowrap">
                                               {student.class?.joinAt ? formatDate(student.class.joinAt) : '-'}
                                             </TableCell>
-                                            <TableCell className="px-3 py-2 text-center whitespace-nowrap">
-                                              {unpaidMonths}
+                                            <TableCell className="px-3 py-2 whitespace-nowrap">
+                                              <p className='pl-12'>{unpaidMonths}</p>
                                             </TableCell>
-                                            <TableCell className="px-3 py-2 text-right whitespace-nowrap">
-                                              <div className="flex flex-col items-end gap-1">
+                                            <TableCell className="px-3 py-2 whitespace-nowrap">
+                                              <div className="flex flex-col items-start gap-1">
                                                 <span
                                                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium ${paymentCfg.className}`}
                                                 >
@@ -575,12 +588,12 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingShift ? 'Cập nhật ca học' : 'Thêm ca học'}</DialogTitle>
+            <DialogTitle>{editingShift ? tCommon('updateShift') : tCommon('createShift')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateShift} className="space-y-4">
             {/* Loại ca */}
             <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Loại ca</p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{tCommon('shiftType')}</p>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -588,7 +601,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
                   onClick={() => setShiftType('MORNING')}
                   className="flex-1"
                 >
-                  Ca sáng
+                  {tCommon('morningShift')}
                 </Button>
                 <Button
                   type="button"
@@ -596,14 +609,14 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
                   onClick={() => setShiftType('EVENING')}
                   className="flex-1"
                 >
-                  Ca tối
+                  {tCommon('eveningShift')}
                 </Button>
               </div>
             </div>
 
             {/* Chọn thứ */}
             <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Thứ trong tuần</p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{tCommon('selectDays')}</p>
               <div className="flex flex-wrap gap-2">
                 {dayOptions.map((day) => {
                   const isSelected = selectedDays.includes(day.key);
@@ -631,10 +644,10 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
 
             {/* Thời gian */}
             <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Khung giờ</p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{tCommon('timeRange')}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Giờ bắt đầu</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{tCommon('startTime')}</p>
                   <Input
                     type="time"
                     value={startTime}
@@ -642,7 +655,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
                   />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Giờ kết thúc</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{tCommon('endTime')}</p>
                   <Input
                     type="time"
                     value={endTime}
@@ -654,10 +667,10 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Hủy
+                {tCommon('cancel')}
               </Button>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Đang lưu...' : 'Lưu ca học'}
+                {creating ? tCommon('saving') : tCommon('saveShift')}
               </Button>
             </DialogFooter>
           </form>

@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   StudentDetailHeader,
   StudentPersonalInfo,
@@ -147,6 +148,7 @@ const convertToPaymentHistoryItem = (apiPayment: PaymentResponse): PaymentHistor
 export default function StudentDetailPage() {
   const params = useParams();
   const studentId = params.id;
+  const tNotif = useTranslations('notifications');
 
   const [studentData, setStudentData] = useState<StudentType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -175,18 +177,18 @@ export default function StudentDetailPage() {
         if (response.status === 200 && response.data) {
           setStudentData(response.data);
         } else {
-          toast.error('Không thể tải thông tin học viên.');
+          toast.error(tNotif('errorLoadStudentInfo'));
         }
       } catch (error) {
         console.error('Lỗi fetch thông tin học viên', error);
-        toast.error('Không thể tải thông tin học viên.');
+        toast.error(tNotif('errorLoadStudentInfo'));
       } finally {
         setLoading(false);
       }
     };
 
     fetchStudentData();
-  }, [studentId]);
+  }, [studentId, tNotif]);
 
   // Helper: refresh student data (used in multiple places)
   const refreshStudentData = async () => {
@@ -247,7 +249,7 @@ export default function StudentDetailPage() {
   const handlePaymentSubmit = async (data: CreateStudentPaymentData) => {
     try {
       if (!studentData?.class?.monthlyFee) {
-        toast.error('Không thể lấy thông tin học phí.');
+        toast.error(tNotif('errorGetFeeInfo'));
         return;
       }
 
@@ -255,7 +257,7 @@ export default function StudentDetailPage() {
       const response = await paymentService.createStudentPayment(data, studentData.class.monthlyFee);
 
       if (response.status === 201 && response.data) {
-        toast.success(`Đã ghi nhận thanh toán ${formatCurrency(data.amount)} cho tháng ${data.month}/${data.year}`);
+        toast.success(tNotif('successRecordPayment', { amount: formatCurrency(data.amount), month: data.month, year: data.year }));
 
         // Tự động tải hóa đơn PDF
         if (response.data.paymentId || response.data.id) {
@@ -283,11 +285,11 @@ export default function StudentDetailPage() {
           setPaymentHistory(convertedHistory);
         }
       } else {
-        toast.error('Không thể ghi nhận thanh toán.');
+        toast.error(tNotif('errorRecordPayment'));
       }
     } catch (error) {
       console.error('Lỗi khi ghi nhận thanh toán', error);
-      toast.error('Không thể ghi nhận thanh toán.');
+      toast.error(tNotif('errorRecordPayment'));
     }
   };
 

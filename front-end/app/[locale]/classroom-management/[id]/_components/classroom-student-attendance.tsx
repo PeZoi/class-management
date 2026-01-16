@@ -179,7 +179,7 @@ export function ClassroomStudentAttendance({
         <CardContent className="py-12 text-center">
           <Users className="size-12 text-slate-400 mx-auto mb-4" />
           <p className="text-slate-600 dark:text-slate-400">
-            {t('noStudentsForAttendance') || 'Chưa có học sinh để điểm danh'}
+            {t('noStudentsForAttendance')}
           </p>
         </CardContent>
       </Card>
@@ -229,7 +229,7 @@ export function ClassroomStudentAttendance({
         </div>
         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
           <div className="text-sm text-slate-600 dark:text-slate-400">
-            {t('attendanceInfo', { totalSessions }) || `Tháng này có ${totalSessions} buổi học (2 buổi/tuần)`}
+            {t('attendanceInfo', { totalSessions })}
           </div>
         </div>
       </CardHeader>

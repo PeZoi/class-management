@@ -11,6 +11,7 @@ interface ClassroomScheduleInfoProps {
 
 export function ClassroomScheduleInfo({ classId }: ClassroomScheduleInfoProps) {
   const t = useTranslations('classroom-detail');
+  const tCommon = useTranslations('common');
   const [shifts, setShifts] = useState<ClassShiftType[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +50,7 @@ export function ClassroomScheduleInfo({ classId }: ClassroomScheduleInfoProps) {
           <div className="flex items-center justify-center py-8">
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="size-6 animate-spin text-purple-500" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">Đang tải danh sách ca học...</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{tCommon('loadingShifts')}</p>
             </div>
           </div>
         ) : shifts.length === 0 ? (
@@ -57,8 +58,8 @@ export function ClassroomScheduleInfo({ classId }: ClassroomScheduleInfoProps) {
             <div className="rounded-full bg-slate-100 dark:bg-slate-800 p-3 mb-3">
               <Clock className="size-6 text-slate-400 dark:text-slate-500" />
             </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Chưa có ca học</p>
-            <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Lớp học này chưa được thiết lập ca học</p>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{tCommon('noShift')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{tCommon('noShiftsForClass')}</p>
           </div>
         ) : (
           <div className="space-y-2">

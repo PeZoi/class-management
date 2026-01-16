@@ -21,7 +21,7 @@ export function TeacherClassesList({ classes }: TeacherClassesListProps) {
         <CardContent className="py-12 text-center">
           <BookOpen className="size-12 text-slate-400 mx-auto mb-4" />
           <p className="text-slate-600 dark:text-slate-400">
-            {t('noClasses') || 'Chưa có lớp học nào'}
+            {t('noClasses')}
           </p>
         </CardContent>
       </Card>
@@ -33,7 +33,7 @@ export function TeacherClassesList({ classes }: TeacherClassesListProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BookOpen className="size-5" />
-          {t('classesList') || 'Danh sách lớp học'}
+          {t('classesList')}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -42,34 +42,34 @@ export function TeacherClassesList({ classes }: TeacherClassesListProps) {
             <TableHeader>
               <TableRow className="hover:bg-transparent border-slate-200 dark:border-slate-700">
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
-                  {t('className') || 'Tên lớp'}
+                  {t('className')}
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
                   <div className="flex items-center justify-center gap-2">
                     <Calendar className="size-4" />
-                    <span>{t('schedule') || 'Lịch học'}</span>
+                    <span>{t('schedule')}</span>
                   </div>
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
                   <div className="flex items-center justify-center gap-2">
                     <Users className="size-4" />
-                    <span>{t('students') || 'Học sinh'}</span>
+                    <span>{t('students')}</span>
                   </div>
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <DollarSign className="size-4" />
-                    <span>{t('monthlyFee') || 'Học phí'}</span>
+                    <span>{t('monthlyFee')}</span>
                   </div>
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <DollarSign className="size-4" />
-                    <span>{t('revenue') || 'Doanh thu'}</span>
+                    <span>{t('revenue')}</span>
                   </div>
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">
-                  {t('actions') || 'Thao tác'}
+                  {t('actions')}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -104,7 +104,7 @@ export function TeacherClassesList({ classes }: TeacherClassesListProps) {
                       href={`/${locale}/classroom-management/${classItem.id}`}
                       className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                     >
-                      <span>{t('view') || 'Xem'}</span>
+                      <span>{t('view')}</span>
                       <ExternalLink className="size-3.5" />
                     </Link>
                   </TableCell>
