@@ -45,6 +45,7 @@ import Link from 'next/link';
 import { useState, useMemo, useEffect } from 'react';
 import { classShiftService, studentService } from '@/services';
 import { toast } from 'react-toastify';
+import { Badge } from '@/components/ui/badge';
 
 interface ClassroomStudentsListProps {
   students: StudentType[];
@@ -484,8 +485,14 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
-            {row.original.class?.shiftName || '-'}
+          <div className="flex items-center justify-center">
+            <Badge
+              variant="outline"
+              className="text-xs font-medium px-2 py-0.5 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30"
+            >
+              <Clock className="size-3 mr-1" />
+              {row.original.class?.shiftName || '-'}
+            </Badge>
           </div>
         );
       },

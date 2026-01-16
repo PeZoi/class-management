@@ -45,6 +45,7 @@ export function MonthlyPaymentDialog({
   onSubmit,
 }: MonthlyPaymentDialogProps) {
   const tPayment = useTranslations('payment-management');
+  const tCommon = useTranslations('common');
 
   const [formData, setFormData] = useState({
     amount: 0,
@@ -100,10 +101,10 @@ export function MonthlyPaymentDialog({
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             <DollarSign className="size-6 text-green-600" />
-            Đóng Tiền Học Phí
+            {tPayment('makePaymentTitle')}
           </DialogTitle>
           <DialogDescription>
-            {`Thanh toán cho tháng ${monthNames[payment.month - 1]} ${payment.year}`}
+            {`${tPayment('paymentForMonth')} ${monthNames[payment.month - 1]} ${payment.year}`}
           </DialogDescription>
         </DialogHeader>
 
@@ -112,29 +113,29 @@ export function MonthlyPaymentDialog({
             {/* Payment Info */}
             <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 p-4 space-y-3">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                Thông Tin Thanh Toán
+                {tPayment('paymentInfo')}
               </h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-slate-500">Tháng:</span>
+                  <span className="text-slate-500">{tPayment('monthLabel')}</span>
                   <div className="font-medium text-slate-900 dark:text-slate-100">
                     {monthNames[payment.month - 1]} {payment.year}
                   </div>
                 </div>
                 <div>
-                  <span className="text-slate-500">Tổng học phí:</span>
+                  <span className="text-slate-500">{tPayment('totalTuitionLabel')}</span>
                   <div className="font-medium text-slate-900 dark:text-slate-100">
                     {formatCurrency(payment.amount || monthlyFee)}
                   </div>
                 </div>
                 <div>
-                  <span className="text-slate-500">Đã thanh toán:</span>
+                  <span className="text-slate-500">{tPayment('paidLabel')}</span>
                   <div className="font-medium text-green-600 dark:text-green-400">
                     {formatCurrency(payment.paidAmount || 0)}
                   </div>
                 </div>
                 <div>
-                  <span className="text-slate-500">Còn lại:</span>
+                  <span className="text-slate-500">{tPayment('remainingLabel')}</span>
                   <div className="font-bold text-lg text-orange-600 dark:text-orange-400">
                     {formatCurrency(remainingAmount)}
                   </div>
@@ -147,7 +148,7 @@ export function MonthlyPaymentDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="amount">
-                    Số Tiền Thanh Toán <span className="text-red-500">*</span>
+                    {tPayment('paymentAmountLabel')} <span className="text-red-500">{tPayment('required')}</span>
                   </Label>
                   <CurrencyInputField
                     id="amount"
@@ -158,17 +159,17 @@ export function MonthlyPaymentDialog({
                         amount: value,
                       }))
                     }
-                    placeholder="Nhập số tiền"
+                    placeholder={tPayment('enterAmount')}
                     required
                   />
                   <p className="text-xs text-slate-500">
-                    Tối đa: {formatCurrency(remainingAmount)}
+                    {tPayment('maximum')} {formatCurrency(remainingAmount)}
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="paymentDate">
-                    Ngày Thanh Toán <span className="text-red-500">*</span>
+                    {tPayment('paymentDateLabel')} <span className="text-red-500">{tPayment('required')}</span>
                   </Label>
                   <Input
                     id="paymentDate"
@@ -186,7 +187,7 @@ export function MonthlyPaymentDialog({
 
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="paymentMethod">
-                    Phương Thức Thanh Toán <span className="text-red-500">*</span>
+                    {tPayment('paymentMethodLabel')} <span className="text-red-500">{tPayment('required')}</span>
                   </Label>
                   <Select
                     value={formData.paymentMethod}
@@ -219,7 +220,7 @@ export function MonthlyPaymentDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes">Ghi Chú</Label>
+                <Label htmlFor="notes">{tPayment('notesLabel')}</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
@@ -229,7 +230,7 @@ export function MonthlyPaymentDialog({
                       notes: e.target.value,
                     }))
                   }
-                  placeholder="Ghi chú thêm về khoản thanh toán này..."
+                  placeholder={tPayment('notesPlaceholderPayment')}
                   rows={3}
                 />
               </div>
@@ -239,19 +240,19 @@ export function MonthlyPaymentDialog({
             <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800 p-4">
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">Số tiền thanh toán:</span>
+                  <span className="text-slate-600 dark:text-slate-400">{tPayment('paymentAmountSummary')}</span>
                   <span className="font-semibold text-slate-900 dark:text-slate-100">
                     {formatCurrency(formData.amount)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">Tổng đã thanh toán:</span>
+                  <span className="text-slate-600 dark:text-slate-400">{tPayment('totalPaidSummary')}</span>
                   <span className="font-semibold text-green-600 dark:text-green-400">
                     {formatCurrency((payment.paidAmount || 0) + formData.amount)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm pt-2 border-t border-blue-200 dark:border-blue-800">
-                  <span className="text-slate-600 dark:text-slate-400">Còn lại sau thanh toán:</span>
+                  <span className="text-slate-600 dark:text-slate-400">{tPayment('remainingAfterPayment')}</span>
                   <span
                     className={`font-bold text-lg ${
                       isFullPayment
@@ -265,7 +266,7 @@ export function MonthlyPaymentDialog({
                 {isFullPayment && (
                   <div className="text-center pt-2">
                     <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-sm font-medium">
-                      ✓ Thanh toán đầy đủ
+                      ✓ {tPayment('fullPayment')}
                     </span>
                   </div>
                 )}
@@ -275,11 +276,11 @@ export function MonthlyPaymentDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Hủy
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" className="bg-green-600 hover:bg-green-700">
               <DollarSign className="size-4 mr-2" />
-              Xác Nhận Thanh Toán
+              {tPayment('confirmPayment')}
             </Button>
           </DialogFooter>
         </form>

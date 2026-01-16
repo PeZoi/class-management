@@ -181,16 +181,17 @@ public class StudentService {
         studentClass.setClazz(classDB);
         studentClass.setJoinedAt(Instant.now());
         studentClass.setStatus(StudentClassStatus.STUDYING);
-        // Gán ca học nếu có
-        if (studentRequest.getClassShiftId() != null) {
+        // Ca học là tùy chọn, có thể để trống và thêm vào sau
+        if (studentRequest.getClassShiftId() != null && !studentRequest.getClassShiftId().trim().isEmpty()) {
             ClassShift shift = classShiftRepository.findById(studentRequest.getClassShiftId())
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy ca học"));
-            // đảm bảo ca thuộc đúng lớp
+            // Đảm bảo ca thuộc đúng lớp
             if (!shift.getClazz().getId().equals(classDB.getId())) {
                 throw new NotFoundException("Ca học không thuộc lớp đã chọn");
             }
             studentClass.setClassShift(shift);
         }
+        // Nếu không có ca học, studentClass.getClassShift() sẽ là null, có thể thêm sau bằng updateStudentShift
         StudentClass studentClassDB = studentClassRepository.save(studentClass);
 
         StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);

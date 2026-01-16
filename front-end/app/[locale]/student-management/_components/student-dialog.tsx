@@ -276,7 +276,7 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
                 {/* Class Shift Selection */}
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="classShiftId" className="text-right">
-                    Ca học
+                    {t('shift')}
                   </Label>
                   <Select
                     value={formData.classShiftId || ''}

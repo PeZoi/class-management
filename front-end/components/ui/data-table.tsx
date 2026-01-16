@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -36,6 +37,7 @@ export function DataTable<TData, TValue>({
   pageSizeOptions = [5, 10, 20, 30, 50, 100],
   getRowClassName,
 }: DataTableProps<TData, TValue>) {
+  const t = useTranslations('common');
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -111,7 +113,7 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
+                  {t('noResults')}
                 </TableCell>
               </TableRow>
             )}
@@ -123,26 +125,26 @@ export function DataTable<TData, TValue>({
       <div className="flex items-center justify-between px-2">
         <div className="flex items-center gap-2">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Hiển thị{' '}
+            {t('showing')}{' '}
             <span className="font-medium text-slate-900 dark:text-slate-100">
               {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}
             </span>{' '}
-            đến{' '}
+            {t('to')}{' '}
             <span className="font-medium text-slate-900 dark:text-slate-100">
               {Math.min(
                 (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
                 table.getFilteredRowModel().rows.length,
               )}
             </span>{' '}
-            trong tổng số{' '}
+            {t('of')}{' '}
             <span className="font-medium text-slate-900 dark:text-slate-100">
               {table.getFilteredRowModel().rows.length}
             </span>{' '}
-            kết quả
+            {t('results')}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <p className="text-sm text-slate-600 dark:text-slate-400">Số dòng mỗi trang:</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">{t('rowsPerPage')}</p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
@@ -185,7 +187,7 @@ export function DataTable<TData, TValue>({
         </Button>
         <div className="flex items-center gap-1">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Trang{' '}
+            {t('page')}{' '}
             <span className="font-medium text-slate-900 dark:text-slate-100">
               {table.getState().pagination.pageIndex + 1}
             </span>{' '}

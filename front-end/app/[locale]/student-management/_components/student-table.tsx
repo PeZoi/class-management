@@ -35,6 +35,7 @@ import {
 import { useTranslations, useLocale } from 'next-intl';
 import { StudentItem } from '../student-management-page';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 interface StudentTableProps {
   students: StudentItem[];
@@ -198,8 +199,14 @@ export function StudentTable({
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
-            {row.original.class?.shiftName || '-'}
+          <div className="flex items-center justify-center">
+            <Badge
+              variant="outline"
+              className="text-xs font-medium px-2 py-0.5 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30"
+            >
+              <Clock className="size-3 mr-1" />
+              {row.original.class?.shiftName || '-'}
+            </Badge>
           </div>
         );
       },

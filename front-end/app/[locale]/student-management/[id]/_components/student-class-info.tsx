@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import { classShiftService, studentService } from '@/services';
 import { ClassShiftType } from '@/types/class-type';
 import { toast } from 'react-toastify';
+import { Badge } from '@/components/ui/badge';
 
 interface StudentClassInfoProps {
   student: StudentType;
@@ -61,7 +62,7 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
     };
 
     fetchShifts();
-  }, [isDialogOpen, student.class?.id, student.class?.shiftId]);
+  }, [isDialogOpen, student.class.id, student.class.shiftId, tNotif]);
 
   const handleUpdateShift = async () => {
     if (!student.class?.id || !student.id) {
@@ -124,31 +125,25 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Clock className="size-4 text-slate-500" />
-                    <span className="text-sm text-slate-500 dark:text-slate-400">Ca học:</span>
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <span className="text-sm text-slate-500 dark:text-slate-400">{tCommon('shiftLabel')}</span>
+                    <Badge
+                      variant="outline"
+                      className="text-xs font-medium px-2 py-0.5 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30"
+                    >
+                      <Clock className="size-3 mr-1" />
                       {student.class.shiftName}
-                    </span>
+                    </Badge>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsDialogOpen(true)}
-                    className="h-7 px-2 text-xs"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => setIsDialogOpen(true)} className="h-7 px-2 text-xs">
                     <Edit className="size-3 mr-1" />
-                    Cập nhật
+                    {tCommon('updateShift')}
                   </Button>
                 </div>
               )}
               {!student.class.shiftName && student.class.id && (
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-slate-500 dark:text-slate-400">{tCommon('noShift')}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsDialogOpen(true)}
-                    className="h-7 px-2 text-xs"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => setIsDialogOpen(true)} className="h-7 px-2 text-xs">
                     <Edit className="size-3 mr-1" />
                     {tCommon('addShift')}
                   </Button>
@@ -194,10 +189,10 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
                 <>
                   <Select value={selectedShiftId} onValueChange={setSelectedShiftId} disabled={updating}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn ca học" />
+                      <SelectValue placeholder={tCommon('selectShiftPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="NONE">Không có ca học</SelectItem>
+                      <SelectItem value="NONE">{tCommon('noShift')}</SelectItem>
                       {shifts.map((shift) => (
                         <SelectItem key={shift.id} value={shift.id}>
                           {shift.name}
@@ -206,21 +201,14 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
                     </SelectContent>
                   </Select>
                   {shifts.length === 0 && !loadingShifts && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Lớp học này chưa có ca học nào
-                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{tCommon('noShiftsForClass')}</p>
                   )}
                 </>
               )}
             </div>
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsDialogOpen(false)}
-              disabled={updating}
-            >
+            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={updating}>
               {tCommon('cancel')}
             </Button>
             <Button type="button" onClick={handleUpdateShift} disabled={updating || loadingShifts}>
