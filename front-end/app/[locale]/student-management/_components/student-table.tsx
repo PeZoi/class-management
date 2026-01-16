@@ -30,6 +30,7 @@ import {
   XCircle,
   Clock,
   Eye,
+  CreditCard,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { StudentItem } from '../student-management-page';
@@ -52,6 +53,7 @@ export function StudentTable({
   onEdit,
   onDelete,
   onAdd,
+  onPayment,
   title,
   description,
   showActions = true,
@@ -296,6 +298,12 @@ export function StudentTable({
                     {t('viewDetail')}
                   </Link>
                 </DropdownMenuItem>
+                {onPayment && (
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => onPayment(student)}>
+                    <CreditCard className="size-4 mr-2" />
+                    {t('payment') || 'Đóng tiền'}
+                  </DropdownMenuItem>
+                )}
                 {onEdit && (
                   <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(student)}>
                     <Edit className="size-4 mr-2" />

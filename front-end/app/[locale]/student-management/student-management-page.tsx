@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { StudentTable } from './_components/student-table';
 import { StudentDialog } from './_components/student-dialog';
 import { StudentFilter, FilterState } from './_components/student-filter';
-import { PaymentActionDialog } from './_components/payment-action-dialog';
+import { PaymentCalendarDialog } from './_components/payment-calendar-dialog';
 import { StudentRequest, StudentType } from '@/types/student-type';
 import { studentService } from '@/services';
 import { toast } from 'react-toastify';
@@ -98,7 +98,7 @@ export default function StudentManagementPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [studentForPayment, setStudentForPayment] = useState<StudentItem | null>(null);
+  const [studentForPayment, setStudentForPayment] = useState<{ id: string; fullName: string } | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     searchQuery: '',
     paymentStatus: 'all',
@@ -149,55 +149,23 @@ export default function StudentManagementPage() {
   };
 
   const handlePayment = (student: StudentItem) => {
-    setStudentForPayment(student);
+    setStudentForPayment({ id: student.id, fullName: student.fullName });
     setIsPaymentDialogOpen(true);
   };
 
-  const handleConfirmPayment = (
-    studentId: string,
-    paymentData: {
-      amount: number;
-      paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
-      paymentDate: string;
-      notes: string;
-    },
-  ) => {
-    setStudents((prev) =>
-      prev.map((s) => {
-        if (s.id === studentId) {
-          const newAmountPaid = s.amountPaid + paymentData.amount;
-          let newPaymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
-
-          if (newAmountPaid >= s.monthlyFee) {
-            newPaymentStatus = 'paid';
-          } else if (newAmountPaid > 0) {
-            newPaymentStatus = 'partial';
-          }
-
-          // TODO: Tạo hóa đơn tự động ở đây
-          // Có thể gọi API để tạo payment invoice
-          console.log('Tạo hóa đơn cho học viên:', {
-            studentId: s.id,
-            studentName: s.fullName,
-            className: s.class?.name || 'Chưa có lớp',
-            amount: paymentData.amount,
-            paymentMethod: paymentData.paymentMethod,
-            paymentDate: paymentData.paymentDate,
-            notes: paymentData.notes,
-          });
-
-          return {
-            ...s,
-            amountPaid: newAmountPaid,
-            paymentStatus: newPaymentStatus,
-          };
-        }
-        return s;
-      }),
-    );
-
-    setIsPaymentDialogOpen(false);
-    setStudentForPayment(null);
+  // Handle payment success - refresh student list
+  const handlePaymentSuccess = async () => {
+    try {
+      const response = await studentService.getStudents();
+      if (response.status === 200 && response.data) {
+        const mappedStudents = response.data.map((student: StudentType, index: number) =>
+          mapStudentTypeToStudentItem(student, index)
+        );
+        setStudents(mappedStudents);
+      }
+    } catch (error) {
+      console.error('Error refreshing students after payment:', error);
+    }
   };
 
   const handleSave = async (studentData: StudentRequest) => {
@@ -340,12 +308,12 @@ export default function StudentManagementPage() {
         onSave={handleSave}
       />
 
-      {/* Payment Dialog */}
-      <PaymentActionDialog
+      {/* Payment Calendar Dialog */}
+      <PaymentCalendarDialog
         open={isPaymentDialogOpen}
         onOpenChange={setIsPaymentDialogOpen}
         student={studentForPayment}
-        onConfirm={handleConfirmPayment}
+        onPaymentSuccess={handlePaymentSuccess}
       />
     </div>
   );

@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,21 +21,26 @@ import {
   Calendar,
   CheckCircle,
   Clock,
+  CreditCard,
   DollarSign,
   Edit,
   Eye,
   Mail,
   MoreHorizontal,
   Phone,
+  Search,
   User,
   Users,
+  X,
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { useState, useMemo } from 'react';
 
 interface ClassroomStudentsListProps {
   students: StudentType[];
   onEditStudent?: (student: StudentType) => void;
+  onPayment?: (student: StudentType) => void;
 }
 
 interface ClassroomStudentItem extends StudentType {
@@ -91,9 +97,10 @@ const getCurrentMonthPaymentStatus = (
   };
 };
 
-export function ClassroomStudentsList({ students, onEditStudent }: ClassroomStudentsListProps) {
+export function ClassroomStudentsList({ students, onEditStudent, onPayment }: ClassroomStudentsListProps) {
   const t = useTranslations('classroom-detail');
   const locale = useLocale();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const mappedStudents: ClassroomStudentItem[] = students.map((student) => {
     const monthlyFee = student.class?.monthlyFee || 0;
@@ -107,6 +114,30 @@ export function ClassroomStudentsList({ students, onEditStudent }: ClassroomStud
       currentMonthPaidAmount: currentMonthPayment.paidAmount,
     };
   });
+
+  // Filter students by search query (search in name, email, phone, parent name)
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return mappedStudents;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return mappedStudents.filter((student) => {
+      const fullName = student.fullName?.toLowerCase() || '';
+      const email = student.email?.toLowerCase() || '';
+      const phoneNumber = student.phoneNumber?.toLowerCase() || '';
+      const parentName = student.fullNameParent?.toLowerCase() || '';
+      const parentPhone = student.phoneNumberParent?.toLowerCase() || '';
+
+      return (
+        fullName.includes(query) ||
+        email.includes(query) ||
+        phoneNumber.includes(query) ||
+        parentName.includes(query) ||
+        parentPhone.includes(query)
+      );
+    });
+  }, [mappedStudents, searchQuery]);
 
   const getPaymentBadge = (paymentStatus: ClassroomStudentItem['paymentStatus']) => {
     const paymentConfig = {
@@ -237,7 +268,7 @@ export function ClassroomStudentsList({ students, onEditStudent }: ClassroomStud
       header: () => (
         <div className="flex items-center justify-center gap-2">
           <Clock className="size-4" />
-          <span>Ca học</span>
+          <span>{t('shift')}</span>
         </div>
       ),
       cell: ({ row }) => {
@@ -359,7 +390,7 @@ export function ClassroomStudentsList({ students, onEditStudent }: ClassroomStud
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="size-8 p-0">
-                  <span className="sr-only">Mở menu hành động</span>
+                  <span className="sr-only">{t('openMenu') || 'Mở menu hành động'}</span>
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -375,13 +406,21 @@ export function ClassroomStudentsList({ students, onEditStudent }: ClassroomStud
                     {t('viewDetail')}
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onClick={() => onEditStudent && onEditStudent(student)}
-                >
-                  <Edit className="size-4 mr-2" />
-                  Sửa thông tin
-                </DropdownMenuItem>
+                {onPayment && (
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => onPayment(student)}>
+                    <CreditCard className="size-4 mr-2" />
+                    {t('payment') || 'Đóng tiền'}
+                  </DropdownMenuItem>
+                )}
+                {onEditStudent && (
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => onEditStudent(student)}
+                  >
+                    <Edit className="size-4 mr-2" />
+                    {t('editInfo') || 'Sửa thông tin'}
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -390,21 +429,52 @@ export function ClassroomStudentsList({ students, onEditStudent }: ClassroomStud
     },
   ];
 
+  const handleClearSearch = () => {
+    setSearchQuery('');
+  };
+
   return (
     <Card className="hover:shadow-xl transition-all duration-300 bg-white dark:bg-slate-900 border-0 shadow-lg">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              <Users className="size-5 md:size-6 text-blue-600 dark:text-blue-400" />
-              {t('studentsList')}
-              <span className="text-sm md:text-base font-normal text-slate-500 dark:text-slate-400">
-                ({students.length})
-              </span>
-            </CardTitle>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
-              {t('studentsListDescription')}
-            </p>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-2">
+                <Users className="size-5 md:size-6 text-blue-600 dark:text-blue-400" />
+                {t('studentsList')}
+                <span className="text-sm md:text-base font-normal text-slate-500 dark:text-slate-400">
+                  ({searchQuery ? filteredStudents.length : students.length})
+                  {searchQuery && filteredStudents.length !== students.length && (
+                    <span className="text-slate-400"> / {students.length}</span>
+                  )}
+                </span>
+              </CardTitle>
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {t('studentsListDescription')}
+              </p>
+            </div>
+          </div>
+          
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 md:size-5 text-slate-400" />
+            <Input
+              placeholder={t('searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 md:h-12 pl-9 md:pl-12 pr-9 md:pr-12 text-sm md:text-base bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:shadow-md focus-visible:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500/20 transition-all"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClearSearch}
+                className="absolute right-1 top-1/2 -translate-y-1/2 size-8 h-8 w-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="size-4 text-slate-400" />
+                <span className="sr-only">{t('clearSearch') || 'Xóa tìm kiếm'}</span>
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -413,8 +483,23 @@ export function ClassroomStudentsList({ students, onEditStudent }: ClassroomStud
           <div className="text-center py-8">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('noStudentsInClass')}</p>
           </div>
+        ) : filteredStudents.length === 0 && searchQuery ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {t('noSearchResults') || 'Không tìm thấy học viên nào phù hợp với'} &quot;{searchQuery}&quot;
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearSearch}
+              className="mt-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              <X className="size-4 mr-1" />
+              {t('clearFilter') || 'Xóa bộ lọc'}
+            </Button>
+          </div>
         ) : (
-          <DataTable columns={columns} data={mappedStudents} />
+          <DataTable columns={columns} data={filteredStudents} />
         )}
       </CardContent>
     </Card>

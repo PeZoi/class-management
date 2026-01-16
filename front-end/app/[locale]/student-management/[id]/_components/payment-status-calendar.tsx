@@ -174,16 +174,16 @@ export function PaymentStatusCalendar({
   };
 
   return (
-    <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg">
-      <CardHeader>
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-2">
+    <Card className="transition-all duration-300 border shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <CardTitle className="text-lg sm:text-xl md:text-2xl font-bold flex items-center gap-2">
             <Calendar className="size-5 md:size-6 text-indigo-600 dark:text-indigo-400" />
             {t('paymentStatusCalendar')}
           </CardTitle>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(Number(value))}>
-              <SelectTrigger className="w-30">
+              <SelectTrigger className="w-full sm:w-30">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -194,7 +194,7 @@ export function PaymentStatusCalendar({
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
               <div className="flex items-center gap-2">
                 <CheckCircle className="size-4 text-green-600" />
                 <span className="text-slate-600 dark:text-slate-400">
@@ -223,14 +223,14 @@ export function PaymentStatusCalendar({
           <span className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(monthlyFee)}</span>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-3">
         {availableYears.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('noPaymentData')}</p>
           </div>
         ) : (
           <div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
                 const payment = paymentsByMonth[month];
                 const isCurrentMonth = selectedYear === currentYear && month === currentMonth;
@@ -252,7 +252,9 @@ export function PaymentStatusCalendar({
                       >
                         {monthNames[month - 1]}
                         {isCurrentMonth && (
-                          <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400">(Hiện tại)</span>
+                          <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400">
+                            ({t('current') || 'Hiện tại'})
+                          </span>
                         )}
                       </div>
                     </div>

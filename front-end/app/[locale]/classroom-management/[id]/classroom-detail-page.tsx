@@ -13,6 +13,7 @@ import {
   ClassroomShiftsSection,
 } from './_components';
 import { StudentDialog } from '../../student-management/_components/student-dialog';
+import { PaymentCalendarDialog } from '../../student-management/_components/payment-calendar-dialog';
 import { classService, studentService } from '@/services';
 import { ClassType, StudentRequest, StudentType, TeacherType, ClassSingleRevenueDataResponse } from '@/types';
 import { toast } from 'react-toastify';
@@ -32,6 +33,8 @@ export default function ClassroomDetailPage() {
   const [revenueData, setRevenueData] = useState<Array<{ month: string; revenue: number; label: string }>>([]);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentType | null>(null);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [studentForPayment, setStudentForPayment] = useState<{ id: string; fullName: string } | null>(null);
 
   // Fetch revenue data from BE
   const fetchRevenueData = useCallback(async (classIdParam: string, period: TimePeriod) => {
@@ -144,6 +147,20 @@ export default function ClassroomDetailPage() {
     setIsStudentDialogOpen(true);
   };
 
+  const handlePayment = (student: StudentType) => {
+    setStudentForPayment({ id: student.id, fullName: student.fullName });
+    setIsPaymentDialogOpen(true);
+  };
+
+  // Handle payment success - refresh student list
+  const handlePaymentSuccess = async () => {
+    try {
+      await fetchStudents();
+    } catch (error) {
+      console.error('Error refreshing students after payment:', error);
+    }
+  };
+
   const handleSaveStudent = async (studentData: StudentRequest) => {
     if (!selectedStudent) return;
     try {
@@ -196,7 +213,7 @@ export default function ClassroomDetailPage() {
       )}
 
       {/* Students List */}
-      <ClassroomStudentsList students={students} onEditStudent={handleEditStudent} />
+      <ClassroomStudentsList students={students} onEditStudent={handleEditStudent} onPayment={handlePayment} />
 
       {/* Student Attendance */}
       <ClassroomStudentAttendance students={students} />
@@ -212,6 +229,14 @@ export default function ClassroomDetailPage() {
         }}
         student={selectedStudent}
         onSave={handleSaveStudent}
+      />
+
+      {/* Payment Calendar Dialog */}
+      <PaymentCalendarDialog
+        open={isPaymentDialogOpen}
+        onOpenChange={setIsPaymentDialogOpen}
+        student={studentForPayment}
+        onPaymentSuccess={handlePaymentSuccess}
       />
     </div>
   );
