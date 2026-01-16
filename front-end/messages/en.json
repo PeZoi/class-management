@@ -16,7 +16,12 @@
     "login": "Sign in",
     "admin": "Admin",
     "teacher": "Teacher",
-    "user": "User"
+    "student": "Student",
+    "user": "User",
+    "searchPlaceholder": "Search students, teachers...",
+    "searching": "Searching...",
+    "searchResults": "Search Results",
+    "noResults": "No results found"
   },
   "auth": {
     "signIn": "Sign In",

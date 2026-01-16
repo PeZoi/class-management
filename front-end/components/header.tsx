@@ -17,6 +17,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useScrollToTopOnRouteChange } from '@/hooks/use-scroll-to-top';
+import { GlobalSearchBar } from '@/components/global-search-bar';
 
 export default function Header() {
   const t = useTranslations('common');
@@ -28,15 +29,22 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div className="flex h-16 items-center justify-between px-4 md:px-6 lg:px-8">
+      <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-6 lg:px-8">
         {/* Left Section - Menu Toggle & Title */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <SidebarTrigger className="size-9 lg:size-7" />
           <h1 className="text-lg font-bold lg:hidden">{t('title_application')}</h1>
         </div>
 
+        {/* Center Section - Search Bar (only when logged in) */}
+        {user && (
+          <div className="hidden md:flex flex-1 justify-center max-w-2xl">
+            <GlobalSearchBar />
+          </div>
+        )}
+
         {/* Right Section - Auth/User Actions */}
-        <div className="flex items-center gap-2 lg:gap-3">
+        <div className="flex items-center gap-2 lg:gap-3 shrink-0">
           {!user ? (
             // Chưa đăng nhập
             <>

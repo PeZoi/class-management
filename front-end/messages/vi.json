@@ -16,7 +16,12 @@
     "login": "Đăng nhập",
     "admin": "Quản trị viên",
     "teacher": "Giáo viên",
-    "user": "Người dùng"
+    "student": "Học sinh",
+    "user": "Người dùng",
+    "searchPlaceholder": "Tìm kiếm học sinh, giáo viên...",
+    "searching": "Đang tìm kiếm...",
+    "searchResults": "Kết quả tìm kiếm",
+    "noResults": "Không tìm thấy kết quả"
   },
   "auth": {
     "signIn": "Đăng Nhập",

@@ -356,7 +356,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
                       >
                         <div className="flex items-center justify-between px-3 py-2 gap-2">
                           <CollapsibleTrigger asChild>
-                            <button className="flex flex-1 items-center justify-between text-sm font-medium text-slate-800 dark:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 rounded-md px-2 py-1 transition-colors">
+                            <button className="flex flex-1 items-center justify-between text-sm font-medium text-slate-800 dark:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 rounded-md px-2 py-1 transition-colors cursor-pointer">
                               <div className="flex items-center gap-2 text-left">
                                 <Users className="size-4 text-blue-500" />
                                 <span>{shift.name}</span>
