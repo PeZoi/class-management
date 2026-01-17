@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./back-end
+      dockerfile: Dockerfile
+    container_name: class_management_backend
+    restart: always
+    ports:
+      - "8081:8080"
+    # Memory limits: 1.5GB total, 1GB heap (with MaxRAMPercentage=75.0)
+    # Increase to 2.5GB/2GB or higher for production with heavy load
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 1024M
+    environment:
+      # Kết nối với MySQL trên máy host thông qua host.docker.internal
+      DBMS_URL: jdbc:mysql://host.docker.internal:3306/class_management?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DBMS_USERNAME: ${DBMS_USERNAME}
+      DBMS_PASSWORD: ${DBMS_PASSWORD}
+      EMAIL: ${EMAIL}
+      PASSWORD_EMAIL: ${PASSWORD_EMAIL}
+      JWT_KEY_SECRET: ${JWT_KEY_SECRET}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - class_management_network
+    # Remove volume mount to prevent overwriting the JAR file
+    # volumes:
+    #   - ./back-end:/app
+    #   - /app/target
+
+  frontend:
+    build:
+      context: ./front-end
+      dockerfile: Dockerfile
+    container_name: class_management_frontend
+    restart: always
+    ports:
+      - "80:80"
+    environment:
+      NEXT_PUBLIC_API_ENDPOINT: http://localhost:8081
+    depends_on:
+      - backend
+    networks:
+      - class_management_network
+    # Remove volume mounts to prevent overwriting built files
+    # If you need hot-reload during development, uncomment these
+    # volumes:
+    #   - ./front-end:/app
+    #   - /app/node_modules
+    #   - /app/.next
+
+networks:
+  class_management_network:
+    driver: bridge
+

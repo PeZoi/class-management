@@ -8,9 +8,8 @@ import {
   TeacherDetailHeader,
   TeacherSalaryHistory,
   TeacherSalaryPaymentCalendar,
-  SalaryMonthStatus,
-  SalaryPayment,
 } from './_components';
+import { SalaryMonthStatus, SalaryPayment } from '@/types';
 import { useParams } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { teacherService } from '@/services/teacher-service';

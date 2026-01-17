@@ -23,20 +23,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-
-export interface SalaryPayment {
-  id: string;
-  invoiceId: string;
-  paymentDate: string;
-  period: string;
-  baseSalary: number;
-  bonus: number;
-  deduction: number;
-  totalAmount: number;
-  paymentMethod: 'cash' | 'bank_transfer';
-  status: 'paid' | 'partial';
-  notes?: string;
-}
+import { SalaryPayment } from '@/types';
 
 interface TeacherSalaryHistoryProps {
   salaryHistory: SalaryPayment[];

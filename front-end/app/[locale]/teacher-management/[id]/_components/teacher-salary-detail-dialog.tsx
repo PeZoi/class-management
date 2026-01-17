@@ -13,8 +13,7 @@ import {
 import { formatCurrency, formatDateTime } from '@/utils/helper';
 import { ArrowLeftRight, Banknote, Calendar, CheckCircle, CreditCard } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { SalaryMonthStatus } from './teacher-salary-payment-calendar';
-import { PaymentResponse } from '@/types';
+import { SalaryMonthStatus, PaymentResponse } from '@/types';
 
 interface TeacherSalaryDetailDialogProps {
   open: boolean;

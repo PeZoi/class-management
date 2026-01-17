@@ -9,18 +9,7 @@ import { formatCurrency } from '@/utils/helper';
 import { useState, useMemo } from 'react';
 import { TeacherMonthlySalaryDialog } from './teacher-monthly-salary-dialog';
 import { TeacherSalaryDetailDialog } from './teacher-salary-detail-dialog';
-import { PaymentResponse } from '@/types';
-
-export interface SalaryMonthStatus {
-  month: number; // 1-12
-  year: number;
-  status: 'paid' | 'unpaid' | 'partial';
-  baseSalary?: number;
-  bonus?: number;
-  deduction?: number;
-  totalAmount?: number;
-  paidAmount?: number;
-}
+import { PaymentResponse, SalaryMonthStatus } from '@/types';
 
 interface TeacherSalaryPaymentCalendarProps {
   monthlySalaries: SalaryMonthStatus[];

@@ -18,7 +18,7 @@ import { formatCurrency } from '@/utils/helper';
 import { DollarSign, CreditCard } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { SalaryMonthStatus } from './teacher-salary-payment-calendar';
+import { SalaryMonthStatus } from '@/types';
 
 interface TeacherMonthlySalaryDialogProps {
   open: boolean;
