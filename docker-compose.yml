@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    build:
-      context: ./back-end
-      dockerfile: Dockerfile
+    image: pezoi/class-management-backend:latest
     container_name: class_management_backend
     restart: always
     ports:
@@ -35,9 +33,7 @@ services:
     #   - /app/target
 
   frontend:
-    build:
-      context: ./front-end
-      dockerfile: Dockerfile
+    image: pezoi/class-management-frontend:latest
     container_name: class_management_frontend
     restart: always
     ports:
