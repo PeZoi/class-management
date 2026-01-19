@@ -1,30 +1,34 @@
 package com.example.backend.service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.backend.dto.payment.PaymentRequest;
 import com.example.backend.dto.payment.PaymentResponse;
 import com.example.backend.entity.Class;
 import com.example.backend.entity.Payment;
 import com.example.backend.entity.Student;
 import com.example.backend.entity.StudentClass;
-import com.example.backend.enums.PaymentStatus;
-import com.example.backend.enums.StudentClassStatus;
-import com.example.backend.exception.NotFoundException;
 import com.example.backend.entity.User;
 import com.example.backend.enums.PaymentDirection;
+import com.example.backend.enums.PaymentStatus;
 import com.example.backend.enums.PaymentType;
+import com.example.backend.enums.StudentClassStatus;
+import com.example.backend.exception.NotFoundException;
 import com.example.backend.repository.ClassRepository;
 import com.example.backend.repository.PaymentRepository;
 import com.example.backend.repository.StudentClassRepository;
 import com.example.backend.repository.StudentRepository;
 import com.example.backend.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -91,7 +95,7 @@ public class PaymentService {
         // Luôn tạo payment mới để lưu lịch sử đóng tiền
         // Mỗi lần đóng tiền sẽ tạo một record mới, không cập nhật record cũ
         Payment payment = Payment.builder()
-                .paymentId("PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .paymentId(generatePaymentId(paymentRequest.getDirection()))
                 .amount(remainingAmount) // Amount = số tiền còn lại cần đóng
                 .feeSnapshot(paymentRequest.getFeeSnapshot())
                 .paid(paymentRequest.getPaid()) // Số tiền đóng trong lần này
@@ -167,7 +171,7 @@ public class PaymentService {
 
         // Tạo payment cho teacher
         Payment payment = Payment.builder()
-                .paymentId("PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .paymentId(generatePaymentId(PaymentDirection.EXPENSE))
                 .amount(remainingAmount)
                 .feeSnapshot(paymentRequest.getFeeSnapshot()) // baseSalary
                 .paid(paymentRequest.getPaid())
@@ -320,6 +324,31 @@ public class PaymentService {
         }
 
         return response;
+    }
+
+    /**
+     * Generate payment ID with format: {INC|EXP}-{yymmdd}{8 random chars}
+     * Example: INC-190126ABC12345 or EXP-190126XYZ98765
+     * 
+     * @param direction PaymentDirection (INCOME -> INC, EXPENSE -> EXP)
+     * @return Formatted payment ID
+     */
+    private String generatePaymentId(PaymentDirection direction) {
+        // Determine prefix based on direction
+        String prefix = direction == PaymentDirection.INCOME ? "INC" : "EXP";
+        
+        // Get current date and format as yymmdd (year-month-day without separators)
+        LocalDate now = LocalDate.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("ddMMyy");
+        String dateStr = now.format(formatter);
+        
+        // Generate 8 random characters from UUID
+        String randomPart = UUID.randomUUID().toString()
+                .replace("-", "")
+                .substring(0, 8)
+                .toUpperCase();
+        
+        return String.format("%s-%s%s", prefix, dateStr, randomPart);
     }
 }
 

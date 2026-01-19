@@ -27,9 +27,10 @@ import { SalaryPayment } from '@/types';
 
 interface TeacherSalaryHistoryProps {
   salaryHistory: SalaryPayment[];
+  isProfile?: boolean;
 }
 
-export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProps) {
+export function TeacherSalaryHistory({ salaryHistory, isProfile = false }: TeacherSalaryHistoryProps) {
   const t = useTranslations('teacher-detail');
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<string>('');
@@ -353,7 +354,7 @@ export function TeacherSalaryHistory({ salaryHistory }: TeacherSalaryHistoryProp
             <CreditCard className="size-5 md:size-6 text-blue-600 dark:text-blue-400" />
             {t('salaryHistory') || 'Lịch sử thanh toán lương'}
           </CardTitle>
-          {totalPaid > 0 && (
+          {(totalPaid > 0 && !isProfile) && (
             <div className="flex items-center gap-2 px-4 py-2 bg-linear-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <DollarSign className="size-5 text-blue-600 dark:text-blue-400" />
               <div className="flex flex-col">

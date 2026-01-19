@@ -21,6 +21,16 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByEmail(String email);
     boolean existsByUsername(String username);
     boolean existsByPhoneNumber(String phoneNumber);
+    boolean existsByIdCard(String idCard);
 
     Optional<User> findByUsername(String username);
+    
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.email = ?1 AND u.id <> ?2")
+    boolean existsByEmailAndIdNot(String email, String id);
+    
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.phoneNumber = ?1 AND u.id <> ?2")
+    boolean existsByPhoneNumberAndIdNot(String phoneNumber, String id);
+    
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.idCard = ?1 AND u.id <> ?2")
+    boolean existsByIdCardAndIdNot(String idCard, String id);
 }
