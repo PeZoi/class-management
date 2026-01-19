@@ -308,9 +308,10 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
       <Card className="border-0 shadow-lg bg-white dark:bg-slate-900">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              {tCommon('shiftsTitle')}
-            </CardTitle>
+            <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <Clock className="size-5 md:size-6 text-blue-600 dark:text-blue-400" />
+            {tCommon('shiftsTitle')}
+          </CardTitle>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
               {tCommon('shiftsDescription')}
             </p>

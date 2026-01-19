@@ -156,6 +156,7 @@
     "noOverdueStudents": "No students with unpaid fees",
     "unpaidMonths": "Unpaid Months",
     "totalRemainingAmount": "Total Remaining Amount",
+    "debtLabel": "Debt:",
     "noClass": "No class assigned",
     "contact": "Contact",
     "parent": "Parent",

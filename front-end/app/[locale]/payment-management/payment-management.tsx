@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { PaymentTable } from './_components/payment-table';
 import { PaymentFilter, PaymentFilterState } from './_components/payment-filter';
 import { PersonDetailDrawer } from './_components/person-detail-drawer';
@@ -11,115 +12,43 @@ import { PaymentResponse, PaymentItem } from '@/types';
 import { PageLoading } from '@/components/page-loading';
 import { useTranslations } from 'next-intl';
 
-// Mock data cho học sinh - trong thực tế sẽ fetch từ API
-const mockStudents = {
-  'Nguyễn Thị Mai': {
-    phone: '0912345678',
-    email: 'mai.nguyen@example.com',
-    birthDate: '2000-05-15',
-    startDate: '2024-01-01',
-    parentName: 'Nguyễn Văn X',
-    parentPhone: '0987654321',
-  },
-  'Trần Văn Nam': {
-    phone: '0923456789',
-    email: 'nam.tran@example.com',
-    birthDate: '1999-08-20',
-    startDate: '2024-02-10',
-    parentName: 'Trần Thị Y',
-    parentPhone: '0976543210',
-  },
-  'Lê Thị Hoa': {
-    phone: '0934567890',
-    email: 'hoa.le@example.com',
-    birthDate: '2001-03-10',
-    startDate: '2024-03-01',
-    parentName: 'Lê Văn Z',
-    parentPhone: '0965432109',
-  },
-  'Phạm Văn Đức': {
-    phone: '0945678901',
-    email: 'duc.pham@example.com',
-    birthDate: '2000-11-25',
-    startDate: '2024-01-01',
-  },
-  'Hoàng Thị Linh': {
-    phone: '0956789012',
-    email: 'linh.hoang@example.com',
-    birthDate: '2001-07-18',
-    startDate: '2024-02-15',
-    parentName: 'Hoàng Văn K',
-    parentPhone: '0954321098',
-  },
-  'Vũ Văn Hải': {
-    phone: '0967890123',
-    email: 'hai.vu@example.com',
-    birthDate: '1999-12-05',
-    startDate: '2023-12-01',
-  },
-  'Đặng Thị Lan': {
-    phone: '0978901234',
-    email: 'lan.dang@example.com',
-    birthDate: '2000-09-30',
-    startDate: '2024-01-20',
-    parentName: 'Đặng Văn M',
-    parentPhone: '0943210987',
-  },
-  'Bùi Văn Minh': {
-    phone: '0989012345',
-    email: 'minh.bui@example.com',
-    birthDate: '2001-04-12',
-    startDate: '2024-03-01',
-  },
+// Helper function to parse URL params into filter state
+const parseFiltersFromURL = (searchParams: URLSearchParams): PaymentFilterState => {
+  return {
+    searchQuery: searchParams.get('search') || '',
+    type: (searchParams.get('type') as PaymentFilterState['type']) || 'all',
+    status: (searchParams.get('status') as PaymentFilterState['status']) || 'all',
+    className: searchParams.get('class') || 'all',
+    paymentMethod: (searchParams.get('method') as PaymentFilterState['paymentMethod']) || 'all',
+    sortBy: (searchParams.get('sortBy') as PaymentFilterState['sortBy']) || 'createdDate',
+    sortOrder: (searchParams.get('sortOrder') as PaymentFilterState['sortOrder']) || 'desc',
+  };
 };
 
-// Mock data cho giáo viên
-const mockTeachers = {
-  'Nguyễn Văn A': {
-    phone: '0901234567',
-    email: 'a.nguyen@teacher.com',
-    birthDate: '1985-03-20',
-    startDate: '2020-01-15',
-    subject: 'JavaScript, React',
-    experience: '8 năm',
-  },
-  'Trần Thị B': {
-    phone: '0912345670',
-    email: 'b.tran@teacher.com',
-    birthDate: '1987-07-10',
-    startDate: '2019-09-01',
-    subject: 'Python, Data Science',
-    experience: '10 năm',
-  },
-  'Lê Văn C': {
-    phone: '0923456701',
-    email: 'c.le@teacher.com',
-    birthDate: '1990-11-05',
-    startDate: '2021-03-20',
-    subject: 'Web Development',
-    experience: '5 năm',
-  },
-  'Phạm Thị D': {
-    phone: '0934567012',
-    email: 'd.pham@teacher.com',
-    birthDate: '1988-02-28',
-    startDate: '2020-06-15',
-    subject: 'Full Stack Development',
-    experience: '7 năm',
-  },
+// Helper function to convert filter state to URL params
+const filtersToURLParams = (filters: PaymentFilterState): URLSearchParams => {
+  const params = new URLSearchParams();
+  
+  if (filters.searchQuery) params.set('search', filters.searchQuery);
+  if (filters.type !== 'all') params.set('type', filters.type);
+  if (filters.status !== 'all') params.set('status', filters.status);
+  if (filters.className !== 'all') params.set('class', filters.className);
+  if (filters.paymentMethod !== 'all') params.set('method', filters.paymentMethod);
+  if (filters.sortBy !== 'createdDate') params.set('sortBy', filters.sortBy);
+  if (filters.sortOrder !== 'desc') params.set('sortOrder', filters.sortOrder);
+  
+  return params;
 };
 
 export default function PaymentManagementPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  
   const [payments, setPayments] = useState<PaymentItem[]>([]);
-  const [filters, setFilters] = useState<PaymentFilterState>({
-    searchQuery: '',
-    type: 'all',
-    status: 'all',
-    className: 'all',
-    paymentMethod: 'all',
-    sortBy: 'createdDate',
-    sortOrder: 'desc',
-  });
+  const [filters, setFilters] = useState<PaymentFilterState>(() => 
+    parseFiltersFromURL(searchParams)
+  );
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<{
     name: string;
@@ -140,6 +69,41 @@ export default function PaymentManagementPage() {
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations('payment-management');
   const tNotif = useTranslations('notifications');
+  const isUpdatingFromURL = useRef(false);
+
+  // Sync filters with URL params when filters change
+  useEffect(() => {
+    // Skip if we're updating from URL to prevent infinite loop
+    if (isUpdatingFromURL.current) {
+      isUpdatingFromURL.current = false;
+      return;
+    }
+
+    const urlParams = filtersToURLParams(filters);
+    const currentURLParams = searchParams.toString();
+    
+    // Only update URL if it's different to avoid unnecessary navigation
+    if (currentURLParams !== urlParams.toString()) {
+      const newURL = urlParams.toString() 
+        ? `${pathname}?${urlParams.toString()}`
+        : pathname;
+      router.replace(newURL, { scroll: false });
+    }
+  }, [filters, pathname, router, searchParams]);
+
+  // Sync filters from URL params when URL changes (e.g., browser back/forward)
+  useEffect(() => {
+    const urlFilters = parseFiltersFromURL(searchParams);
+    const currentFiltersStr = JSON.stringify(filters);
+    const urlFiltersStr = JSON.stringify(urlFilters);
+    
+    // Only update filters if they're actually different
+    if (currentFiltersStr !== urlFiltersStr) {
+      isUpdatingFromURL.current = true;
+      setFilters(urlFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.toString()]);
 
   useEffect(() => {
     const fetchPayments = async () => {
@@ -209,7 +173,7 @@ export default function PaymentManagementPage() {
     };
 
     fetchPayments();
-  }, []);
+  }, [tNotif]);
 
   // Handle person click to show detail drawer
   const handlePersonClick = async (name: string, type: 'student' | 'teacher') => {
@@ -267,21 +231,7 @@ export default function PaymentManagementPage() {
       }
     } catch (error) {
       console.error('Error fetching person detail:', error);
-      // Fallback to mock data nếu API fail
-      if (type === 'student') {
-        personInfo = mockStudents[name as keyof typeof mockStudents] || {};
-      } else {
-        personInfo = mockTeachers[name as keyof typeof mockTeachers] || {};
-      }
-    }
-
-    // Nếu không có dữ liệu từ BE, dùng mock data
-    if (!personInfo.phone && !personInfo.email) {
-      if (type === 'student') {
-        personInfo = mockStudents[name as keyof typeof mockStudents] || {};
-      } else {
-        personInfo = mockTeachers[name as keyof typeof mockTeachers] || {};
-      }
+      return;
     }
 
     setSelectedPerson({

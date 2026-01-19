@@ -141,7 +141,7 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
           <div className="font-medium text-slate-900 dark:text-slate-100">
             <div className="space-y-0.5">
               <Link
-                href={`/student-management/${row.original.id}`}
+                href={`/${locale}/student-management/${row.original.id}`}
                 className="font-semibold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
                 {row.original.fullName}
@@ -279,7 +279,7 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
               {formatCurrency(row.original.monthlyFee)}
             </div>
             <div className="text-xs font-bold text-red-600 dark:text-red-400">
-              Nợ: {formatCurrency(row.original.totalRemainingAmount)}
+              {t('debtLabel')} {formatCurrency(row.original.totalRemainingAmount)}
             </div>
           </div>
         );

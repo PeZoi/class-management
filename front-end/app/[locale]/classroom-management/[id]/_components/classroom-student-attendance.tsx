@@ -93,14 +93,11 @@ export function ClassroomStudentAttendance({
   // Generate sessions for the selected month
   const sessions = generateSessionsForMonth(selectedMonth, selectedYear);
   
-  // Mock attendance data - in real app, this would come from API
-  // For now, we'll generate some mock data based on students
   const attendanceRecords: StudentAttendanceRecord[] = students.map((student) => {
     return {
       studentId: student.id,
       studentName: student.fullName,
       sessions: sessions.map((session) => {
-        // Generate mock attendance status (75% present rate)
         const random = Math.random();
         let status: 'present' | 'absent' | 'late' | 'excused' = 'present';
         if (random > 0.75) {

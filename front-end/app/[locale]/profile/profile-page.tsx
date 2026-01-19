@@ -9,16 +9,18 @@ import {
   Users, 
   DollarSign,
   Edit,
-  Award
+  TrendingUp
 } from 'lucide-react';
 import { EditProfileDialog } from './_components/edit-profile-dialog';
 import { TeacherSalaryHistory } from '@/app/[locale]/teacher-management/[id]/_components';
 import { PersonalInfoCard } from '@/components/personal-info-card';
 import { PageLoading } from '@/components/page-loading';
-import { profileService } from '@/services';
+import { profileService, classService } from '@/services';
 import { paymentService } from '@/services/payment-service';
 import { Profile, UpdateProfileRequest, PaymentResponse } from '@/types';
 import { SalaryPayment } from '@/types/teacher-type';
+import { ClassType } from '@/types/class-type';
+import { formatCurrency } from '@/utils/helper';
 import { toast } from 'react-toastify';
 import { HttpError } from '@/lib/http';
 import { useMemo } from 'react';
@@ -64,6 +66,7 @@ export default function ProfilePage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [paymentHistory, setPaymentHistory] = useState<PaymentResponse[]>([]);
+  const [classes, setClasses] = useState<ClassType[]>([]);
 
   // Convert payment history to SalaryPayment format for history table
   const salaryHistoryData = useMemo(() => {
@@ -78,8 +81,9 @@ export default function ProfilePage() {
       if (profileResponse.status === 200 && profileResponse.data) {
         setProfile(profileResponse.data);
         
-        // Fetch payments after getting profile (need profile.id)
+        // Fetch payments and classes after getting profile (need profile.id)
         if (profileResponse.data.id) {
+          // Fetch payment history
           try {
             const teacherPaymentsResponse = await paymentService.getPaymentsByTeacherId(profileResponse.data.id);
             if (teacherPaymentsResponse.status === 200 && teacherPaymentsResponse.data) {
@@ -96,6 +100,17 @@ export default function ProfilePage() {
           } catch (paymentError) {
             console.error('Error fetching payment history:', paymentError);
             // Don't show error toast for payment history, just log it
+          }
+
+          // Fetch classes
+          try {
+            const classesResponse = await classService.getClassesByTeacherId(profileResponse.data.id);
+            if (classesResponse.status === 200 && classesResponse.data) {
+              setClasses(classesResponse.data);
+            }
+          } catch (classesError) {
+            console.error('Error fetching classes:', classesError);
+            // Don't show error toast for classes, just log it
           }
         }
       } else {
@@ -180,6 +195,39 @@ export default function ProfilePage() {
     return genderMap[gender] || gender;
   };
 
+  // Calculate statistics
+  const totalRevenue = useMemo(() => {
+    return paymentHistory.reduce((sum, payment) => {
+      const totalAmount = (payment.feeSnapshot || 0) + (payment.bonus || 0) - (payment.deduction || 0);
+      return sum + totalAmount;
+    }, 0);
+  }, [paymentHistory]);
+
+  const activeClassesCount = useMemo(() => {
+    return classes.length;
+  }, [classes]);
+
+  const totalStudentsCount = useMemo(() => {
+    return classes.reduce((sum, classItem) => sum + (classItem.studentCount || 0), 0);
+  }, [classes]);
+
+  const thisMonthSalary = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    return paymentHistory
+      .filter((payment) => {
+        if (!payment.billingMonth) return false;
+        const billingDate = new Date(payment.billingMonth);
+        return billingDate.getMonth() === currentMonth && billingDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, payment) => {
+        const totalAmount = (payment.feeSnapshot || 0) + (payment.bonus || 0) - (payment.deduction || 0);
+        return sum + totalAmount;
+      }, 0);
+  }, [paymentHistory]);
+
   if (isLoading) {
     return <PageLoading />;
   }
@@ -220,55 +268,57 @@ export default function ProfilePage() {
         address=""
       />
 
-      {/* Statistics Cards - Có thể fetch từ API sau */}
+      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Tổng doanh thu từ trước đến giờ */}
+        <Card className="hover:shadow-lg transition-shadow duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('totalEarnings')}</CardTitle>
+            <DollarSign className="h-5 w-5 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('totalEarnings')}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Tổng số lớp đang dạy */}
         <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('totalClasses')}</CardTitle>
             <BookOpen className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">{activeClassesCount}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {t('activeClasses')}
             </p>
           </CardContent>
         </Card>
 
+        {/* Tổng số học viên đang dạy */}
         <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('totalStudents')}</CardTitle>
             <Users className="h-5 w-5 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">{totalStudentsCount}</div>
             <p className="text-xs text-muted-foreground mt-1">{t('students')}</p>
           </CardContent>
         </Card>
 
+        {/* Tổng lương tháng này */}
         <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('gender')}</CardTitle>
-            <Award className="h-5 w-5 text-amber-500" />
+            <CardTitle className="text-sm font-medium">{t('thisMonth')}</CardTitle>
+            <TrendingUp className="h-5 w-5 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatGender(profile.gender) || '-'}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">{t('gender')}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('joinedDate')}</CardTitle>
-            <DollarSign className="h-5 w-5 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold">
-              {formatDate(profile.createdAt)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">{t('joinedDate')}</p>
+            <div className="text-2xl font-bold">{formatCurrency(thisMonthSalary)}</div>
+            <p className="text-xs text-muted-foreground mt-1">{t('thisMonth')}</p>
           </CardContent>
         </Card>
       </div>

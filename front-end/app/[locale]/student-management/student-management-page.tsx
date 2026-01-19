@@ -1,15 +1,16 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
-import { StudentTable } from './_components/student-table';
-import { StudentDialog } from './_components/student-dialog';
-import { StudentFilter, FilterState } from './_components/student-filter';
-import { PaymentCalendarDialog } from './_components/payment-calendar-dialog';
-import { StudentRequest, StudentType } from '@/types/student-type';
-import { studentService } from '@/services';
-import { toast } from 'react-toastify';
 import { PageLoading } from '@/components/page-loading';
+import { studentService } from '@/services';
+import { StudentRequest, StudentType } from '@/types/student-type';
+import { useTranslations } from 'next-intl';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { toast } from 'react-toastify';
+import { PaymentCalendarDialog } from './_components/payment-calendar-dialog';
+import { StudentDialog } from './_components/student-dialog';
+import { FilterState, StudentFilter } from './_components/student-filter';
+import { StudentTable } from './_components/student-table';
 
 export interface StudentItem extends StudentType {
   idCard?: string; // ID card number (optional, not in API)
@@ -93,7 +94,37 @@ const mapStudentTypeToStudentItem = (student: StudentType, index: number): Stude
   };
 };
 
+// Helper function to parse URL params into filter state
+const parseFiltersFromURL = (searchParams: URLSearchParams): FilterState => {
+  return {
+    searchQuery: searchParams.get('search') || '',
+    paymentStatus: (searchParams.get('paymentStatus') as FilterState['paymentStatus']) || 'all',
+    className: searchParams.get('class') || 'all',
+    gender: (searchParams.get('gender') as FilterState['gender']) || 'all',
+    sortBy: (searchParams.get('sortBy') as FilterState['sortBy']) || 'name',
+    sortOrder: (searchParams.get('sortOrder') as FilterState['sortOrder']) || 'asc',
+  };
+};
+
+// Helper function to convert filter state to URL params
+const filtersToURLParams = (filters: FilterState): URLSearchParams => {
+  const params = new URLSearchParams();
+  
+  if (filters.searchQuery) params.set('search', filters.searchQuery);
+  if (filters.paymentStatus !== 'all') params.set('paymentStatus', filters.paymentStatus);
+  if (filters.className !== 'all') params.set('class', filters.className);
+  if (filters.gender !== 'all') params.set('gender', filters.gender);
+  if (filters.sortBy !== 'name') params.set('sortBy', filters.sortBy);
+  if (filters.sortOrder !== 'asc') params.set('sortOrder', filters.sortOrder);
+  
+  return params;
+};
+
 export default function StudentManagementPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  
   const tNotif = useTranslations('notifications');
   const tCommon = useTranslations('common');
   const [students, setStudents] = useState<StudentItem[]>([]);
@@ -102,14 +133,44 @@ export default function StudentManagementPage() {
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [studentForPayment, setStudentForPayment] = useState<{ id: string; fullName: string } | null>(null);
-  const [filters, setFilters] = useState<FilterState>({
-    searchQuery: '',
-    paymentStatus: 'all',
-    className: 'all',
-    gender: 'all',
-    sortBy: 'name',
-    sortOrder: 'asc',
-  });
+  const [filters, setFilters] = useState<FilterState>(() => 
+    parseFiltersFromURL(searchParams)
+  );
+  const isUpdatingFromURL = useRef(false);
+
+  // Sync filters with URL params when filters change
+  useEffect(() => {
+    // Skip if we're updating from URL to prevent infinite loop
+    if (isUpdatingFromURL.current) {
+      isUpdatingFromURL.current = false;
+      return;
+    }
+
+    const urlParams = filtersToURLParams(filters);
+    const currentURLParams = searchParams.toString();
+    
+    // Only update URL if it's different to avoid unnecessary navigation
+    if (currentURLParams !== urlParams.toString()) {
+      const newURL = urlParams.toString() 
+        ? `${pathname}?${urlParams.toString()}`
+        : pathname;
+      router.replace(newURL, { scroll: false });
+    }
+  }, [filters, pathname, router, searchParams]);
+
+  // Sync filters from URL params when URL changes (e.g., browser back/forward)
+  useEffect(() => {
+    const urlFilters = parseFiltersFromURL(searchParams);
+    const currentFiltersStr = JSON.stringify(filters);
+    const urlFiltersStr = JSON.stringify(urlFilters);
+    
+    // Only update filters if they're actually different
+    if (currentFiltersStr !== urlFiltersStr) {
+      isUpdatingFromURL.current = true;
+      setFilters(urlFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.toString()]);
 
   // Fetch students from API
   useEffect(() => {
@@ -135,7 +196,7 @@ export default function StudentManagementPage() {
     };
 
     fetchStudents();
-  }, []);
+  }, [tNotif]);
 
   const handleAdd = () => {
     setSelectedStudent(null);
@@ -282,7 +343,7 @@ export default function StudentManagementPage() {
     });
 
     return result;
-  }, [students, filters]);
+  }, [students, filters.searchQuery, filters.paymentStatus, filters.className, filters.gender, filters.sortBy, filters.sortOrder, tCommon]);
 
   if (isLoading) {
     return <PageLoading message={tCommon('loadingStudents')} />;

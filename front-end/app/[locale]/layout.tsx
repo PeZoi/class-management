@@ -47,9 +47,9 @@ export default async function LocaleLayout({
       <SidebarProvider>
         <AuthGuard>
           <AppSidebar />
-          <main className="flex-1 w-full">
+          <main className="flex-1 w-full max-w-full min-w-0 flex flex-col min-h-0">
             <Header />
-            <div className="w-full">{children}</div>
+            <div className="w-full max-w-full min-w-0 overflow-x-hidden flex-1 overflow-y-auto">{children}</div>
           </main>
         </AuthGuard>
       </SidebarProvider>
