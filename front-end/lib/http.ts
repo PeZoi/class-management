@@ -152,9 +152,17 @@ const request = async <Response>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url:
       //   })
       //   clientSessionToken.value = ''
       // }
-      location.href = '/sign-in'
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('user')
+      // Chỉ redirect và xóa localStorage nếu không đang ở trang sign-in
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname
+        const isOnSignInPage = currentPath.includes('/sign-in')
+        
+        if (!isOnSignInPage) {
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('user')
+          location.href = '/sign-in'
+        }
+      }
       // Throw error để catch block có thể xử lý
       throw new HttpError(data)
     } else {

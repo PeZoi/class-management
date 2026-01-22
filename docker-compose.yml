@@ -1,12 +1,13 @@
-version: '3.8'
-
 services:
   backend:
-    image: pezoi/class-management-backend:latest
+    build:
+      context: ./back-end
+      dockerfile: Dockerfile
+    # image: pezoi/class-management-backend:latest
     container_name: class_management_backend
     restart: always
     ports:
-      - "8081:8080"
+      - "8080:8080"
     # Memory limits: 1.5GB total, 1GB heap (with MaxRAMPercentage=75.0)
     # Increase to 2.5GB/2GB or higher for production with heavy load
     deploy:
@@ -17,7 +18,7 @@ services:
           memory: 1024M
     environment:
       # Kết nối với MySQL trên máy host thông qua host.docker.internal
-      DBMS_URL: jdbc:mysql://host.docker.internal:3306/class_management?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DBMS_URL: ${DBMS_URL}
       DBMS_USERNAME: ${DBMS_USERNAME}
       DBMS_PASSWORD: ${DBMS_PASSWORD}
       EMAIL: ${EMAIL}
@@ -33,13 +34,16 @@ services:
     #   - /app/target
 
   frontend:
-    image: pezoi/class-management-frontend:latest
+    build:
+      context: ./front-end
+      dockerfile: Dockerfile
+    # image: pezoi/class-management-frontend:latest
     container_name: class_management_frontend
     restart: always
     ports:
       - "80:80"
     environment:
-      NEXT_PUBLIC_API_ENDPOINT: http://localhost:8081
+      NEXT_PUBLIC_API_ENDPOINT: ${NEXT_PUBLIC_API_ENDPOINT}
     depends_on:
       - backend
     networks:
