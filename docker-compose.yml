@@ -3,24 +3,17 @@ services:
     build:
       context: ./back-end
       dockerfile: Dockerfile
-    # image: pezoi/class-management-backend:latest
+    image: class_management-backend:latest
     container_name: class_management_backend
-    restart: always
+    restart: unless-stopped
     ports:
       - "8080:8080"
-    # Memory limits: 1.5GB total, 1GB heap (with MaxRAMPercentage=75.0)
-    # Increase to 2.5GB/2GB or higher for production with heavy load
-    deploy:
-      resources:
-        limits:
-          memory: 1536M
-        reservations:
-          memory: 1024M
     environment:
+      JAVA_OPTS: ${JAVA_OPTS}
       # Kết nối với MySQL trên máy host thông qua host.docker.internal
-      DBMS_URL: ${DBMS_URL}
-      DBMS_USERNAME: ${DBMS_USERNAME}
-      DBMS_PASSWORD: ${DBMS_PASSWORD}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       EMAIL: ${EMAIL}
       PASSWORD_EMAIL: ${PASSWORD_EMAIL}
       JWT_KEY_SECRET: ${JWT_KEY_SECRET}
@@ -37,13 +30,13 @@ services:
     build:
       context: ./front-end
       dockerfile: Dockerfile
-    # image: pezoi/class-management-frontend:latest
+      args:
+        NEXT_PUBLIC_API_ENDPOINT: ''
+    image: class_management-frontend:latest
     container_name: class_management_frontend
     restart: always
     ports:
       - "80:80"
-    environment:
-      NEXT_PUBLIC_API_ENDPOINT: ${NEXT_PUBLIC_API_ENDPOINT}
     depends_on:
       - backend
     networks:

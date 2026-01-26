@@ -41,8 +41,11 @@ public class SecurityConfiguration {
             CorsConfiguration corsConfiguration = new CorsConfiguration();
             corsConfiguration.setAllowCredentials(true);
             corsConfiguration.setAllowedOriginPatterns(List.of("*")); // Cho phép tất cả nguồn
-            corsConfiguration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
-            corsConfiguration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "x-no-retry"));
+            // Browser sẽ gửi preflight OPTIONS khi gọi cross-origin (khác port cũng là khác origin),
+            // đặc biệt khi có JSON + credentials/Authorization.
+            corsConfiguration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+            // Cho phép toàn bộ headers để tránh bị chặn preflight (Origin, Access-Control-Request-*, ...)
+            corsConfiguration.setAllowedHeaders(List.of("*"));
             corsConfiguration.setExposedHeaders(Arrays.asList("Set-Cookie"));
             return corsConfiguration;
         }));

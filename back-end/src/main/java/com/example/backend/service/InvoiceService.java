@@ -57,10 +57,33 @@ public class InvoiceService {
     }
     
     /**
-     * Tạo font hỗ trợ UTF-8 cho tiếng Việt từ font hệ thống
+     * Tạo font hỗ trợ UTF-8 cho tiếng Việt
+     * Ưu tiên: classpath resources -> hệ thống file -> tên font -> fallback
      */
     private PdfFont getVietnameseFont() {
-        // Danh sách font hệ thống hỗ trợ Unicode, ưu tiên từ cao xuống thấp
+        // 1. Thử load font từ classpath resources trước (ưu tiên cao nhất)
+        String[] classpathFonts = {
+            "fonts/NotoSans-Regular.ttf",
+            "fonts/NotoSans-Vietnamese.ttf",
+            "fonts/Arial-Unicode-MS.ttf",
+            "fonts/DejaVuSans.ttf",
+            "fonts/LiberationSans-Regular.ttf"
+        };
+        
+        for (String fontPath : classpathFonts) {
+            try (java.io.InputStream fontStream = getClass().getClassLoader().getResourceAsStream(fontPath)) {
+                if (fontStream != null) {
+                    byte[] fontBytes = fontStream.readAllBytes();
+                    PdfFont font = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H);
+                    log.info("Đã tải font từ classpath: {}", fontPath);
+                    return font;
+                }
+            } catch (Exception e) {
+                log.debug("Không tìm thấy font trong classpath: {} - {}", fontPath, e.getMessage());
+            }
+        }
+        
+        // 2. Thử load font từ hệ thống file
         String[] systemFonts = {
             // Windows fonts
             "C:/Windows/Fonts/arial.ttf",
@@ -70,14 +93,35 @@ public class InvoiceService {
             "C:/Windows/Fonts/verdana.ttf",
             "C:/Windows/Fonts/msyh.ttf",      // Microsoft YaHei
             "C:/Windows/Fonts/simsun.ttc",    // SimSun
-            // Linux fonts
+            // Linux fonts (Alpine/Debian/Ubuntu)
+            "/usr/share/fonts/noto/NotoSans-Regular.ttf",
+            "/usr/share/fonts/TTF/NotoSans-Regular.ttf",
+            "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
             "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            "/usr/share/fonts/TTF/LiberationSans-Regular.ttf",
             // Mac fonts
             "/System/Library/Fonts/Supplemental/Arial.ttf",
-            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
-            // Font names (iText sẽ tự tìm trong hệ thống)
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"
+        };
+        
+        for (String fontPath : systemFonts) {
+            try {
+                java.io.File fontFile = new java.io.File(fontPath);
+                if (fontFile.exists()) {
+                    byte[] fontBytes = java.nio.file.Files.readAllBytes(fontFile.toPath());
+                    PdfFont font = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H);
+                    log.info("Đã tải font từ file hệ thống: {}", fontPath);
+                    return font;
+                }
+            } catch (Exception e) {
+                // Tiếp tục thử font tiếp theo
+            }
+        }
+        
+        // 3. Thử load bằng tên font (iText sẽ tự tìm trong hệ thống)
+        String[] fontNames = {
             "Arial Unicode MS",
             "Arial",
             "Times New Roman",
@@ -86,33 +130,8 @@ public class InvoiceService {
             "Microsoft YaHei",
             "SimSun",
             "Liberation Sans",
-            "DejaVu Sans"
-        };
-        
-        // Thử load font từ đường dẫn file trước
-        for (String fontPath : systemFonts) {
-            try {
-                java.io.File fontFile = new java.io.File(fontPath);
-                if (fontFile.exists()) {
-                    byte[] fontBytes = java.nio.file.Files.readAllBytes(fontFile.toPath());
-                    PdfFont font = PdfFontFactory.createFont(fontBytes, PdfEncodings.IDENTITY_H);
-                    log.info("Đã tải font từ file: {}", fontPath);
-                    return font;
-                }
-            } catch (Exception e) {
-                // Tiếp tục thử font tiếp theo
-            }
-        }
-        
-        // Nếu không tìm thấy font file, thử load bằng tên font
-        String[] fontNames = {
-            "Arial Unicode MS",
-            "Arial",
-            "Times New Roman",
-            "Tahoma",
-            "Verdana",
-            "Microsoft YaHei",
-            "SimSun"
+            "DejaVu Sans",
+            "Noto Sans"
         };
         
         for (String fontName : fontNames) {
@@ -125,7 +144,7 @@ public class InvoiceService {
             }
         }
         
-        // Fallback cuối cùng: StandardFonts (có thể mất ký tự tiếng Việt)
+        // 4. Fallback cuối cùng: StandardFonts (có thể mất ký tự tiếng Việt)
         log.warn("Không tìm thấy font hỗ trợ Unicode, sử dụng StandardFonts (có thể mất ký tự tiếng Việt)");
         try {
             return PdfFontFactory.createFont(StandardFonts.HELVETICA);

@@ -16,6 +16,8 @@ COPY . .
 
 # Build Next.js application
 ENV NEXT_TELEMETRY_DISABLED 1
+ARG NEXT_PUBLIC_API_ENDPOINT
+ENV NEXT_PUBLIC_API_ENDPOINT=$NEXT_PUBLIC_API_ENDPOINT
 RUN npm run build
 
 # Runtime stage
@@ -26,6 +28,9 @@ ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV PORT 3001
 ENV HOSTNAME "0.0.0.0"
+ARG NEXT_PUBLIC_API_ENDPOINT
+ENV NEXT_PUBLIC_API_ENDPOINT=$NEXT_PUBLIC_API_ENDPOINT
+ENV BACKEND_HOST=backend
 
 # Install Nginx
 RUN apk add --no-cache nginx
@@ -51,21 +56,29 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 RUN chmod 644 /etc/nginx/nginx.conf && \
     chmod 644 /etc/nginx/conf.d/default.conf
 
-# Test nginx config (will fail build if config is invalid)
-RUN nginx -t
-
-# Create startup script
+# Create startup script with health check for Next.js
 RUN echo '#!/bin/sh' > /start.sh && \
     echo 'set -e' >> /start.sh && \
     echo 'cd /app' >> /start.sh && \
-    echo 'su-exec nextjs node server.js &' >> /start.sh && \
-    echo 'NGINX_PID=$$' >> /start.sh && \
-    echo 'trap "kill -TERM $$NGINX_PID; wait $$NGINX_PID" TERM INT' >> /start.sh && \
+    echo 'echo "Starting Next.js server..."' >> /start.sh && \
+    echo 'chown -R nextjs:nodejs /app' >> /start.sh && \
+    echo 'runuser -u nextjs -- node server.js &' >> /start.sh && \
+    echo 'NEXTJS_PID=$!' >> /start.sh && \
+    echo 'echo "Waiting for Next.js to be ready on port 3001..."' >> /start.sh && \
+    echo 'for i in 1 2 3 4 5 6 7 8 9 10; do' >> /start.sh && \
+    echo '  if nc -z 127.0.0.1 3001 2>/dev/null; then' >> /start.sh && \
+    echo '    echo "Next.js is ready!"' >> /start.sh && \
+    echo '    break' >> /start.sh && \
+    echo '  fi' >> /start.sh && \
+    echo '  sleep 1' >> /start.sh && \
+    echo 'done' >> /start.sh && \
+    echo 'echo "Starting Nginx..."' >> /start.sh && \
+    echo 'trap "kill -TERM $NEXTJS_PID; wait $NEXTJS_PID" TERM INT' >> /start.sh && \
     echo 'exec nginx -g "daemon off;"' >> /start.sh && \
     chmod +x /start.sh
 
-# Install su-exec for running as non-root user
-RUN apk add --no-cache su-exec
+# Install netcat for health check and util-linux for runuser
+RUN apk add --no-cache netcat-openbsd util-linux
 
 # Expose port 80
 EXPOSE 80
