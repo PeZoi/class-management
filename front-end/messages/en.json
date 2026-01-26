@@ -855,6 +855,17 @@
     "fullPayment": "Full payment",
     "confirmPayment": "Confirm Payment"
   },
+  "notFound": {
+    "title": "Page Not Found",
+    "description": "Sorry, the page you are looking for does not exist.",
+    "message": "The link may have been deleted or the URL is incorrect.",
+    "goHome": "Go Home",
+    "goToDashboard": "Go to Dashboard",
+    "helpfulLinks": "Helpful links:",
+    "classManagement": "Class Management",
+    "studentManagement": "Student Management",
+    "teacherManagement": "Teacher Management"
+  },
   "notifications": {
     "errorLoadShifts": "Cannot load shift list",
     "warningSelectStudents": "Please select at least one student",

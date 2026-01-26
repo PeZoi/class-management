@@ -10,7 +10,7 @@ import {
   TeacherSalaryPaymentCalendar,
 } from './_components';
 import { SalaryMonthStatus, SalaryPayment } from '@/types';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { teacherService } from '@/services/teacher-service';
 import { classService } from '@/services/class-service';
@@ -18,6 +18,7 @@ import { paymentService } from '@/services/payment-service';
 import { ClassType, PaymentResponse, CreateTeacherPaymentData } from '@/types';
 import { PageLoading } from '@/components/page-loading';
 import { toast } from 'react-toastify';
+import { HttpError } from '@/lib/http';
 
 // Convert PaymentResponse to SalaryPayment
 const convertToSalaryPayment = (payment: PaymentResponse): SalaryPayment => {
@@ -231,7 +232,9 @@ const convertToSalaryMonthStatus = (
 export default function TeacherDetailPage() {
   const tNotif = useTranslations('notifications');
   const params = useParams();
+  const router = useRouter();
   const teacherId = params.id;
+  const locale = params.locale as string;
 
   const [teacherData, setTeacherData] = useState<TeacherType>();
   const [classesData, setClassesData] = useState<ClassType[]>();
@@ -270,6 +273,10 @@ export default function TeacherDetailPage() {
 
         if (teacherResponse.status === 200 && teacherResponse.data) {
           setTeacherData(teacherResponse.data);
+        } else if (teacherResponse.status === 404) {
+          // Redirect to trigger not-found page via catch-all route
+          router.push(`/${locale}/__not-found__`);
+          return;
         }
 
         if (classesResponse.status === 200 && classesResponse.data) {
@@ -289,6 +296,12 @@ export default function TeacherDetailPage() {
         }
       } catch (error) {
         console.error('Error fetching data:', error);
+        // Check if error is 404
+        if (error instanceof HttpError && error.status === 404) {
+          // Redirect to trigger not-found page via catch-all route
+          router.push(`/${locale}/__not-found__`);
+          return;
+        }
       } finally {
         setLoading(false);
       }
@@ -297,7 +310,7 @@ export default function TeacherDetailPage() {
     if (teacherId) {
       fetchData();
     }
-  }, [teacherId]);
+  }, [teacherId, router, locale]);
 
   // Handle salary payment submit
   const handleSalaryPaymentSubmit = async (data: {

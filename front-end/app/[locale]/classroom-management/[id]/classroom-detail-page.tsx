@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
@@ -19,12 +19,15 @@ import { classService, studentService } from '@/services';
 import { ClassType, StudentRequest, StudentType, TeacherType, ClassSingleRevenueDataResponse } from '@/types';
 import { toast } from 'react-toastify';
 import { PageLoading } from '@/components/page-loading';
+import { HttpError } from '@/lib/http';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
 export default function ClassroomDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const classId = params.id;
+  const locale = params.locale as string;
   const tNotif = useTranslations('notifications');
   const tCommon = useTranslations('common');
 
@@ -85,6 +88,12 @@ export default function ClassroomDetailPage() {
         }
       } catch (error) {
         console.log('Lỗi fetch thông tin lớp học', error);
+        // Check if error is 404
+        if (error instanceof HttpError && error.status === 404) {
+          // Redirect to trigger not-found page via catch-all route
+          router.push(`/${locale}/__not-found__`);
+          return;
+        }
         toast.error(tNotif('errorGetClassInfo'));
       } finally {
         setLoading(false);
@@ -94,7 +103,7 @@ export default function ClassroomDetailPage() {
       fetchClass();
       fetchStudents();
     }
-  }, [classId, fetchStudents, tNotif]);
+  }, [classId, fetchStudents, tNotif, router, locale]);
 
   // Fetch revenue data when period or classId changes
   useEffect(() => {

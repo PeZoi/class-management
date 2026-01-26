@@ -867,6 +867,17 @@
     "fullPayment": "Thanh toán đầy đủ",
     "confirmPayment": "Xác Nhận Thanh Toán"
   },
+  "notFound": {
+    "title": "Trang Không Tìm Thấy",
+    "description": "Xin lỗi, trang bạn đang tìm kiếm không tồn tại.",
+    "message": "Có thể liên kết đã bị xóa hoặc URL không chính xác.",
+    "goHome": "Về Trang Chủ",
+    "goToDashboard": "Đi Đến Dashboard",
+    "helpfulLinks": "Các liên kết hữu ích:",
+    "classManagement": "Quản Lý Lớp",
+    "studentManagement": "Quản Lý Học Viên",
+    "teacherManagement": "Quản Lý Giáo Viên"
+  },
   "notifications": {
     "errorLoadShifts": "Không thể tải danh sách ca học",
     "warningSelectStudents": "Vui lòng chọn ít nhất một học sinh",

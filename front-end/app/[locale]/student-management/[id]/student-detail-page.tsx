@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
@@ -23,6 +23,7 @@ import { toast } from 'react-toastify';
 import { useMemo } from 'react';
 import { formatCurrency } from '@/utils/helper';
 import { PageLoading } from '@/components/page-loading';
+import { HttpError } from '@/lib/http';
 
 // Convert API ClassHistoryResponse to ClassHistoryItem
 const convertToClassHistoryItem = (apiHistory: ClassHistoryResponse): ClassHistoryItem => {
@@ -147,7 +148,9 @@ const convertToPaymentHistoryItem = (apiPayment: PaymentResponse): PaymentHistor
 
 export default function StudentDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const studentId = params.id;
+  const locale = params.locale as string;
   const tNotif = useTranslations('notifications');
 
   const [studentData, setStudentData] = useState<StudentType | null>(null);
@@ -181,6 +184,12 @@ export default function StudentDetailPage() {
         }
       } catch (error) {
         console.error('Lỗi fetch thông tin học viên', error);
+        // Check if error is 404
+        if (error instanceof HttpError && error.status === 404) {
+          // Redirect to trigger not-found page via catch-all route
+          router.push(`/${locale}/__not-found__`);
+          return;
+        }
         toast.error(tNotif('errorLoadStudentInfo'));
       } finally {
         setLoading(false);
@@ -188,7 +197,7 @@ export default function StudentDetailPage() {
     };
 
     fetchStudentData();
-  }, [studentId, tNotif]);
+  }, [studentId, tNotif, router, locale]);
 
   // Helper: refresh student data (used in multiple places)
   const refreshStudentData = async () => {

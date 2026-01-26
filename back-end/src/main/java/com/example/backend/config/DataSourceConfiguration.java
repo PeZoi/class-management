@@ -1,7 +1,6 @@
 package com.example.backend.config;
 
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
@@ -18,19 +17,20 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DataSourceConfiguration implements BeanPostProcessor {
 
-    @Value("${spring.datasource.url:}")
-    private String originalUrl;
-
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
         if (bean instanceof HikariDataSource) {
             HikariDataSource dataSource = (HikariDataSource) bean;
             String currentUrl = dataSource.getJdbcUrl();
-            String enhancedUrl = enhanceJdbcUrl(currentUrl != null ? currentUrl : originalUrl);
             
-            if (!enhancedUrl.equals(currentUrl)) {
-                dataSource.setJdbcUrl(enhancedUrl);
-                log.info("Enhanced JDBC URL with MySQL connection parameters for better VPS compatibility");
+            // Chỉ enhance URL nếu URL đã tồn tại
+            if (StringUtils.hasText(currentUrl)) {
+                String enhancedUrl = enhanceJdbcUrl(currentUrl);
+                
+                if (!enhancedUrl.equals(currentUrl)) {
+                    dataSource.setJdbcUrl(enhancedUrl);
+                    log.info("Enhanced JDBC URL with MySQL connection parameters for better VPS compatibility");
+                }
             }
         }
         return bean;
