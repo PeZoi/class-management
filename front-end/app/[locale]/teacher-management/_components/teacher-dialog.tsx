@@ -20,10 +20,12 @@ interface TeacherDialogProps {
   onOpenChange: (open: boolean) => void;
   teacher: TeacherType | null;
   onSave: (teacher: TeacherRequest) => void;
+  isSubmitting?: boolean;
 }
 
-export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDialogProps) {
+export function TeacherDialog({ open, onOpenChange, teacher, onSave, isSubmitting }: TeacherDialogProps) {
   const t = useTranslations('teacher-management');
+  const tCommon = useTranslations('common');
 
   const [formData, setFormData] = useState<Partial<TeacherType>>({
     fullName: '',
@@ -224,7 +226,9 @@ export function TeacherDialog({ open, onOpenChange, teacher, onSave }: TeacherDi
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('cancel')}
             </Button>
-            <Button type="submit">{teacher ? t('update') : t('addNew')}</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? tCommon('saving') : teacher ? t('update') : t('addNew')}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

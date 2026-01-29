@@ -34,6 +34,7 @@ interface PaymentStatusCalendarProps {
     paymentDate: string;
     notes: string;
   }) => void;
+  isSubmittingPayment?: boolean;
 }
 
 export function PaymentStatusCalendar({
@@ -42,6 +43,7 @@ export function PaymentStatusCalendar({
   studentId,
   paymentHistory = [],
   onPaymentSubmit,
+  isSubmittingPayment,
 }: PaymentStatusCalendarProps) {
   const t = useTranslations('student-detail');
   const currentDate = new Date();
@@ -288,6 +290,7 @@ export function PaymentStatusCalendar({
         monthlyFee={monthlyFee}
         monthNames={monthNames}
         onSubmit={handleDialogSubmit}
+        isSubmitting={isSubmittingPayment}
       />
 
       {/* Payment Detail Dialog */}

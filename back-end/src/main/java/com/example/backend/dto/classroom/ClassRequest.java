@@ -14,7 +14,6 @@ import lombok.ToString;
 public class ClassRequest {
     private String id;
     private String name;
-    private String schedule;
     private int monthlyFee;
     private String teacherId;
 }

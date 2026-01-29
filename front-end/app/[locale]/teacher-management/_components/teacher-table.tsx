@@ -18,12 +18,12 @@ import { formatCurrency, formatDate } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
 import {
   BookOpen,
-  Briefcase,
   Calendar,
   CreditCard,
   DollarSign,
   Edit,
   Eye,
+  Key,
   Mail,
   MoreHorizontal,
   Phone,
@@ -40,6 +40,7 @@ interface TeacherTableProps {
   onDelete?: (id: string) => void;
   onAdd?: () => void;
   onViewDetail?: (teacher: TeacherType) => void;
+  onResetPassword?: (teacher: TeacherType) => void;
   title?: string;
   description?: string;
   showActions?: boolean;
@@ -52,6 +53,7 @@ export function TeacherTable({
   onDelete,
   onAdd,
   onViewDetail,
+  onResetPassword,
   title,
   description,
   showActions = true,
@@ -262,6 +264,19 @@ export function TeacherTable({
                   <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(teacher)}>
                     <Edit className="size-4 mr-2" />
                     {t('edit')}
+                  </DropdownMenuItem>
+                )}
+                {onResetPassword && (
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => {
+                      if (window.confirm(t('confirmResetPassword'))) {
+                        onResetPassword(teacher);
+                      }
+                    }}
+                  >
+                    <Key className="size-4 mr-2" />
+                    {t('resetPassword')}
                   </DropdownMenuItem>
                 )}
                 {onDelete && (

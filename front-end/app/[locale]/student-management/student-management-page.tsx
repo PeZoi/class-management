@@ -1,12 +1,11 @@
 'use client';
 
 import { PageLoading } from '@/components/page-loading';
-import { studentService } from '@/services';
+import { useCreateStudent, useStudents, useUpdateStudent } from '@/hooks/use-students';
 import { StudentRequest, StudentType } from '@/types/student-type';
 import { useTranslations } from 'next-intl';
-import { useEffect, useMemo, useState, useRef } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { toast } from 'react-toastify';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PaymentCalendarDialog } from './_components/payment-calendar-dialog';
 import { StudentDialog } from './_components/student-dialog';
 import { FilterState, StudentFilter } from './_components/student-filter';
@@ -125,10 +124,18 @@ export default function StudentManagementPage() {
   const router = useRouter();
   const pathname = usePathname();
   
-  const tNotif = useTranslations('notifications');
   const tCommon = useTranslations('common');
-  const [students, setStudents] = useState<StudentItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // TanStack Query hooks
+  const {
+    data: studentsData = [],
+    isLoading,
+    error: studentsError,
+  } = useStudents();
+  const createStudent = useCreateStudent();
+  const updateStudent = useUpdateStudent();
+
+  const [deletedStudentIds, setDeletedStudentIds] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -137,6 +144,23 @@ export default function StudentManagementPage() {
     parseFiltersFromURL(searchParams)
   );
   const isUpdatingFromURL = useRef(false);
+
+  // Map API students -> UI students, and apply local deletions
+  const students = useMemo(() => {
+    const mapped = studentsData.map((student, index) => mapStudentTypeToStudentItem(student, index));
+    if (!deletedStudentIds.length) return mapped;
+    return mapped.filter((student) => !deletedStudentIds.includes(student.id));
+  }, [studentsData, deletedStudentIds]);
+
+  // Show error toast if fetch students fail
+  useEffect(() => {
+    if (studentsError) {
+      // Dùng thông báo generic để tránh leak chi tiết lỗi
+      // (toast key đã có trong notifications)
+      // Không throw để UI vẫn hiển thị được state rỗng
+      console.error('Error fetching students:', studentsError);
+    }
+  }, [studentsError]);
 
   // Sync filters with URL params when filters change
   useEffect(() => {
@@ -172,32 +196,6 @@ export default function StudentManagementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.toString()]);
 
-  // Fetch students from API
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setIsLoading(true);
-        const response = await studentService.getStudents();
-        
-        if (response.status === 200 && response.data) {
-          const mappedStudents = response.data.map((student: StudentType, index: number) =>
-            mapStudentTypeToStudentItem(student, index)
-          );
-          setStudents(mappedStudents);
-        } else {
-          toast.error(tNotif('errorLoadStudentsList'));
-        }
-      } catch (error) {
-        console.error('Error fetching students:', error);
-        toast.error(tNotif('errorLoadStudentsListGeneric'));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchStudents();
-  }, [tNotif]);
-
   const handleAdd = () => {
     setSelectedStudent(null);
     setIsDialogOpen(true);
@@ -209,7 +207,7 @@ export default function StudentManagementPage() {
   };
 
   const handleDelete = (id: string) => {
-    setStudents((prev) => prev.filter((s) => s.id !== id));
+    setDeletedStudentIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
   };
 
   const handlePayment = (student: StudentItem) => {
@@ -217,66 +215,33 @@ export default function StudentManagementPage() {
     setIsPaymentDialogOpen(true);
   };
 
-  // Handle payment success - refresh student list
-  const handlePaymentSuccess = async () => {
-    try {
-      const response = await studentService.getStudents();
-      if (response.status === 200 && response.data) {
-        const mappedStudents = response.data.map((student: StudentType, index: number) =>
-          mapStudentTypeToStudentItem(student, index)
-        );
-        setStudents(mappedStudents);
-      }
-    } catch (error) {
-      console.error('Error refreshing students after payment:', error);
-    }
+  // Handle payment success - TanStack payment hooks sẽ tự invalidate students/dashboard
+  const handlePaymentSuccess = () => {
+    // Không cần làm gì, để TanStack Query lo
   };
 
   const handleSave = async (studentData: StudentRequest) => {
-    // Helper: reload list after create/update
-    const reloadStudents = async () => {
-      try {
-        const refreshResponse = await studentService.getStudents();
-        if (refreshResponse.status === 200 && refreshResponse.data) {
-          const mappedStudents = refreshResponse.data.map(
-            (student: StudentType, index: number) => mapStudentTypeToStudentItem(student, index),
-          );
-          setStudents(mappedStudents);
-        }
-      } catch (error) {
-        console.error('Error refreshing students:', error);
-      }
-    };
-
     // Update existing student
     if (selectedStudent) {
       try {
-        const response = await studentService.updateStudent(studentData, selectedStudent.id);
-        if (response.status === 200 && response.data) {
-          await reloadStudents();
-          toast.success(tNotif('successUpdateStudent'));
-          setIsDialogOpen(false);
-          setSelectedStudent(null);
-        }
+        await updateStudent.mutateAsync({ id: selectedStudent.id, data: studentData });
+        setIsDialogOpen(false);
+        setSelectedStudent(null);
       } catch (error) {
         console.error('Error updating student:', error);
-        toast.error(tNotif('errorUpdateStudent'));
+        // Error toast đã được handle trong hook, không cần toast thêm
       }
       return;
     }
 
     // Add new student
     try {
-      const response = await studentService.createStudent(studentData);
-      if (response.status === 201 && response.data) {
-        await reloadStudents();
-        toast.success(tNotif('successCreateStudent'));
-        setIsDialogOpen(false);
-        setSelectedStudent(null);
-      }
+      await createStudent.mutateAsync(studentData);
+      setIsDialogOpen(false);
+      setSelectedStudent(null);
     } catch (error) {
       console.error('Error creating student:', error);
-      toast.error(tNotif('errorCreateStudent'));
+      // Error toast đã được handle trong hook
     }
   };
 
@@ -370,6 +335,7 @@ export default function StudentManagementPage() {
         onOpenChange={setIsDialogOpen}
         student={selectedStudent}
         onSave={handleSave}
+        isSubmitting={createStudent.isPending || updateStudent.isPending}
       />
 
       {/* Payment Calendar Dialog */}

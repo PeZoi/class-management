@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   ClassroomDetailHeader,
@@ -15,102 +15,105 @@ import {
 } from './_components';
 import { StudentDialog } from '../../student-management/_components/student-dialog';
 import { PaymentCalendarDialog } from '../../student-management/_components/payment-calendar-dialog';
-import { classService, studentService } from '@/services';
-import { ClassType, StudentRequest, StudentType, TeacherType, ClassSingleRevenueDataResponse } from '@/types';
+import { StudentRequest, StudentType, TeacherType } from '@/types';
+import { ClassType } from '@/types/class-type';
 import { toast } from 'react-toastify';
 import { PageLoading } from '@/components/page-loading';
 import { HttpError } from '@/lib/http';
+import { useClass, useClassRevenueDataByClassId, useClassShiftsByClass } from '@/hooks/use-classes';
+import { useStudentsByClass, useUpdateStudent } from '@/hooks/use-students';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
 export default function ClassroomDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const classId = params.id;
+  const classId = params.id as string;
   const locale = params.locale as string;
   const tNotif = useTranslations('notifications');
   const tCommon = useTranslations('common');
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
-  const [students, setStudents] = useState<StudentType[]>([]);
-  const [classData, setClassData] = useState<ClassType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
-  const [revenueData, setRevenueData] = useState<Array<{ month: string; revenue: number; label: string }>>([]);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentType | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [studentForPayment, setStudentForPayment] = useState<{ id: string; fullName: string } | null>(null);
 
-  // Fetch revenue data from BE
-  const fetchRevenueData = useCallback(async (classIdParam: string, period: TimePeriod) => {
-    try {
-      setIsLoadingRevenue(true);
-      const response = await classService.getRevenueDataByClassIdAndPeriod(classIdParam, period);
-      if (response.status === 200 && response.data) {
-        // Map dữ liệu từ BE sang format mà component cần
-        const mappedData = response.data.map((item: ClassSingleRevenueDataResponse) => ({
-          month: item.month,
-          label: item.label,
-          revenue: item.revenue || 0,
-        }));
-        setRevenueData(mappedData);
-      }
-    } catch (error) {
-      console.error('Error fetching revenue data:', error);
-      toast.error(tNotif('errorLoadRevenue'));
-      setRevenueData([]);
-    } finally {
-      setIsLoadingRevenue(false);
-    }
-  }, [tNotif]);
+  // Sử dụng TanStack Query hooks
+  const {
+    data: classData = null,
+    isLoading: isLoadingClass,
+    error: classError,
+  } = useClass(classId);
 
-  const fetchStudents = useCallback(async () => {
-    if (!classId) return;
-    try {
-      const response = await studentService.getStudentsByClass(classId as string);
-      if (response.status === 200 && response.data) {
-        setStudents(response.data);
-      }
-    } catch (error) {
-      console.log('Lỗi fetch danh sách học sinh', error);
+  const {
+    data: students = [],
+    isLoading: isLoadingStudents,
+    error: studentsError,
+  } = useStudentsByClass(classId);
+
+  const {
+    data: revenueDataResponse = [],
+    isLoading: isLoadingRevenue,
+    error: revenueError,
+  } = useClassRevenueDataByClassId(classId, selectedPeriod);
+
+  // Fetch shifts ở component cha để quản lý loading + share cache
+  const {
+    data: shifts = [],
+    isLoading: isLoadingShifts,
+    error: shiftsError,
+  } = useClassShiftsByClass(classId);
+
+  const queryClient = useQueryClient();
+  const refreshShifts = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.classShifts.byClass(classId) });
+  }, [queryClient, classId]);
+
+  const updateStudent = useUpdateStudent();
+
+  // Xử lý 404 error - redirect to not found
+  useEffect(() => {
+    if (classError instanceof HttpError && classError.status === 404) {
+      router.push(`/${locale}/__not-found__`);
+    }
+  }, [classError, router, locale]);
+
+  // Hiển thị error toast
+  useEffect(() => {
+    if (classError && !(classError instanceof HttpError && classError.status === 404)) {
+      toast.error(tNotif('errorGetClassInfo'));
+    }
+  }, [classError, tNotif]);
+
+  useEffect(() => {
+    if (studentsError) {
       toast.error(tNotif('errorLoadStudents'));
     }
-  }, [classId, tNotif]);
+  }, [studentsError, tNotif]);
 
-  // Initialize students & class state
   useEffect(() => {
-    const fetchClass = async () => {
-      try {
-        const response = await classService.getClassById(classId as string);
-        if (response.status === 200 && response.data) {
-          setClassData(response.data);
-        }
-      } catch (error) {
-        console.log('Lỗi fetch thông tin lớp học', error);
-        // Check if error is 404
-        if (error instanceof HttpError && error.status === 404) {
-          // Redirect to trigger not-found page via catch-all route
-          router.push(`/${locale}/__not-found__`);
-          return;
-        }
-        toast.error(tNotif('errorGetClassInfo'));
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (classId) {
-      fetchClass();
-      fetchStudents();
+    if (revenueError) {
+      toast.error(tNotif('errorLoadRevenue'));
     }
-  }, [classId, fetchStudents, tNotif, router, locale]);
+  }, [revenueError, tNotif]);
 
-  // Fetch revenue data when period or classId changes
   useEffect(() => {
-    if (classId) {
-      fetchRevenueData(classId as string, selectedPeriod);
+    if (shiftsError) {
+      toast.error(tNotif('errorLoadShifts'));
     }
-  }, [classId, selectedPeriod, fetchRevenueData]);
+  }, [shiftsError, tNotif]);
+
+  // Map revenue data từ BE sang format mà component cần
+  const revenueData = useMemo(() => {
+    return revenueDataResponse.map((item) => ({
+      month: item.month,
+      label: item.label,
+      revenue: item.revenue || 0,
+    }));
+  }, [revenueDataResponse]);
 
   // Transform ClassType to UI format with additional static fields
   const getClassDataForUI = useCallback((data: ClassType | null) => {
@@ -123,7 +126,6 @@ export default function ClassroomDetailPage() {
         teacherPhone: '',
         students: 0,
         revenue: 0,
-        schedule: tCommon('noSchedule'),
         time: '19:00 - 21:00', // Dữ liệu tĩnh
         duration: '3 tháng', // Dữ liệu tĩnh
         monthlyFee: 0,
@@ -141,7 +143,6 @@ export default function ClassroomDetailPage() {
       teacherPhone: data.teacher?.phoneNumber || '',
       students: data.studentCount || 0,
       revenue: data.revenue || 0,
-      schedule: data.schedule || tCommon('noSchedule'),
       time: '19:00 - 21:00', // Dữ liệu tĩnh
       duration: '3 tháng', // Dữ liệu tĩnh
       monthlyFee: data.monthlyFee || 0,
@@ -164,34 +165,25 @@ export default function ClassroomDetailPage() {
     setIsPaymentDialogOpen(true);
   };
 
-  // Handle payment success - refresh student list
-  const handlePaymentSuccess = async () => {
-    try {
-      await fetchStudents();
-    } catch (error) {
-      console.error('Error refreshing students after payment:', error);
-    }
-  };
+  // Handle payment success - không cần làm gì vì TanStack Query tự động refetch
+  const handlePaymentSuccess = useCallback(() => {
+    // TanStack Query sẽ tự động invalidate và refetch students sau khi payment được tạo
+    // (được xử lý trong payment mutation hooks)
+  }, []);
 
-  const handleSaveStudent = async (studentData: StudentRequest) => {
-    if (!selectedStudent) return;
-    try {
-      const response = await studentService.updateStudent(studentData, selectedStudent.id);
-      if (response.status === 200 && response.data) {
-        await fetchStudents();
-        toast.success(tNotif('successUpdateStudent'));
-        setIsStudentDialogOpen(false);
-        setSelectedStudent(null);
-      } else {
-        toast.error(tNotif('errorUpdateStudent'));
-      }
-    } catch (error) {
-      console.error('Error updating student from classroom detail:', error);
-      toast.error(tNotif('errorUpdateStudent'));
-    }
-  };
+  const handleSaveStudent = useCallback(
+    async (studentData: StudentRequest) => {
+      if (!selectedStudent) return;
+      await updateStudent.mutateAsync({ id: selectedStudent.id, data: studentData });
+      setIsStudentDialogOpen(false);
+      setSelectedStudent(null);
+    },
+    [selectedStudent, updateStudent]
+  );
 
-  if (loading) {
+  const isLoading = isLoadingClass || isLoadingStudents || isLoadingRevenue || isLoadingShifts;
+
+  if (isLoading) {
     return <PageLoading />;
   }
 
@@ -201,7 +193,7 @@ export default function ClassroomDetailPage() {
       <ClassroomDetailHeader classData={currentClassData} />
 
       {/* Stats Cards */}
-      <ClassroomStatsCards classData={classData} />
+      <ClassroomStatsCards classData={classData ?? null} />
 
       {/* Class Info & Schedule */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -211,26 +203,31 @@ export default function ClassroomDetailPage() {
 
       {/* Class Shifts Management */}
       {classId && (
-        <ClassroomShiftsSection classId={classId as string} />
+        <ClassroomShiftsSection
+          classId={classId as string}
+          shifts={shifts}
+          isLoading={isLoadingShifts}
+          onRefresh={refreshShifts}
+        />
       )}
 
       {/* Revenue Chart */}
-      {!isLoadingRevenue && revenueData.length > 0 && (
-        <ClassroomDetailRevenueChart
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={setSelectedPeriod}
-          revenueData={revenueData}
-          color={currentClassData.color}
-        />
-      )}
+      <ClassroomDetailRevenueChart
+        selectedPeriod={selectedPeriod}
+        onPeriodChange={setSelectedPeriod}
+        revenueData={revenueData}
+        color={currentClassData.color}
+      />
 
       {/* Students List */}
       <ClassroomStudentsList 
         students={students} 
-        classId={classId as string}
+        classId={classId}
         onEditStudent={handleEditStudent} 
         onPayment={handlePayment}
-        onStudentsUpdate={fetchStudents}
+        onStudentsUpdate={() => {
+          // TanStack Query tự động refetch khi cần
+        }}
       />
 
       {/* Student Attendance */}

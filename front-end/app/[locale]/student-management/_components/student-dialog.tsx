@@ -21,9 +21,10 @@ interface StudentDialogProps {
   onOpenChange: (open: boolean) => void;
   student: StudentType | null;
   onSave: (student: StudentRequest) => void;
+  isSubmitting?: boolean;
 }
 
-export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDialogProps) {
+export function StudentDialog({ open, onOpenChange, student, onSave, isSubmitting }: StudentDialogProps) {
   const t = useTranslations('student-management');
   const tCommon = useTranslations('common');
 
@@ -116,6 +117,9 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
 
   const handleChange = (field: keyof StudentRequest, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === 'classId') {
+      setFormData((prev) => ({ ...prev, classShiftId: '' }));
+    }
   };
 
   return (
@@ -302,7 +306,9 @@ export function StudentDialog({ open, onOpenChange, student, onSave }: StudentDi
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('cancel')}
             </Button>
-            <Button type="submit">{student ? t('update') : t('addNew')}</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? tCommon('saving') : student ? t('update') : t('addNew')}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

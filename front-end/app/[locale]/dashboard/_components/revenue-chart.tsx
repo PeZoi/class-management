@@ -2,8 +2,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -18,6 +19,7 @@ interface RevenueChartProps {
   }>;
   formatCurrency: (amount: number) => string;
   className?: string;
+  isLoading: boolean;
 }
 
 export function RevenueChart({
@@ -26,6 +28,7 @@ export function RevenueChart({
   currentRevenueData,
   formatCurrency,
   className,
+  isLoading,
 }: RevenueChartProps) {
   const t = useTranslations('dashboard');
 
@@ -94,6 +97,7 @@ export function RevenueChart({
           className="h-[300px] w-full"
         >
           <ResponsiveContainer width="100%" height="100%">
+            {isLoading ? (<div className='flex items-center justify-center h-full'><Loader2 className='size-10 animate-spin' /></div>) : (
             <BarChart data={currentRevenueData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" vertical={false} />
               <XAxis
@@ -188,7 +192,8 @@ export function RevenueChart({
                   },
                 }}
               />
-            </BarChart>
+            </BarChart>)}
+            
           </ResponsiveContainer>
         </ChartContainer>
       </CardContent>

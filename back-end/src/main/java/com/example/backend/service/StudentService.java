@@ -2,6 +2,9 @@ package com.example.backend.service;
 
 import com.example.backend.dto.student.ClassHistoryResponse;
 import com.example.backend.dto.student.MonthPaymentStatus;
+import com.example.backend.dto.student.UpdateStudentShiftRequest;
+import com.example.backend.dto.student.BulkUpdateStudentShiftRequest;
+import com.example.backend.dto.student.RemoveStudentsFromClassRequest;
 import com.example.backend.dto.student.StudentRequest;
 import com.example.backend.dto.student.StudentResponse;
 import com.example.backend.entity.Class;
@@ -42,6 +45,42 @@ public class StudentService {
     private final PaymentRepository paymentRepository;
     private final ClassShiftRepository classShiftRepository;
     private final ModelMapper modelMapper;
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private StudentResponse buildStudentResponseWithCurrentClass(String studentId) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
+
+        StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
+        StudentClass studentClass = getClassByStudent(studentId);
+
+        if (studentClass != null) {
+            Class classDB = studentClass.getClazz();
+            StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
+            studentClassResponse.setId(classDB.getId());
+            studentClassResponse.setName(classDB.getName());
+            studentClassResponse.setJoinAt(studentClass.getJoinedAt());
+            studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
+            if (studentClass.getClassShift() != null) {
+                studentClassResponse.setShiftId(studentClass.getClassShift().getId());
+                studentClassResponse.setShiftName(studentClass.getClassShift().getName());
+            }
+            studentResponse.setClazz(studentClassResponse);
+
+            List<MonthPaymentStatus> monthPaymentStatuses = calculateMonthPaymentStatuses(
+                    student.getId(),
+                    classDB.getId(),
+                    studentClass.getJoinedAt(),
+                    classDB.getMonthlyFee()
+            );
+            studentResponse.setMonthPaymentStatuses(monthPaymentStatuses);
+        }
+
+        return studentResponse;
+    }
 
     public StudentClass getClassByStudent(String studentId) {
         return studentClassRepository.findCurrentClassByStudent(studentId, StudentClassStatus.STUDYING);
@@ -324,6 +363,124 @@ public class StudentService {
         }
 
         return studentResponse;
+    }
+
+    /**
+     * Update class shift for a single student (only updates the current StudentClass record with status STUDYING).
+     * - Requires student is currently studying in the provided classId.
+     * - classShiftId is optional; if null/blank => remove shift.
+     */
+    @Transactional
+    public StudentResponse updateStudentShift(UpdateStudentShiftRequest request) {
+        if (request == null || isBlank(request.getStudentId()) || isBlank(request.getClassId())) {
+            throw new NotFoundException("Thiếu thông tin học viên hoặc lớp học");
+        }
+
+        // Ensure student exists
+        studentRepository.findById(request.getStudentId())
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
+
+        // Ensure class exists
+        classRepository.findById(request.getClassId())
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+
+        StudentClass studentClass = studentClassRepository.findCurrentClassByStudent(request.getStudentId(), StudentClassStatus.STUDYING);
+        if (studentClass == null) {
+            throw new NotFoundException("Học viên chưa thuộc lớp nào");
+        }
+        if (studentClass.getClazz() == null || !request.getClassId().equals(studentClass.getClazz().getId())) {
+            throw new NotFoundException("Học viên không thuộc lớp đã chọn");
+        }
+
+        if (isBlank(request.getClassShiftId())) {
+            studentClass.setClassShift(null);
+        } else {
+            ClassShift shift = classShiftRepository.findById(request.getClassShiftId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy ca học"));
+            if (shift.getClazz() == null || !request.getClassId().equals(shift.getClazz().getId())) {
+                throw new NotFoundException("Ca học không thuộc lớp đã chọn");
+            }
+            studentClass.setClassShift(shift);
+        }
+
+        studentClassRepository.save(studentClass);
+        return buildStudentResponseWithCurrentClass(request.getStudentId());
+    }
+
+    /**
+     * Bulk update class shift for multiple students in the same class.
+     * - Atomic: if any student fails validation, the whole transaction rolls back.
+     */
+    @Transactional
+    public List<StudentResponse> updateStudentsShift(BulkUpdateStudentShiftRequest request) {
+        if (request == null || isBlank(request.getClassId()) || request.getStudentIds() == null || request.getStudentIds().isEmpty()) {
+            throw new NotFoundException("Thiếu danh sách học viên hoặc lớp học");
+        }
+
+        // Ensure class exists once
+        classRepository.findById(request.getClassId())
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+
+        List<StudentResponse> results = new ArrayList<>();
+        for (String studentId : request.getStudentIds()) {
+            UpdateStudentShiftRequest single = UpdateStudentShiftRequest.builder()
+                    .studentId(studentId)
+                    .classId(request.getClassId())
+                    .classShiftId(request.getClassShiftId())
+                    .build();
+            results.add(updateStudentShift(single));
+        }
+        return results;
+    }
+
+    /**
+     * Remove one or many students from their current class (only the current StudentClass with status STUDYING).
+     * - One API for both single & bulk: send studentIds array.
+     * - If classId is provided, validate student currently belongs to that class.
+     * - Marks StudentClass as DROPPED and sets leftAt = now, clears classShift.
+     * - Atomic: if any student fails validation, the whole transaction rolls back.
+     */
+    @Transactional
+    public List<StudentResponse> removeStudentsFromClass(RemoveStudentsFromClassRequest request) {
+        if (request == null || request.getStudentIds() == null || request.getStudentIds().isEmpty()) {
+            throw new NotFoundException("Thiếu danh sách học viên");
+        }
+
+        // Validate class exists if caller provided classId
+        if (!isBlank(request.getClassId())) {
+            classRepository.findById(request.getClassId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+        }
+
+        List<StudentResponse> results = new ArrayList<>();
+        for (String studentId : request.getStudentIds()) {
+            // Ensure student exists
+            studentRepository.findById(studentId)
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
+
+            StudentClass studentClass = studentClassRepository.findCurrentClassByStudent(studentId, StudentClassStatus.STUDYING);
+            if (studentClass == null) {
+                throw new NotFoundException("Học viên chưa thuộc lớp nào");
+            }
+
+            if (!isBlank(request.getClassId())) {
+                if (studentClass.getClazz() == null || !request.getClassId().equals(studentClass.getClazz().getId())) {
+                    throw new NotFoundException("Học viên không thuộc lớp đã chọn");
+                }
+            }
+
+            studentClass.setClassShift(null);
+            studentClass.setLeftAt(Instant.now());
+            studentClass.setStatus(StudentClassStatus.DROPPED);
+            studentClassRepository.save(studentClass);
+
+            // After removal, student has no current class => response without clazz
+            Student student = studentRepository.findById(studentId)
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
+            results.add(modelMapper.map(student, StudentResponse.class));
+        }
+
+        return results;
     }
 
     @Transactional(readOnly = true)

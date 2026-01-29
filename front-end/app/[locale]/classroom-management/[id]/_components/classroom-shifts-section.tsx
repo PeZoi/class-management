@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { classShiftService, studentService } from '@/services';
 import { ClassShiftType } from '@/types/class-type';
-import { StudentType } from '@/types';
 import { toast } from 'react-toastify';
 import { Plus, RefreshCw, Users, Mail, Calendar, DollarSign, Phone, CheckCircle, Clock, Pencil, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,24 +19,32 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useTranslations } from 'next-intl';
 import { formatCurrency, formatDate } from '@/utils/helper';
+import { useCreateClassShift, useDeleteClassShift, useUpdateClassShift } from '@/hooks/use-classes';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
+import { useStudentsByClassShift } from '@/hooks/use-students';
 
 interface ClassroomShiftsSectionProps {
   classId: string;
+  shifts: ClassShiftType[];
+  isLoading: boolean;
+  onRefresh: () => void;
 }
 
-export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps) {
+export function ClassroomShiftsSection({ classId, shifts, isLoading, onRefresh }: ClassroomShiftsSectionProps) {
   const tClassDetail = useTranslations('classroom-detail');
   const tCommon = useTranslations('common');
   const tNotif = useTranslations('notifications');
 
-  const [shifts, setShifts] = useState<ClassShiftType[]>([]);
-  const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<ClassShiftType | null>(null);
-  const [studentsByShift, setStudentsByShift] = useState<Record<string, StudentType[]>>({});
-  const [loadingStudentsShiftId, setLoadingStudentsShiftId] = useState<string | null>(null);
   const [openShiftId, setOpenShiftId] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+  const createShiftMutation = useCreateClassShift();
+  const updateShiftMutation = useUpdateClassShift();
+  const deleteShiftMutation = useDeleteClassShift();
 
   const getCurrentMonthPaymentStatus = (
     monthPaymentStatuses?: Array<{
@@ -94,20 +100,21 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
 
+  const dayOptions: { key: string; label: string; order: number }[] = useMemo(() => {
   const getDayLabel = (key: string): string => {
     const labels: Record<string, string> = {
-      'MON': tCommon('dayMonday'),
-      'TUE': tCommon('dayTuesday'),
-      'WED': tCommon('dayWednesday'),
-      'THU': tCommon('dayThursday'),
-      'FRI': tCommon('dayFriday'),
-      'SAT': tCommon('daySaturday'),
-      'SUN': tCommon('daySunday'),
+        MON: tCommon('dayMonday'),
+        TUE: tCommon('dayTuesday'),
+        WED: tCommon('dayWednesday'),
+        THU: tCommon('dayThursday'),
+        FRI: tCommon('dayFriday'),
+        SAT: tCommon('daySaturday'),
+        SUN: tCommon('daySunday'),
     };
     return labels[key] || key;
   };
 
-  const dayOptions: { key: string; label: string; order: number }[] = useMemo(() => [
+    return [
     { key: 'MON', label: getDayLabel('MON'), order: 1 },
     { key: 'TUE', label: getDayLabel('TUE'), order: 2 },
     { key: 'WED', label: getDayLabel('WED'), order: 3 },
@@ -115,46 +122,233 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
     { key: 'FRI', label: getDayLabel('FRI'), order: 5 },
     { key: 'SAT', label: getDayLabel('SAT'), order: 6 },
     { key: 'SUN', label: getDayLabel('SUN'), order: 7 },
-  ], [tCommon]);
+    ];
+  }, [tCommon]);
 
-  const fetchShifts = async () => {
-    if (!classId) return;
-    try {
-      setLoading(true);
-      const res = await classShiftService.getByClassId(classId);
-      if (res.status === 200 && res.data) {
-        setShifts(res.data);
-      }
-    } catch (error) {
-      console.error('Error fetching class shifts', error);
-      toast.error(tNotif('errorLoadShifts'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Component con để render mỗi shift item với hook riêng
+  function ShiftItem({ shift, isOpen, onOpenChange, onEdit, onDelete }: {
+    shift: ClassShiftType;
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    onEdit: (shift: ClassShiftType) => void;
+    onDelete: (shiftId: string) => void;
+  }) {
+    // Dùng hook để fetch students khi shift được mở
+    const { data: students = [], isLoading: isLoadingStudents } = useStudentsByClassShift(
+      shift.id,
+      { enabled: isOpen } // Chỉ fetch khi mở
+    );
 
-  useEffect(() => {
-    fetchShifts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classId]);
+    return (
+      <li>
+        <Collapsible
+          open={isOpen}
+          onOpenChange={onOpenChange}
+          className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40"
+        >
+          <div className="flex items-center justify-between px-3 py-2 gap-2">
+            <CollapsibleTrigger asChild>
+              <button className="flex flex-1 items-center justify-between text-sm font-medium text-slate-800 dark:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 rounded-md px-2 py-1 transition-colors cursor-pointer">
+                <div className="flex items-center gap-2 text-left">
+                  <Users className="size-4 text-blue-500" />
+                  <span>{shift.name}</span>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {students.length > 0 ? tCommon('studentsCount', { count: students.length }) : tCommon('clickToViewStudents')}
+                </span>
+              </button>
+            </CollapsibleTrigger>
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-7 text-slate-500 hover:text-slate-800 dark:hover:text-slate-100"
+                onClick={() => onEdit(shift)}
+                type="button"
+              >
+                <Pencil className="size-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-7 text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                onClick={() => onDelete(shift.id)}
+                type="button"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          </div>
+          <CollapsibleContent className="border-t border-slate-200 dark:border-slate-800 px-3 py-2 bg-white/60 dark:bg-slate-950/40">
+            {isLoadingStudents ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {tCommon('loadingStudentList')}
+              </p>
+            ) : students.length === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {tCommon('noStudentsInShift')}
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-md border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950/60">
+                <Table className="min-w-full text-xs">
+                  <TableHeader className="bg-slate-100/80 dark:bg-slate-900/80">
+                    <TableRow className="text-left text-slate-600 dark:text-slate-300">
+                      <TableHead className="px-3 py-2 font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <Users className="size-3.5" />
+                          {tClassDetail('studentName')}
+                        </div>
+                      </TableHead>
+                      <TableHead className="px-3 py-2 font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <Mail className="size-3.5" />
+                          {tClassDetail('contact')}
+                        </div>
+                      </TableHead>
+                      <TableHead className="px-3 py-2 font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <Users className="size-3.5" />
+                          {tClassDetail('parent')}
+                        </div>
+                      </TableHead>
+                      <TableHead className="px-3 py-2 font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="size-3.5" />
+                          {tClassDetail('dob')}
+                        </div>
+                      </TableHead>
+                      <TableHead className="px-3 py-2 font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="size-3.5" />
+                          {tClassDetail('joinedAt')}
+                        </div>
+                      </TableHead>
+                      <TableHead className="px-3 py-2 font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="size-3.5" />
+                          {tClassDetail('unpaidMonths')}
+                        </div>
+                      </TableHead>
+                      <TableHead className="px-3 py-2 font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <DollarSign className="size-3.5" />
+                          {tClassDetail('payment')}
+                        </div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {students.map((student) => (
+                      <TableRow
+                        key={student.id}
+                        className="border-t border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900/70 transition-colors"
+                      >
+                        {(() => {
+                          const monthlyFee = student.class?.monthlyFee || 0;
+                          const currentPayment = getCurrentMonthPaymentStatus(
+                            student.monthPaymentStatuses,
+                            monthlyFee,
+                          );
+                          const unpaidMonths =
+                            student.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
 
-  const fetchStudentsByShift = async (shiftId: string) => {
-    try {
-      setLoadingStudentsShiftId(shiftId);
-      const res = await studentService.getStudentsByClassShift(shiftId);
-      if (res.status === 200 && res.data) {
-        setStudentsByShift((prev) => ({
-          ...prev,
-          [shiftId]: res.data || [],
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching students by class shift', error);
-      toast.error(tNotif('errorLoadStudentsByShift'));
-    } finally {
-      setLoadingStudentsShiftId(null);
-    }
-  };
+                          const paymentStatus = currentPayment.paymentStatus;
+                          const paymentConfig = {
+                            paid: {
+                              label: tClassDetail('payment_paid'),
+                              className:
+                                'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+                              icon: CheckCircle,
+                            },
+                            partial: {
+                              label: tClassDetail('payment_partial'),
+                              className:
+                                'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+                              icon: Clock,
+                            },
+                            unpaid: {
+                              label: tClassDetail('payment_unpaid'),
+                              className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                              icon: Clock,
+                            },
+                          } as const;
+                          const paymentCfg = paymentConfig[paymentStatus];
+                          const PaymentIcon = paymentCfg.icon;
+
+                          const genderKey = `gender_${student.gender.toLowerCase()}` as
+                            | 'gender_male'
+                            | 'gender_female'
+                            | 'gender_other';
+                          return (
+                            <>
+                              <TableCell className="px-3 py-2 font-medium">
+                                <div className="flex flex-col">
+                                  <span>{student.fullName}</span>
+                                  <span className="text-[10px] text-slate-500">
+                                    {tClassDetail(genderKey)}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-3 py-2">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="inline-flex items-center gap-1">
+                                    <Mail className="size-3 text-slate-500" />
+                                    <span>{student.email}</span>
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300">
+                                    <Phone className="size-3 text-slate-500" />
+                                    <span>{student.phoneNumber}</span>
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-3 py-2">
+                                <div className="flex flex-col gap-0.5">
+                                  <span>{student.fullNameParent}</span>
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300">
+                                    <Phone className="size-3 text-slate-500" />
+                                    <span>{student.phoneNumberParent}</span>
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-3 py-2 whitespace-nowrap">
+                                {formatDate(student.dob)}
+                              </TableCell>
+                              <TableCell className="px-3 py-2 whitespace-nowrap">
+                                {student.class?.joinAt ? formatDate(student.class.joinAt) : '-'}
+                              </TableCell>
+                              <TableCell className="px-3 py-2 whitespace-nowrap">
+                                <p className='pl-12'>{unpaidMonths}</p>
+                              </TableCell>
+                              <TableCell className="px-3 py-2 whitespace-nowrap">
+                                <div className="flex flex-col items-start gap-1">
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium ${paymentCfg.className}`}
+                                  >
+                                    <PaymentIcon className="size-3" />
+                                    {paymentCfg.label}
+                                  </span>
+                                  <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                                    {formatCurrency(currentPayment.paidAmount)}{' '}
+                                    <span className="text-[10px] text-slate-500">
+                                      / {formatCurrency(currentPayment.expectedAmount)}
+                                    </span>
+                                  </span>
+                                </div>
+                              </TableCell>
+                            </>
+                          );
+                        })()}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      </li>
+    );
+  }
 
   const handleCreateShift = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,27 +388,16 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
       setCreating(true);
       // Nếu đang chỉnh sửa thì gọi update, ngược lại gọi create
       if (editingShift) {
-        const res = await classShiftService.update(editingShift.id, {
+        await updateShiftMutation.mutateAsync({
           id: editingShift.id,
-          name,
-          classId,
+          data: { name, classId },
         });
-        if (res.status === 200 && res.data) {
-          toast.success(tNotif('successUpdateShiftDialog'));
-          setShifts((prev) =>
-            prev.map((s) => (s.id === editingShift.id ? (res.data as ClassShiftType) : s)),
-          );
-        }
       } else {
-        const res = await classShiftService.create({
-          name,
-          classId,
-        });
-        if (res.status === 201 && res.data) {
-          toast.success(tNotif('successCreateShift'));
-          setShifts((prev) => [...prev, res.data as ClassShiftType]);
-        }
+        await createShiftMutation.mutateAsync({ name, classId });
       }
+
+      // Refresh list shifts ở component cha
+      onRefresh();
 
       // reset form
       setShiftType('MORNING');
@@ -280,22 +463,17 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
     if (!confirmDelete) return;
 
     try {
-      const res = await classShiftService.delete(shiftId);
-      if (res.status === 204 || res.status === 200) {
-        toast.success(tNotif('successDeleteShift'));
-        setShifts((prev) => prev.filter((s) => s.id !== shiftId));
-        // Xóa luôn cache học sinh của ca đó trên FE (backend đã set classShift = null)
-        setStudentsByShift((prev) => {
-          const next = { ...prev };
-          delete next[shiftId];
-          return next;
-        });
+      await deleteShiftMutation.mutateAsync(shiftId);
+
+      // Refresh list shifts ở component cha
+      onRefresh();
+
+      // Xóa cache học sinh của ca đó trên FE (backend đã set classShift = null)
+      queryClient.removeQueries({ queryKey: queryKeys.students.byClassShift(shiftId) });
+
         // Nếu ca đang mở là ca vừa xóa thì đóng lại
         if (openShiftId === shiftId) {
           setOpenShiftId(null);
-        }
-      } else {
-        toast.error(tNotif('errorDeleteShift'));
       }
     } catch (error) {
       console.error('Error deleting class shift', error);
@@ -320,11 +498,11 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
             <Button
               variant="outline"
               size="icon"
-              onClick={fetchShifts}
-              disabled={loading}
+              onClick={onRefresh}
+              disabled={isLoading}
               title={tCommon('refreshShifts')}
             >
-              <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`size-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
             <Button
               onClick={() => {
@@ -344,7 +522,7 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
         <CardContent className="space-y-3">
           {/* Danh sách ca học (collapse + danh sách học sinh) */}
           <div className="space-y-2">
-            {loading ? (
+            {isLoading ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">{tCommon('loadingShifts')}</p>
             ) : shifts.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -352,225 +530,18 @@ export function ClassroomShiftsSection({ classId }: ClassroomShiftsSectionProps)
               </p>
             ) : (
               <ul className="space-y-2">
-                {shifts.map((shift) => {
-                  const students = studentsByShift[shift.id] || [];
-                  const isLoadingStudents = loadingStudentsShiftId === shift.id;
-
-                  return (
-                    <li key={shift.id}>
-                      <Collapsible
-                        open={openShiftId === shift.id}
-                        onOpenChange={(isOpen) => {
-                          setOpenShiftId(isOpen ? shift.id : (openShiftId === shift.id ? null : openShiftId));
-                          if (isOpen && !studentsByShift[shift.id]) {
-                            fetchStudentsByShift(shift.id);
-                          }
-                        }}
-                        className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40"
-                      >
-                        <div className="flex items-center justify-between px-3 py-2 gap-2">
-                          <CollapsibleTrigger asChild>
-                            <button className="flex flex-1 items-center justify-between text-sm font-medium text-slate-800 dark:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 rounded-md px-2 py-1 transition-colors cursor-pointer">
-                              <div className="flex items-center gap-2 text-left">
-                                <Users className="size-4 text-blue-500" />
-                                <span>{shift.name}</span>
-                              </div>
-                              <span className="text-xs text-slate-500 dark:text-slate-400">
-                                {students.length > 0 ? tCommon('studentsCount', { count: students.length }) : tCommon('clickToViewStudents')}
-                              </span>
-                            </button>
-                          </CollapsibleTrigger>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="size-7 text-slate-500 hover:text-slate-800 dark:hover:text-slate-100"
-                              onClick={() => handleEditShift(shift)}
-                              type="button"
-                            >
-                              <Pencil className="size-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="size-7 text-red-500 hover:text-red-700 dark:hover:text-red-400"
-                              onClick={() => handleDeleteShift(shift.id)}
-                              type="button"
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <CollapsibleContent className="border-t border-slate-200 dark:border-slate-800 px-3 py-2 bg-white/60 dark:bg-slate-950/40">
-                          {isLoadingStudents ? (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {tCommon('loadingStudentList')}
-                            </p>
-                          ) : students.length === 0 ? (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {tCommon('noStudentsInShift')}
-                            </p>
-                          ) : (
-                            <div className="overflow-x-auto rounded-md border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950/60">
-                              <Table className="min-w-full text-xs">
-                                <TableHeader className="bg-slate-100/80 dark:bg-slate-900/80">
-                                  <TableRow className="text-left text-slate-600 dark:text-slate-300">
-                                    <TableHead className="px-3 py-2 font-semibold">
-                                      <div className="flex items-center gap-1.5">
-                                        <Users className="size-3.5" />
-                                        {tClassDetail('studentName')}
-                                      </div>
-                                    </TableHead>
-                                    <TableHead className="px-3 py-2 font-semibold">
-                                      <div className="flex items-center gap-1.5">
-                                        <Mail className="size-3.5" />
-                                        {tClassDetail('contact')}
-                                      </div>
-                                    </TableHead>
-                                    <TableHead className="px-3 py-2 font-semibold">
-                                      <div className="flex items-center gap-1.5">
-                                        <Users className="size-3.5" />
-                                        {tClassDetail('parent')}
-                                      </div>
-                                    </TableHead>
-                                    <TableHead className="px-3 py-2 font-semibold">
-                                      <div className="flex items-center gap-1.5">
-                                        <Calendar className="size-3.5" />
-                                        {tClassDetail('dob')}
-                                      </div>
-                                    </TableHead>
-                                    <TableHead className="px-3 py-2 font-semibold">
-                                      <div className="flex items-center gap-1.5">
-                                        <Calendar className="size-3.5" />
-                                        {tClassDetail('joinedAt')}
-                                      </div>
-                                    </TableHead>
-                                    <TableHead className="px-3 py-2 font-semibold">
-                                      <div className="flex items-center gap-1.5">
-                                        <Calendar className="size-3.5" />
-                                        {tClassDetail('unpaidMonths')}
-                                      </div>
-                                    </TableHead>
-                                    <TableHead className="px-3 py-2 font-semibold">
-                                      <div className="flex items-center gap-1.5">
-                                        <DollarSign className="size-3.5" />
-                                        {tClassDetail('payment')}
-                                      </div>
-                                    </TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {students.map((student) => (
-                                    <TableRow
-                                      key={student.id}
-                                      className="border-t border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900/70 transition-colors"
-                                    >
-                                      {(() => {
-                                        const monthlyFee = student.class?.monthlyFee || 0;
-                                        const currentPayment = getCurrentMonthPaymentStatus(
-                                          student.monthPaymentStatuses,
-                                          monthlyFee,
-                                        );
-                                        const unpaidMonths =
-                                          student.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
-
-                                        const paymentStatus = currentPayment.paymentStatus;
-                                        const paymentConfig = {
-                                          paid: {
-                                            label: tClassDetail('payment_paid'),
-                                            className:
-                                              'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-                                            icon: CheckCircle,
-                                          },
-                                          partial: {
-                                            label: tClassDetail('payment_partial'),
-                                            className:
-                                              'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-                                            icon: Clock,
-                                          },
-                                          unpaid: {
-                                            label: tClassDetail('payment_unpaid'),
-                                            className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                                            icon: Clock,
-                                          },
-                                        } as const;
-                                        const paymentCfg = paymentConfig[paymentStatus];
-                                        const PaymentIcon = paymentCfg.icon;
-
-                                        const genderKey = `gender_${student.gender.toLowerCase()}` as
-                                          | 'gender_male'
-                                          | 'gender_female'
-                                          | 'gender_other';
-                                        return (
-                                          <>
-                                            <TableCell className="px-3 py-2 font-medium">
-                                              <div className="flex flex-col">
-                                                <span>{student.fullName}</span>
-                                                <span className="text-[10px] text-slate-500">
-                                                  {tClassDetail(genderKey)}
-                                                </span>
-                                              </div>
-                                            </TableCell>
-                                            <TableCell className="px-3 py-2">
-                                              <div className="flex flex-col gap-0.5">
-                                                <span className="inline-flex items-center gap-1">
-                                                  <Mail className="size-3 text-slate-500" />
-                                                  <span>{student.email}</span>
-                                                </span>
-                                                <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300">
-                                                  <Phone className="size-3 text-slate-500" />
-                                                  <span>{student.phoneNumber}</span>
-                                                </span>
-                                              </div>
-                                            </TableCell>
-                                            <TableCell className="px-3 py-2">
-                                              <div className="flex flex-col gap-0.5">
-                                                <span>{student.fullNameParent}</span>
-                                                <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300">
-                                                  <Phone className="size-3 text-slate-500" />
-                                                  <span>{student.phoneNumberParent}</span>
-                                                </span>
-                                              </div>
-                                            </TableCell>
-                                            <TableCell className="px-3 py-2 whitespace-nowrap">
-                                              {formatDate(student.dob)}
-                                            </TableCell>
-                                            <TableCell className="px-3 py-2 whitespace-nowrap">
-                                              {student.class?.joinAt ? formatDate(student.class.joinAt) : '-'}
-                                            </TableCell>
-                                            <TableCell className="px-3 py-2 whitespace-nowrap">
-                                              <p className='pl-12'>{unpaidMonths}</p>
-                                            </TableCell>
-                                            <TableCell className="px-3 py-2 whitespace-nowrap">
-                                              <div className="flex flex-col items-start gap-1">
-                                                <span
-                                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium ${paymentCfg.className}`}
-                                                >
-                                                  <PaymentIcon className="size-3" />
-                                                  {paymentCfg.label}
-                                                </span>
-                                                <span className="text-[11px] text-slate-600 dark:text-slate-300">
-                                                  {formatCurrency(currentPayment.paidAmount)}{' '}
-                                                  <span className="text-[10px] text-slate-500">
-                                                    / {formatCurrency(currentPayment.expectedAmount)}
-                                                  </span>
-                                                </span>
-                                              </div>
-                                            </TableCell>
-                                          </>
-                                        );
-                                      })()}
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          )}
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </li>
-                  );
-                })}
+                {shifts.map((shift) => (
+                  <ShiftItem
+                    key={shift.id}
+                    shift={shift}
+                    isOpen={openShiftId === shift.id}
+                    onOpenChange={(isOpen) => {
+                      setOpenShiftId(isOpen ? shift.id : (openShiftId === shift.id ? null : openShiftId));
+                    }}
+                    onEdit={handleEditShift}
+                    onDelete={handleDeleteShift}
+                  />
+                ))}
               </ul>
             )}
           </div>

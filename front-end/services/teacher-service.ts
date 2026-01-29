@@ -29,4 +29,7 @@ export const teacherService = {
     };
     return http.put<ResponseType<TeacherType, TeacherType>>(`/api/teacher/update/${id}`, payload);
   },
+  resetPassword: (id: string) => {
+    return http.put<ResponseType<TeacherType, TeacherType>>(`/api/teacher/reset-password/${id}`, { id });
+  },
 };

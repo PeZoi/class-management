@@ -13,8 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { teacherService } from '@/services';
-import { TeacherType } from '@/types';
+import { useTeachers } from '@/hooks/use-teachers';
 import { ClassRequest, ClassType } from '@/types/class-type';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
@@ -24,16 +23,17 @@ interface ClassroomDialogProps {
   onOpenChange: (open: boolean) => void;
   classItem: ClassType | null;
   onSave: (formData: ClassRequest, id?: string) => void;
+  isSubmitting?: boolean;
 }
 
-export function ClassroomDialog({ open, onOpenChange, classItem, onSave }: ClassroomDialogProps) {
+export function ClassroomDialog({ open, onOpenChange, classItem, onSave, isSubmitting }: ClassroomDialogProps) {
   const t = useTranslations('classroom-management');
+  const tCommon = useTranslations('common');
 
-  const [teachers, setTeachers] = useState<TeacherType[]>([]);
+  const { data: teachers = [] } = useTeachers();
   const [formData, setFormData] = useState<ClassRequest>({
     name: '',
     teacherId: '',
-    schedule: '',
     monthlyFee: 0,
   });
 
@@ -45,41 +45,21 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave }: Class
       setFormData({
         name: classItem.name || '',
         teacherId: classItem.teacher.id || '',
-        schedule: classItem.schedule || '',
         monthlyFee: classItem.monthlyFee || 0,
       });
     } else {
       setFormData({
         name: '',
         teacherId: '',
-        schedule: '',
         monthlyFee: 0,
       });
     }
   }, [classItem, open]);
 
-  // Fetch teachers
-  useEffect(() => {
-    const fetchTeachers = async () => {
-      try {
-        const response = await teacherService.getAllTeachers();
-        if (response.status === 200) {
-          setTeachers(response.data || []);
-        }
-      } catch (error) {
-        console.error('Error fetching teachers:', error);
-      }
-    };
-    fetchTeachers();
-  }, []);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Chỉ truyền formData và id (nếu đang edit)
     onSave(formData, classItem?.id);
-
-    // Reset form và đóng dialog
-    onOpenChange(false);
   };
 
   const handleChange = (field: keyof ClassRequest, value: string | number) => {
@@ -105,19 +85,6 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave }: Class
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 placeholder={t('classNamePlaceholder')}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="schedule">
-                {t('schedule')} <span className="text-red-500">{t('required')}</span>
-              </Label>
-              <Input
-                id="schedule"
-                value={formData.schedule}
-                onChange={(e) => handleChange('schedule', e.target.value)}
-                placeholder="VD: T2, T4, T6 - 19:00"
                 required
               />
             </div>
@@ -169,7 +136,9 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave }: Class
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('cancel')}
             </Button>
-            <Button type="submit">{classItem ? t('update') : t('addNew')}</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? tCommon('saving') : classItem ? t('update') : t('addNew')}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

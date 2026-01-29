@@ -39,4 +39,10 @@ public class TeacherController {
         TeacherResponse teacherResponse = teacherService.updateTeacher(teacherRequest, id);
         return new ResponseEntity<>(teacherResponse, HttpStatus.OK);
     }
+
+    @PutMapping("/reset-password/{id}")
+    public ResponseEntity<TeacherResponse> resetPassword(@PathVariable String id) {
+        TeacherResponse teacherResponse = teacherService.resetPassword(id);
+        return new ResponseEntity<>(teacherResponse, HttpStatus.OK);
+    }
 }

@@ -28,6 +28,7 @@ interface TeacherSalaryPaymentCalendarProps {
     paymentDate: string;
     notes: string;
   }) => void;
+  isSubmittingPayment?: boolean;
 }
 
 export function TeacherSalaryPaymentCalendar({
@@ -36,6 +37,7 @@ export function TeacherSalaryPaymentCalendar({
   teacherId,
   paymentHistory = [],
   onPaymentSubmit,
+  isSubmittingPayment,
 }: TeacherSalaryPaymentCalendarProps) {
   const t = useTranslations('teacher-detail');
   const currentDate = new Date();
@@ -282,6 +284,7 @@ export function TeacherSalaryPaymentCalendar({
         baseSalary={baseSalary}
         monthNames={monthNames}
         onSubmit={handleDialogSubmit}
+        isSubmitting={isSubmittingPayment}
       />
 
       {/* Salary Detail Dialog */}

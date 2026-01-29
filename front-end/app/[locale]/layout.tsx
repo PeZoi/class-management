@@ -7,6 +7,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { Providers } from './providers';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -34,9 +35,11 @@ export default async function LocaleLayout({
   if (pathname.includes('/sign-in')) {
     return (
       <NextIntlClientProvider messages={messages}>
-        <SidebarProvider>
-          <AuthGuard>{children}</AuthGuard>
-        </SidebarProvider>
+        <Providers>
+          <SidebarProvider>
+            <AuthGuard>{children}</AuthGuard>
+          </SidebarProvider>
+        </Providers>
       </NextIntlClientProvider>
     );
   }
@@ -44,15 +47,17 @@ export default async function LocaleLayout({
   // Normal pages with sidebar and header
   return (
     <NextIntlClientProvider messages={messages}>
-      <SidebarProvider>
-        <AuthGuard>
-          <AppSidebar />
-          <main className="flex-1 w-full max-w-full min-w-0 flex flex-col min-h-0">
-            <Header />
-            <div className="w-full max-w-full min-w-0 overflow-x-hidden flex-1 overflow-y-auto">{children}</div>
-          </main>
-        </AuthGuard>
-      </SidebarProvider>
+      <Providers>
+        <SidebarProvider>
+          <AuthGuard>
+            <AppSidebar />
+            <main className="flex-1 w-full max-w-full min-w-0 flex flex-col min-h-0">
+              <Header />
+              <div className="w-full max-w-full min-w-0 overflow-x-hidden flex-1 overflow-y-auto">{children}</div>
+            </main>
+          </AuthGuard>
+        </SidebarProvider>
+      </Providers>
     </NextIntlClientProvider>
   );
 }

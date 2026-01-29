@@ -25,7 +25,7 @@ export interface StudentType {
   gender: 'MALE' | 'FEMALE' | 'OTHER';
   fullNameParent: string;
   phoneNumberParent: string;
-  class: StudentClassResponse;
+  class?: StudentClassResponse | null;
   monthPaymentStatuses?: MonthPaymentStatus[];
 }
 
@@ -50,4 +50,22 @@ export interface ClassHistoryResponse {
   leftAt?: string;
   status: 'STUDYING' | 'COMPLETED' | 'CHANGING' | 'DROPPED';
   reason?: string;
+}
+
+export interface UpdateStudentShiftRequest {
+  studentId: string;
+  classId: string;
+  classShiftId?: string;
+}
+
+export interface BulkUpdateStudentShiftRequest {
+  studentIds: string[];
+  classId: string;
+  classShiftId?: string;
+}
+
+// One API for both single & bulk remove: send 1 id or many in studentIds
+export interface RemoveStudentsFromClassRequest {
+  classId?: string;
+  studentIds: string[];
 }

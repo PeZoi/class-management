@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 
 interface ClassroomDetailHeaderProps {
@@ -15,7 +15,6 @@ interface ClassroomDetailHeaderProps {
 
 export function ClassroomDetailHeader({ classData }: ClassroomDetailHeaderProps) {
   const t = useTranslations('classroom-detail');
-  const locale = useLocale();
   const router = useRouter();
 
   return (

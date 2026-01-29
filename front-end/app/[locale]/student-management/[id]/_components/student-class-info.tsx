@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { useState, useEffect } from 'react';
-import { classShiftService, studentService } from '@/services';
-import { ClassShiftType } from '@/types/class-type';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Badge } from '@/components/ui/badge';
+import { useClassShiftsByClass } from '@/hooks/use-classes';
+import { useUpdateStudentShift } from '@/hooks/use-students';
 
 interface StudentClassInfoProps {
   student: StudentType;
@@ -26,46 +26,35 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
   const tCommon = useTranslations('common');
   const locale = useLocale();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [shifts, setShifts] = useState<ClassShiftType[]>([]);
   const [selectedShiftId, setSelectedShiftId] = useState<string>('NONE');
-  const [updating, setUpdating] = useState(false);
-  const [loadingShifts, setLoadingShifts] = useState(false);
+  const updateStudentShift = useUpdateStudentShift();
 
-  // Fetch shifts when dialog opens
+  const classId = student.class?.id || '';
+  const currentShiftId = student.class?.shiftId || undefined;
+
+  const {
+    data: shifts = [],
+    isLoading: loadingShifts,
+    error: shiftsError,
+  } = useClassShiftsByClass(classId, { enabled: isDialogOpen && !!classId });
+
   useEffect(() => {
-    const fetchShifts = async () => {
-      if (!isDialogOpen || !student.class?.id) {
-        setShifts([]);
-        setSelectedShiftId('NONE');
-        return;
-      }
+    if (!isDialogOpen) return;
+    setSelectedShiftId(currentShiftId || 'NONE');
+  }, [isDialogOpen, currentShiftId]);
 
-      setLoadingShifts(true);
-      try {
-        const response = await classShiftService.getByClassId(student.class.id);
-        if (response.status === 200 && response.data) {
-          setShifts(response.data);
-          // Set current shift as selected, or 'NONE' if no shift
-          setSelectedShiftId(student.class.shiftId || 'NONE');
-        } else {
-          setShifts([]);
-          setSelectedShiftId('NONE');
-        }
-      } catch (error) {
-        console.error('Error fetching class shifts:', error);
-        toast.error(tNotif('errorLoadShifts'));
-        setShifts([]);
-        setSelectedShiftId('NONE');
-      } finally {
-        setLoadingShifts(false);
-      }
-    };
+  useEffect(() => {
+    if (!isDialogOpen) return;
+    if (shiftsError) {
+      console.error('Error fetching class shifts:', shiftsError);
+      toast.error(tNotif('errorLoadShifts'));
+    }
+  }, [isDialogOpen, shiftsError, tNotif]);
 
-    fetchShifts();
-  }, [isDialogOpen, student.class.id, student.class.shiftId, tNotif]);
+  const shiftsEmpty = useMemo(() => shifts.length === 0, [shifts.length]);
 
   const handleUpdateShift = async () => {
-    if (!student.class?.id || !student.id) {
+    if (!classId || !student.id) {
       toast.error(tNotif('errorInvalidInfo'));
       return;
     }
@@ -74,36 +63,27 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
     const shiftIdToUpdate = selectedShiftId === 'NONE' ? undefined : selectedShiftId;
 
     // If no change, just close dialog
-    const currentShiftId = student.class.shiftId || undefined;
     if (shiftIdToUpdate === currentShiftId) {
       setIsDialogOpen(false);
       return;
     }
 
-    setUpdating(true);
     try {
-      const response = await studentService.updateStudentShift({
+      await updateStudentShift.mutateAsync({
         studentId: student.id,
-        classId: student.class.id,
+        classId,
         classShiftId: shiftIdToUpdate,
+        prevClassShiftId: currentShiftId,
       });
-
-      if (response.status === 200 && response.data) {
-        toast.success(tNotif('successUpdateShiftDialog'));
-        setIsDialogOpen(false);
-        if (onUpdate) {
-          onUpdate();
-        }
-      } else {
-        toast.error(tNotif('errorUpdateShift'));
-      }
+      setIsDialogOpen(false);
+      onUpdate?.();
     } catch (error) {
       console.error('Error updating student shift:', error);
-      toast.error(tNotif('errorUpdateShift'));
     } finally {
-      setUpdating(false);
     }
   };
+
+  const updating = updateStudentShift.isPending;
 
   return (
     <>
@@ -200,7 +180,7 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
                       ))}
                     </SelectContent>
                   </Select>
-                  {shifts.length === 0 && !loadingShifts && (
+                  {shiftsEmpty && !loadingShifts && (
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{tCommon('noShiftsForClass')}</p>
                   )}
                 </>

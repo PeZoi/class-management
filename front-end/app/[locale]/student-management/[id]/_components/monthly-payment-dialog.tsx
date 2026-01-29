@@ -34,6 +34,7 @@ interface MonthlyPaymentDialogProps {
     paymentDate: string;
     notes: string;
   }) => void;
+  isSubmitting?: boolean;
 }
 
 export function MonthlyPaymentDialog({
@@ -43,6 +44,7 @@ export function MonthlyPaymentDialog({
   monthlyFee,
   monthNames,
   onSubmit,
+  isSubmitting,
 }: MonthlyPaymentDialogProps) {
   const tPayment = useTranslations('payment-management');
   const tCommon = useTranslations('common');
@@ -278,9 +280,9 @@ export function MonthlyPaymentDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {tCommon('cancel')}
             </Button>
-            <Button type="submit" className="bg-green-600 hover:bg-green-700">
+            <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={!!isSubmitting}>
               <DollarSign className="size-4 mr-2" />
-              {tPayment('confirmPayment')}
+              {isSubmitting ? tCommon('saving') : tPayment('confirmPayment')}
             </Button>
           </DialogFooter>
         </form>

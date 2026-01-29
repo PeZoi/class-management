@@ -5,12 +5,12 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { PaymentTable } from './_components/payment-table';
 import { PaymentFilter, PaymentFilterState } from './_components/payment-filter';
 import { PersonDetailDrawer } from './_components/person-detail-drawer';
-import { paymentService } from '@/services/payment-service';
-import { studentService } from '@/services/student-service';
-import { teacherService } from '@/services/teacher-service';
 import { PaymentResponse, PaymentItem } from '@/types';
 import { PageLoading } from '@/components/page-loading';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { usePayments } from '@/hooks/use-payments';
+import { useStudent } from '@/hooks/use-students';
+import { useTeacher } from '@/hooks/use-teachers';
 
 // Helper function to parse URL params into filter state
 const parseFiltersFromURL = (searchParams: URLSearchParams): PaymentFilterState => {
@@ -44,32 +44,18 @@ export default function PaymentManagementPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const locale = useLocale();
   
-  const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [filters, setFilters] = useState<PaymentFilterState>(() => 
     parseFiltersFromURL(searchParams)
   );
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<{
-    name: string;
-    type: 'student' | 'teacher';
-    id?: string;
-    phone?: string;
-    email?: string;
-    gender?: string;
-    birthDate?: string;
-    startDate?: string;
-    className?: string;
-    parentName?: string;
-    parentPhone?: string;
-    subject?: string;
-    experience?: string;
-  } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
   const t = useTranslations('payment-management');
   const tNotif = useTranslations('notifications');
   const isUpdatingFromURL = useRef(false);
+
+  const paymentsQuery = usePayments();
 
   // Sync filters with URL params when filters change
   useEffect(() => {
@@ -105,141 +91,105 @@ export default function PaymentManagementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.toString()]);
 
-  useEffect(() => {
-    const fetchPayments = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const res = await paymentService.getAllPayments();
-        const data = res.data ?? [];
+  const payments: PaymentItem[] = useMemo(() => {
+    const data = (paymentsQuery.data ?? []) as PaymentResponse[];
+    const dateLocale = locale === 'vi' ? 'vi-VN' : 'en-US';
 
-        const mapped: PaymentItem[] = data.map((p: PaymentResponse, index: number) => {
-          const type: 'income' | 'expense' =
-            p.direction === 'INCOME' ? 'income' : 'expense';
+    return data.map((p: PaymentResponse, index: number) => {
+      const type: 'income' | 'expense' = p.direction === 'INCOME' ? 'income' : 'expense';
+      const status: 'paid' | 'partial' = p.paymentStatus === 'COMPLETED' ? 'paid' : 'partial';
 
-          const status: 'paid' | 'partial' =
-            p.paymentStatus === 'COMPLETED' ? 'paid' : 'partial';
+      const paymentMethodMap: Record<string, PaymentItem['paymentMethod']> = {
+        CASH: 'cash',
+        BANK_TRANSFER: 'bank_transfer',
+        CREDIT_CARD: 'credit_card',
+        E_WALLET: 'e_wallet',
+      };
 
-          const paymentMethodMap: Record<string, PaymentItem['paymentMethod']> = {
-            CASH: 'cash',
-            BANK_TRANSFER: 'bank_transfer',
-            CREDIT_CARD: 'credit_card',
-            E_WALLET: 'e_wallet',
-          };
+      const paymentDate = p.createdAt ?? p.billingMonth;
+      const createdDate = paymentDate ? new Date(paymentDate as unknown as string).toISOString() : new Date().toISOString();
 
-          const paymentDate =
-            p.createdAt ?? p.billingMonth;
+      const period = p.billingMonth
+        ? new Date(p.billingMonth as unknown as string).toLocaleDateString(dateLocale, {
+            month: '2-digit',
+            year: 'numeric',
+          })
+        : undefined;
 
-          const createdDate = paymentDate
-            ? new Date(paymentDate as unknown as string).toISOString()
-            : new Date().toISOString();
+      return {
+        id: index + 1,
+        backendId: p.id,
+        invoiceId: p.paymentId,
+        type,
+        studentId: p.student?.id,
+        teacherId: p.teacher?.id,
+        studentName: p.student?.fullName,
+        teacherName: p.teacher?.fullName,
+        studentGender: p.student?.gender,
+        teacherGender: p.teacher?.gender,
+        className: p.class?.name,
+        period,
+        totalAmount: Number(p.feeSnapshot ?? p.amount ?? 0),
+        paidAmount: Number(p.paid ?? 0),
+        createdDate,
+        paymentMethod: paymentMethodMap[p.paymentMethod] ?? 'cash',
+        status,
+        note: p.note ?? undefined,
+      };
+    });
+  }, [paymentsQuery.data, locale]);
 
-          const period = p.billingMonth
-            ? new Date(p.billingMonth as unknown as string).toLocaleDateString('vi-VN', {
-                month: '2-digit',
-                year: 'numeric',
-              })
-            : undefined;
+  const selectedPersonType = selectedPayment?.type === 'income' ? 'student' : selectedPayment ? 'teacher' : null;
+  const selectedStudentId = selectedPersonType === 'student' ? selectedPayment?.studentId : undefined;
+  const selectedTeacherId = selectedPersonType === 'teacher' ? selectedPayment?.teacherId : undefined;
 
-          return {
-            id: index + 1,
-            backendId: p.id, // Real ID from backend
-            invoiceId: p.paymentId,
-            type,
-            studentId: p.student?.id,
-            teacherId: p.teacher?.id,
-            studentName: p.student?.fullName,
-            teacherName: p.teacher?.fullName,
-            studentGender: p.student?.gender,
-            teacherGender: p.teacher?.gender,
-            className: p.class?.name,
-            period,
-            totalAmount: Number(p.feeSnapshot ?? p.amount ?? 0),
-            paidAmount: Number(p.paid ?? 0),
-            createdDate,
-            paymentMethod: paymentMethodMap[p.paymentMethod] ?? 'cash',
-            status,
-            note: p.note ?? undefined,
-          };
-        });
+  const studentQuery = useStudent(selectedStudentId ?? '');
+  const teacherQuery = useTeacher(selectedTeacherId ?? '');
 
-        setPayments(mapped);
-      } catch (err) {
-        setError(tNotif('errorLoadPaymentData'));
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
+  const selectedPerson = useMemo(() => {
+    if (!selectedPayment || !selectedPersonType) return null;
+
+    const base = {
+      name: selectedPersonType === 'student' ? (selectedPayment.studentName ?? '') : (selectedPayment.teacherName ?? ''),
+      type: selectedPersonType as 'student' | 'teacher',
+      className: selectedPayment.className,
+      gender: selectedPersonType === 'student' ? selectedPayment.studentGender : selectedPayment.teacherGender,
+      id: selectedPersonType === 'student' ? selectedPayment.studentId : selectedPayment.teacherId,
     };
 
-    fetchPayments();
-  }, [tNotif]);
-
-  // Handle person click to show detail drawer
-  const handlePersonClick = async (name: string, type: 'student' | 'teacher') => {
-    // Tìm payment để lấy ID
-    const payment = payments.find((p) => 
-      type === 'student' ? p.studentName === name : p.teacherName === name
-    );
-
-    if (!payment) return;
-
-    let personInfo: {
-      id?: string;
-      phone?: string;
-      email?: string;
-      birthDate?: string;
-      startDate?: string;
-      parentName?: string;
-      parentPhone?: string;
-      subject?: string;
-      experience?: string;
-    } = {};
-    let className: string | undefined = payment.className;
-
-    // Fetch từ BE nếu có ID
-    try {
-      if (type === 'student' && payment.studentId) {
-        const response = await studentService.getStudentById(payment.studentId);
-        if (response.status === 200 && response.data) {
-          const student = response.data;
-          personInfo = {
-            id: student.id,
-            phone: student.phoneNumber,
-            email: student.email,
-            birthDate: student.dob,
-            startDate: student.class?.joinAt,
-            parentName: student.fullNameParent,
-            parentPhone: student.phoneNumberParent,
-          };
-          className = student.class?.name || className;
-        }
-      } else if (type === 'teacher' && payment.teacherId) {
-        const response = await teacherService.getTeacherById(payment.teacherId);
-        if (response.status === 200 && response.data) {
-          const teacher = response.data;
-          personInfo = {
-            id: teacher.id,
-            phone: teacher.phoneNumber,
-            email: teacher.email,
-            birthDate: teacher.dob,
-            startDate: teacher.createdAt,
-            subject: teacher.classList?.[0]?.name || 'N/A', // Mock - sẽ cập nhật sau khi BE có field này
-            experience: 'N/A', // Mock - sẽ cập nhật sau khi BE có field này
-          };
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching person detail:', error);
-      return;
+    if (selectedPersonType === 'student' && studentQuery.data) {
+      const s = studentQuery.data;
+      return {
+        ...base,
+        id: s.id,
+        phone: s.phoneNumber,
+        email: s.email,
+        birthDate: s.dob,
+        startDate: s.class?.joinAt,
+        className: s.class?.name || base.className,
+        parentName: s.fullNameParent,
+        parentPhone: s.phoneNumberParent,
+      };
     }
 
-    setSelectedPerson({
-      name,
-      type,
-      className,
-      ...personInfo,
-    });
+    if (selectedPersonType === 'teacher' && teacherQuery.data) {
+      const te = teacherQuery.data;
+      return {
+        ...base,
+        id: te.id,
+        phone: te.phoneNumber,
+        email: te.email,
+        birthDate: te.dob,
+        startDate: te.createdAt,
+        subject: te.classList?.[0]?.name,
+      };
+    }
+
+    return base;
+  }, [selectedPayment, selectedPersonType, studentQuery.data, teacherQuery.data]);
+
+  const handlePersonClick = (payment: PaymentItem) => {
+    setSelectedPayment(payment);
     setIsDrawerOpen(true);
   };
 
@@ -310,9 +260,11 @@ export default function PaymentManagementPage() {
     return result;
   }, [payments, filters]);
 
-  if (isLoading) {
+  if (paymentsQuery.isLoading) {
     return <PageLoading message={t('loading')} />;
   }
+
+  const errorMessage = paymentsQuery.isError ? tNotif('errorLoadPaymentData') : null;
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
@@ -329,13 +281,16 @@ export default function PaymentManagementPage() {
         onPersonClick={handlePersonClick}
         showActions={true}
         isLoading={false}
-        error={error || undefined}
+        error={errorMessage || undefined}
       />
 
       {/* Person Detail Drawer */}
       <PersonDetailDrawer
         isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setSelectedPayment(null);
+        }}
         person={selectedPerson}
       />
     </div>

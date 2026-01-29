@@ -1,15 +1,20 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/utils/helper';
 import { OverdueStudentsTable, RecentClassesTable, RevenueChart, StatsCards } from '@/app/[locale]/dashboard/_components';
-import { classService, dashboardService } from '@/services';
-import { ClassType } from '@/types/class-type';
-import { DashboardRevenueDataResponse, DashboardStatsResponse } from '@/types/dashboard-type';
-import { StudentType } from '@/types';
-import { toast } from 'react-toastify';
+import { useQueryClient } from '@tanstack/react-query';
+import { PaymentCalendarDialog } from '@/app/[locale]/student-management/_components/payment-calendar-dialog';
+import {
+  useDashboardStats,
+  useDashboardRevenueData,
+  useStudentsWithUnpaidFees,
+} from '@/hooks/use-dashboard';
+import { useTop3ClassesByRevenue } from '@/hooks/use-classes';
 import { PageLoading } from '@/components/page-loading';
+import { toast } from 'react-toastify';
+import { invalidateDashboard, invalidateTop3ClassesByRevenue } from '@/lib/queryHelpers';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -17,10 +22,77 @@ export default function DashboardPage() {
   const t = useTranslations('dashboard');
   const tNotif = useTranslations('notifications');
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
-  const [topClasses, setTopClasses] = useState<ClassType[]>([]);
-  const [overdueStudents, setOverdueStudents] = useState<StudentType[]>([]);
-  const [revenueData, setRevenueData] = useState<DashboardRevenueDataResponse[]>([]);
-  const [statsData, setStatsData] = useState<DashboardStatsResponse>({
+  const queryClient = useQueryClient();
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<{ id: string; fullName: string } | null>(null);
+
+  // Sử dụng TanStack Query hooks
+  const {
+    data: statsData,
+    isLoading: isLoadingStats,
+    error: statsError,
+  } = useDashboardStats();
+
+  const {
+    data: revenueData = [],
+    isLoading: isLoadingRevenue,
+    error: revenueError,
+  } = useDashboardRevenueData(selectedPeriod);
+
+  const {
+    data: topClasses = [],
+    isLoading: isLoadingTopClasses,
+    error: topClassesError,
+  } = useTop3ClassesByRevenue();
+
+  const {
+    data: overdueStudents = [],
+    isLoading: isLoadingOverdueStudents,
+    error: overdueStudentsError,
+  } = useStudentsWithUnpaidFees();
+
+  const handleOpenPayment = (student: { id: string; fullName: string }) => {
+    setSelectedStudent(student);
+    setPaymentDialogOpen(true);
+  };
+
+  const handlePaymentSuccess = async () => {
+    // Refresh dashboard data after recording a payment
+    await invalidateDashboard(queryClient);
+    await invalidateTop3ClassesByRevenue(queryClient);
+  };
+
+  // Hiển thị error toast nếu có lỗi
+  useEffect(() => {
+    if (statsError) {
+      toast.error(tNotif('errorLoadStats'));
+    }
+  }, [statsError, tNotif]);
+
+  useEffect(() => {
+    if (revenueError) {
+      toast.error(tNotif('errorLoadRevenueData'));
+    }
+  }, [revenueError, tNotif]);
+
+  useEffect(() => {
+    if (topClassesError) {
+      toast.error(tNotif('errorLoadTopClasses'));
+    }
+  }, [topClassesError, tNotif]);
+
+  useEffect(() => {
+    if (overdueStudentsError) {
+      toast.error(tNotif('errorLoadOverdueStudents'));
+    }
+  }, [overdueStudentsError, tNotif]);
+
+  // Loading state - hiển thị loading nếu bất kỳ query nào đang loading
+  const isLoading =
+    isLoadingStats || isLoadingTopClasses || isLoadingOverdueStudents;
+
+  // Default stats data nếu chưa load được
+  const defaultStatsData = {
     totalRevenue: 0,
     totalClasses: 0,
     totalStudents: 0,
@@ -29,90 +101,9 @@ export default function DashboardPage() {
     revenueGrowth: 0,
     studentGrowth: 0,
     salaryExpenseGrowth: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  };
 
-  // Fetch dashboard stats
-  const fetchDashboardStats = useCallback(async () => {
-    try {
-      const response = await dashboardService.getDashboardStats();
-      if (response.status === 200 && response.data) {
-        setStatsData(response.data);
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      toast.error(tNotif('errorLoadStats'));
-    }
-  }, [tNotif]);
-
-  // Fetch revenue data by period
-  const fetchRevenueData = useCallback(async (period: TimePeriod) => {
-    try {
-      const response = await dashboardService.getRevenueDataByPeriod(period);
-      if (response.status === 200 && response.data) {
-        setRevenueData(response.data);
-      }
-    } catch (error) {
-      console.error('Error fetching revenue data:', error);
-      toast.error(tNotif('errorLoadRevenueData'));
-      setRevenueData([]);
-    }
-  }, [tNotif]);
-
-  // Fetch top 3 classes by revenue
-  const fetchTop3Classes = useCallback(async () => {
-    try {
-      const response = await classService.getTop3ClassesByRevenue();
-      if (response.status === 200 && response.data) {
-        setTopClasses(response.data);
-      }
-    } catch (error) {
-      console.error('Error fetching top 3 classes:', error);
-      toast.error(tNotif('errorLoadTopClasses'));
-      setTopClasses([]);
-    }
-  }, [tNotif]);
-
-  // Fetch students with unpaid fees
-  const fetchOverdueStudents = useCallback(async () => {
-    try {
-      const response = await dashboardService.getStudentsWithUnpaidFees();
-      if (response.status === 200 && response.data) {
-        setOverdueStudents(response.data);
-      }
-    } catch (error) {
-      console.error('Error fetching overdue students:', error);
-      toast.error(tNotif('errorLoadOverdueStudents'));
-      setOverdueStudents([]);
-    }
-  }, [tNotif]);
-
-  // Initial data fetch
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        await Promise.all([
-          fetchDashboardStats(),
-          fetchRevenueData(selectedPeriod),
-          fetchTop3Classes(),
-          fetchOverdueStudents(),
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Fetch revenue data when period changes
-  useEffect(() => {
-    fetchRevenueData(selectedPeriod);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPeriod]);
-
-  if (loading) {
+  if (isLoading) {
     return <PageLoading />;
   }
 
@@ -129,7 +120,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <StatsCards statsData={statsData} formatCurrency={formatCurrency} />
+      <StatsCards statsData={statsData || defaultStatsData} formatCurrency={formatCurrency} />
 
       {/* Charts */}
       <RevenueChart
@@ -137,6 +128,7 @@ export default function DashboardPage() {
         onPeriodChange={setSelectedPeriod}
         currentRevenueData={revenueData}
         formatCurrency={formatCurrency}
+        isLoading={isLoadingRevenue}
         className="w-full"
       />
 
@@ -144,7 +136,25 @@ export default function DashboardPage() {
       <RecentClassesTable topClasses={topClasses} formatCurrency={formatCurrency} />
 
       {/* Overdue Students Table */}
-      <OverdueStudentsTable students={overdueStudents} formatCurrency={formatCurrency} />
+      <OverdueStudentsTable
+        students={overdueStudents}
+        formatCurrency={formatCurrency}
+        onPayment={handleOpenPayment}
+      />
+
+      <PaymentCalendarDialog
+        open={paymentDialogOpen}
+        onOpenChange={(open) => {
+          setPaymentDialogOpen(open);
+          if (!open) setSelectedStudent(null);
+        }}
+        student={selectedStudent}
+        onPaymentSuccess={async () => {
+          setPaymentDialogOpen(false);
+          setSelectedStudent(null);
+          await handlePaymentSuccess();
+        }}
+      />
     </div>
   );
 }

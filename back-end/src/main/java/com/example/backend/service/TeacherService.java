@@ -86,4 +86,12 @@ public class TeacherService {
         User teacherRes = userRepository.save(teacher);
         return modelMapper.map(teacherRes, TeacherResponse.class);
     }
+
+    public TeacherResponse resetPassword(String teacherId) {
+        User teacher = userRepository.findById(teacherId).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+        // Reset password to username (which is the phoneNumber)
+        teacher.setPassword(passwordEncoder.encode(teacher.getUsername()));
+        User teacherRes = userRepository.save(teacher);
+        return modelMapper.map(teacherRes, TeacherResponse.class);
+    }
 }

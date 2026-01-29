@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   StudentDetailHeader,
@@ -17,13 +17,14 @@ import {
   AttendanceSession,
   PaymentMonthStatus,
 } from './_components';
-import { studentService, paymentService } from '@/services';
-import { StudentType, MonthPaymentStatus, CreateStudentPaymentData, PaymentResponse, ClassHistoryResponse } from '@/types';
+import { MonthPaymentStatus, CreateStudentPaymentData, PaymentResponse, ClassHistoryResponse } from '@/types';
 import { toast } from 'react-toastify';
-import { useMemo } from 'react';
-import { formatCurrency } from '@/utils/helper';
 import { PageLoading } from '@/components/page-loading';
 import { HttpError } from '@/lib/http';
+import { useStudent, useStudentClassHistory } from '@/hooks/use-students';
+import { useCreateStudentPayment, usePaymentsByStudent } from '@/hooks/use-payments';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidatePaymentsByStudent, invalidateStudent, invalidateStudentClassHistory } from '@/lib/queryHelpers';
 
 // Convert API ClassHistoryResponse to ClassHistoryItem
 const convertToClassHistoryItem = (apiHistory: ClassHistoryResponse): ClassHistoryItem => {
@@ -149,110 +150,67 @@ const convertToPaymentHistoryItem = (apiPayment: PaymentResponse): PaymentHistor
 export default function StudentDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const studentId = params.id;
+  const studentId = params.id as string;
   const locale = params.locale as string;
   const tNotif = useTranslations('notifications');
 
-  const [studentData, setStudentData] = useState<StudentType | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // Class history state
-  const [classHistory, setClassHistory] = useState<ClassHistoryItem[]>([]);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+  const {
+    data: studentData,
+    isLoading: isLoadingStudent,
+    error: studentError,
+  } = useStudent(studentId);
+
+  const {
+    data: classHistoryApi = [],
+    isLoading: isLoadingClassHistory,
+  } = useStudentClassHistory(studentId);
+
+  const {
+    data: paymentsApi = [],
+    isLoading: isLoadingPayments,
+  } = usePaymentsByStudent(studentId);
+
+  const createStudentPayment = useCreateStudentPayment();
+
   const [attendanceSessions] = useState<AttendanceSession[]>(() => generateMockAttendance());
 
   // Convert API monthPaymentStatuses to component format
-  const monthlyPayments = useMemo(() => {
-    if (studentData?.monthPaymentStatuses && studentData.monthPaymentStatuses.length > 0) {
-      return convertToPaymentMonthStatus(studentData.monthPaymentStatuses);
-    }
-    // Fallback to empty array if no data
-    return [];
-  }, [studentData?.monthPaymentStatuses]);
+  // (compute trực tiếp; dữ liệu nhỏ nên không cần useMemo)
+  const monthlyPayments =
+    studentData?.monthPaymentStatuses && studentData.monthPaymentStatuses.length > 0
+      ? convertToPaymentMonthStatus(studentData.monthPaymentStatuses)
+      : [];
 
   useEffect(() => {
-    const fetchStudentData = async () => {
-      if (!studentId) return;
+    if (studentError instanceof HttpError && studentError.status === 404) {
+      router.push(`/${locale}/__not-found__`);
+    }
+  }, [studentError, router, locale]);
 
-      setLoading(true);
-      try {
-        const response = await studentService.getStudentById(studentId as string);
-        if (response.status === 200 && response.data) {
-          setStudentData(response.data);
-        } else {
-          toast.error(tNotif('errorLoadStudentInfo'));
-        }
-      } catch (error) {
-        console.error('Lỗi fetch thông tin học viên', error);
-        // Check if error is 404
-        if (error instanceof HttpError && error.status === 404) {
-          // Redirect to trigger not-found page via catch-all route
-          router.push(`/${locale}/__not-found__`);
-          return;
-        }
-        toast.error(tNotif('errorLoadStudentInfo'));
-      } finally {
-        setLoading(false);
-      }
-    };
+  useEffect(() => {
+    if (studentError && !(studentError instanceof HttpError && studentError.status === 404)) {
+      toast.error(tNotif('errorLoadStudentInfo'));
+    }
+  }, [studentError, tNotif]);
 
-    fetchStudentData();
-  }, [studentId, tNotif, router, locale]);
-
-  // Helper: refresh student data (used in multiple places)
-  const refreshStudentData = async () => {
+  const refreshStudentData = useCallback(() => {
     if (!studentId) return;
-    try {
-      const response = await studentService.getStudentById(studentId as string);
-      if (response.status === 200 && response.data) {
-        setStudentData(response.data);
-      }
-    } catch (error) {
-      console.error('Error refreshing student data:', error);
-    }
-  };
+    invalidateStudent(queryClient, studentId);
+    invalidateStudentClassHistory(queryClient, studentId);
+    invalidatePaymentsByStudent(queryClient, studentId);
+  }, [queryClient, studentId]);
 
-  // Fetch payment history
-  useEffect(() => {
-    const fetchPaymentHistory = async () => {
-      if (!studentId) return;
+  const paymentHistory = useMemo(() => {
+    return paymentsApi
+      .map(convertToPaymentHistoryItem)
+      .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
+  }, [paymentsApi]);
 
-      try {
-        const response = await paymentService.getPaymentsByStudentId(studentId as string);
-        if (response.status === 200 && response.data) {
-          const convertedHistory = response.data.map(convertToPaymentHistoryItem).sort((a, b) => {
-            return new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime();
-          });
-          setPaymentHistory(convertedHistory);
-        }
-      } catch (error) {
-        console.error('Lỗi fetch lịch sử thanh toán', error);
-        // Don't show error toast, just log it
-      }
-    };
-
-    fetchPaymentHistory();
-  }, [studentId]);
-
-  // Fetch class history
-  useEffect(() => {
-    const fetchClassHistory = async () => {
-      if (!studentId) return;
-
-      try {
-        const response = await studentService.getClassHistory(studentId as string);
-        if (response.status === 200 && response.data) {
-          const convertedHistory = response.data.map(convertToClassHistoryItem);
-          setClassHistory(convertedHistory);
-        }
-      } catch (error) {
-        console.error('Lỗi fetch lịch sử lớp học', error);
-        // Don't show error toast, just log it
-      }
-    };
-
-    fetchClassHistory();
-  }, [studentId]);
+  const classHistory = useMemo(() => {
+    return classHistoryApi.map(convertToClassHistoryItem);
+  }, [classHistoryApi]);
 
   // Handle payment submit from calendar
   const handlePaymentSubmit = async (data: CreateStudentPaymentData) => {
@@ -262,47 +220,19 @@ export default function StudentDetailPage() {
         return;
       }
 
-      // Call API to create payment
-      const response = await paymentService.createStudentPayment(data, studentData.class.monthlyFee);
-
-      if (response.status === 201 && response.data) {
-        toast.success(tNotif('successRecordPayment', { amount: formatCurrency(data.amount), month: data.month, year: data.year }));
-
-        // Tự động tải hóa đơn PDF
-        if (response.data.paymentId || response.data.id) {
-          try {
-            const paymentId = response.data.paymentId || response.data.id;
-            await paymentService.downloadInvoiceAndSave(paymentId, `HoaDon_${paymentId}.pdf`);
-          } catch (error) {
-            console.error('Lỗi khi tải hóa đơn:', error);
-            // Không hiển thị lỗi để không làm gián đoạn flow
-          }
-        }
-
-        // Refresh student data to update payment status
-        const studentResponse = await studentService.getStudentById(data.studentId);
-        if (studentResponse.status === 200 && studentResponse.data) {
-          setStudentData(studentResponse.data);
-        }
-
-        // Refresh payment history
-        const paymentHistoryResponse = await paymentService.getPaymentsByStudentId(data.studentId);
-        if (paymentHistoryResponse.status === 200 && paymentHistoryResponse.data) {
-          const convertedHistory = paymentHistoryResponse.data.map(convertToPaymentHistoryItem).sort((a, b) => {
-            return new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime();
-          });
-          setPaymentHistory(convertedHistory);
-        }
-      } else {
-        toast.error(tNotif('errorRecordPayment'));
-      }
+      await createStudentPayment.mutateAsync({
+        data,
+        monthlyFee: studentData.class.monthlyFee,
+      });
     } catch (error) {
       console.error('Lỗi khi ghi nhận thanh toán', error);
       toast.error(tNotif('errorRecordPayment'));
     }
   };
 
-  if (loading) {
+  const isLoading = isLoadingStudent || isLoadingClassHistory || isLoadingPayments;
+
+  if (isLoading) {
     return <PageLoading />;
   }
 
@@ -338,6 +268,7 @@ export default function StudentDetailPage() {
         studentId={studentData?.id}
         paymentHistory={paymentHistory}
         onPaymentSubmit={handlePaymentSubmit}
+        isSubmittingPayment={createStudentPayment.isPending}
       />
 
       <StudentPaymentHistory paymentHistory={paymentHistory} />

@@ -1,7 +1,15 @@
 'use client';
 
+import { PageLoading } from '@/components/page-loading';
+import { useClassesByTeacher } from '@/hooks/use-classes';
+import { useCreateTeacherPayment, usePaymentsByTeacher } from '@/hooks/use-payments';
+import { useTeacher } from '@/hooks/use-teachers';
+import { HttpError } from '@/lib/http';
+import { CreateTeacherPaymentData, PaymentResponse, SalaryMonthStatus, SalaryPayment } from '@/types';
 import { useTranslations } from 'next-intl';
-import { TeacherType } from '@/types/teacher-type';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo } from 'react';
+import { toast } from 'react-toastify';
 import {
   TeacherAttendance,
   TeacherClassesList,
@@ -9,16 +17,6 @@ import {
   TeacherSalaryHistory,
   TeacherSalaryPaymentCalendar,
 } from './_components';
-import { SalaryMonthStatus, SalaryPayment } from '@/types';
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
-import { teacherService } from '@/services/teacher-service';
-import { classService } from '@/services/class-service';
-import { paymentService } from '@/services/payment-service';
-import { ClassType, PaymentResponse, CreateTeacherPaymentData } from '@/types';
-import { PageLoading } from '@/components/page-loading';
-import { toast } from 'react-toastify';
-import { HttpError } from '@/lib/http';
 
 // Convert PaymentResponse to SalaryPayment
 const convertToSalaryPayment = (payment: PaymentResponse): SalaryPayment => {
@@ -233,13 +231,34 @@ export default function TeacherDetailPage() {
   const tNotif = useTranslations('notifications');
   const params = useParams();
   const router = useRouter();
-  const teacherId = params.id;
+  const teacherId = params.id as string;
   const locale = params.locale as string;
 
-  const [teacherData, setTeacherData] = useState<TeacherType>();
-  const [classesData, setClassesData] = useState<ClassType[]>();
-  const [paymentHistory, setPaymentHistory] = useState<PaymentResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: teacherData,
+    isLoading: isLoadingTeacher,
+    error: teacherError,
+  } = useTeacher(teacherId);
+  const {
+    data: classesData = [],
+    isLoading: isLoadingClasses,
+  } = useClassesByTeacher(teacherId);
+  const {
+    data: paymentsApi = [],
+    isLoading: isLoadingPayments,
+  } = usePaymentsByTeacher(teacherId);
+
+  const createTeacherPayment = useCreateTeacherPayment();
+
+  const paymentHistory = useMemo(() => {
+    return paymentsApi
+      .filter((p: PaymentResponse) => p.paymentType === 'TEACHER_SALARY')
+      .sort((a: PaymentResponse, b: PaymentResponse) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+  }, [paymentsApi]);
 
   // Convert payment history to salary month statuses
   const monthlySalaries = useMemo(() => {
@@ -262,55 +281,15 @@ export default function TeacherDetailPage() {
   }, [paymentHistory]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [teacherResponse, classesResponse, paymentsResponse] = await Promise.all([
-          teacherService.getTeacherById(teacherId as string),
-          classService.getClassesByTeacherId(teacherId as string),
-          paymentService.getPaymentsByTeacherId(teacherId as string),
-        ]);
-
-        if (teacherResponse.status === 200 && teacherResponse.data) {
-          setTeacherData(teacherResponse.data);
-        } else if (teacherResponse.status === 404) {
-          // Redirect to trigger not-found page via catch-all route
-          router.push(`/${locale}/__not-found__`);
-          return;
-        }
-
-        if (classesResponse.status === 200 && classesResponse.data) {
-          setClassesData(classesResponse.data);
-        }
-
-        if (paymentsResponse.status === 200 && paymentsResponse.data) {
-          // Filter only TEACHER_SALARY payments and sort by createdAt desc
-          const teacherPayments = paymentsResponse.data
-            .filter((p: PaymentResponse) => p.paymentType === 'TEACHER_SALARY')
-            .sort((a: PaymentResponse, b: PaymentResponse) => {
-              const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-              const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-              return dateB - dateA;
-            });
-          setPaymentHistory(teacherPayments);
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        // Check if error is 404
-        if (error instanceof HttpError && error.status === 404) {
-          // Redirect to trigger not-found page via catch-all route
-          router.push(`/${locale}/__not-found__`);
-          return;
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (teacherId) {
-      fetchData();
+    if (teacherError instanceof HttpError && teacherError.status === 404) {
+      router.push(`/${locale}/__not-found__`);
+      return;
     }
-  }, [teacherId, router, locale]);
+    if (teacherError) {
+      toast.error(tNotif('errorLoadTeachers'));
+      console.error('Error fetching teacher detail:', teacherError);
+    }
+  }, [teacherError, router, locale, tNotif]);
 
   // Handle salary payment submit
   const handleSalaryPaymentSubmit = async (data: {
@@ -338,45 +317,19 @@ export default function TeacherDetailPage() {
         paymentDate: data.paymentDate,
         notes: data.notes,
       };
-
-      const response = await paymentService.createTeacherPayment(paymentData);
-
-      if (response.status === 201 && response.data) {
-        toast.success(tNotif('successPaySalary'));
-        
-        // Tự động tải hóa đơn PDF
-        if (response.data.paymentId || response.data.id) {
-          try {
-            const paymentId = response.data.paymentId || response.data.id;
-            await paymentService.downloadInvoiceAndSave(paymentId, `HoaDonLuong_${paymentId}.pdf`);
-          } catch (error) {
-            console.error('Lỗi khi tải hóa đơn:', error);
-            // Không hiển thị lỗi để không làm gián đoạn flow
-          }
-        }
-        
-        // Refresh payment history
-        const paymentsResponse = await paymentService.getPaymentsByTeacherId(teacherId as string);
-        if (paymentsResponse.status === 200 && paymentsResponse.data) {
-          const teacherPayments = paymentsResponse.data
-            .filter((p: PaymentResponse) => p.paymentType === 'TEACHER_SALARY')
-            .sort((a: PaymentResponse, b: PaymentResponse) => {
-              const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-              const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-              return dateB - dateA;
-            });
-          setPaymentHistory(teacherPayments);
-        }
-      } else {
-        toast.error(tNotif('errorPaySalary'));
-      }
+      await createTeacherPayment.mutateAsync(paymentData);
     } catch (error) {
       console.error('Error creating salary payment:', error);
       toast.error(tNotif('errorPaySalary'));
     }
   };
 
-  if (loading || !teacherData || !classesData) {
+  const isLoading = isLoadingTeacher || isLoadingClasses || isLoadingPayments;
+  if (isLoading) {
+    return <PageLoading />;
+  }
+
+  if (!teacherData) {
     return <PageLoading />;
   }
 
@@ -395,6 +348,7 @@ export default function TeacherDetailPage() {
         teacherId={teacherId as string}
         paymentHistory={paymentHistory}
         onPaymentSubmit={handleSalaryPaymentSubmit}
+        isSubmittingPayment={createTeacherPayment.isPending}
       />
 
       {/* Salary History */}

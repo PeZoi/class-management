@@ -101,7 +101,6 @@ public class ClassService {
         Class classDB = classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
         User TeacherDB = userRepository.findById(classRequest.getTeacherId()).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
         classDB.setName(classRequest.getName());
-        classDB.setSchedule(classRequest.getSchedule());
         classDB.setMonthlyFee(classRequest.getMonthlyFee());
         classDB.setTeacher(TeacherDB);
         Class savedClass = classRepository.save(classDB);

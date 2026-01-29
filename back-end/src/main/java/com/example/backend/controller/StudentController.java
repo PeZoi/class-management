@@ -5,6 +5,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.backend.dto.student.ClassHistoryResponse;
+import com.example.backend.dto.student.UpdateStudentShiftRequest;
+import com.example.backend.dto.student.BulkUpdateStudentShiftRequest;
+import com.example.backend.dto.student.RemoveStudentsFromClassRequest;
 import com.example.backend.dto.student.StudentRequest;
 import com.example.backend.dto.student.StudentResponse;
 import com.example.backend.service.StudentService;
@@ -53,6 +56,24 @@ public class StudentController {
     public ResponseEntity<StudentResponse> update(@RequestBody StudentRequest studentRequest, @PathVariable String studentId) {
         StudentResponse studentResponse = studentService.update(studentRequest, studentId);
         return new ResponseEntity<>(studentResponse, HttpStatus.OK);
+    }
+
+    @PutMapping("/update-shift")
+    public ResponseEntity<StudentResponse> updateStudentShift(@RequestBody UpdateStudentShiftRequest request) {
+        StudentResponse studentResponse = studentService.updateStudentShift(request);
+        return new ResponseEntity<>(studentResponse, HttpStatus.OK);
+    }
+
+    @PutMapping("/update-shifts")
+    public ResponseEntity<List<StudentResponse>> updateStudentsShift(@RequestBody BulkUpdateStudentShiftRequest request) {
+        List<StudentResponse> studentResponses = studentService.updateStudentsShift(request);
+        return new ResponseEntity<>(studentResponses, HttpStatus.OK);
+    }
+
+    @PutMapping("/remove-from-class")
+    public ResponseEntity<List<StudentResponse>> removeStudentsFromClass(@RequestBody RemoveStudentsFromClassRequest request) {
+        List<StudentResponse> studentResponses = studentService.removeStudentsFromClass(request);
+        return new ResponseEntity<>(studentResponses, HttpStatus.OK);
     }
 
     @GetMapping("/class-history/{studentId}")

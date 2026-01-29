@@ -82,32 +82,35 @@ export function TeacherSalaryDetailDialog({
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             <CheckCircle className="size-6 text-green-600" />
-            Chi Tiết Thanh Toán Lương
+            {t('salaryPaymentDetailTitle')}
           </DialogTitle>
           <DialogDescription>
-            {`Thông tin thanh toán lương cho tháng ${monthNames[salary.month - 1]} ${salary.year}`}
+            {t('salaryPaymentDetailDescription', {
+              month: monthNames[salary.month - 1],
+              year: salary.year,
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Salary Summary */}
           <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tổng Quan</h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('overview')}</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-slate-500">Tháng:</span>
+                <span className="text-slate-500">{t('monthLabel')}:</span>
                 <div className="font-medium text-slate-900 dark:text-slate-100">
                   {monthNames[salary.month - 1]} {salary.year}
                 </div>
               </div>
               <div>
-                <span className="text-slate-500">Tổng lương:</span>
+                <span className="text-slate-500">{t('totalSalary')}:</span>
                 <div className="font-medium text-slate-900 dark:text-slate-100">
                   {formatCurrency(salary.totalAmount || baseSalary)}
                 </div>
               </div>
               <div>
-                <span className="text-slate-500">Lương cơ bản:</span>
+                <span className="text-slate-500">{t('baseSalary')}:</span>
                 <div className="font-medium text-slate-900 dark:text-slate-100">
                   {formatCurrency(salary.baseSalary || baseSalary)}
                 </div>
@@ -172,7 +175,7 @@ export function TeacherSalaryDetailDialog({
                         </div>
                         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                           <Calendar className="size-4" />
-                          {p.createdAt ? formatDateTime(p.createdAt) : 'N/A'}
+                          {p.createdAt ? formatDateTime(p.createdAt) : t('na')}
                         </div>
                         {p.bonus && p.bonus > 0 && (
                           <div className="text-xs text-green-600 dark:text-green-400 mt-1">
@@ -207,7 +210,7 @@ export function TeacherSalaryDetailDialog({
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Đóng
+            {tPayment('close')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,9 +1,10 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,16 +13,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useClassShiftsByClass } from '@/hooks/use-classes';
+import { useBulkRemoveStudentsFromClass, useBulkUpdateStudentShift } from '@/hooks/use-students';
 import { cn } from '@/lib/utils';
-import { StudentType, StudentRequest } from '@/types';
-import { ClassShiftType } from '@/types/class-type';
+import { StudentType } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
 import {
+  AlertTriangle,
+  ArrowRight,
   BookOpen,
   Calendar,
+  Check,
   CheckCircle,
   Clock,
   CreditCard,
@@ -33,19 +38,14 @@ import {
   Phone,
   Search,
   User,
+  UserMinus,
   Users,
   X,
-  ArrowRight,
-  Check,
-  UserMinus,
-  AlertTriangle,
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { useState, useMemo, useEffect } from 'react';
-import { classShiftService, studentService } from '@/services';
+import { useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Badge } from '@/components/ui/badge';
 
 interface ClassroomStudentsListProps {
   students: StudentType[];
@@ -117,11 +117,14 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [isShiftDialogOpen, setIsShiftDialogOpen] = useState(false);
-  const [shifts, setShifts] = useState<ClassShiftType[]>([]);
   const [selectedShiftId, setSelectedShiftId] = useState<string>('__none__');
   const [isUpdatingShift, setIsUpdatingShift] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+
+  const { data: shifts = [] } = useClassShiftsByClass(classId || '');
+  const bulkUpdateStudentShift = useBulkUpdateStudentShift();
+  const bulkRemoveStudentsFromClass = useBulkRemoveStudentsFromClass();
 
   const mappedStudents: ClassroomStudentItem[] = students.map((student) => {
     const monthlyFee = student.class?.monthlyFee || 0;
@@ -195,24 +198,6 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
     );
   };
 
-  // Fetch shifts when dialog opens
-  useEffect(() => {
-    const fetchShifts = async () => {
-      if (isShiftDialogOpen && classId) {
-        try {
-          const res = await classShiftService.getByClassId(classId);
-          if (res.status === 200 && res.data) {
-            setShifts(res.data || []);
-          }
-        } catch (error) {
-          console.error('Error fetching shifts', error);
-          toast.error(tNotif('errorLoadShifts'));
-        }
-      }
-    };
-    fetchShifts();
-  }, [isShiftDialogOpen, classId, tNotif]);
-
   // Handle select/deselect all
   const handleSelectAll = () => {
     const filteredIds = new Set(filteredStudents.map(s => s.id));
@@ -252,52 +237,28 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
       return;
     }
 
+    if (!classId) {
+      toast.error(tNotif('errorGetClassInfo'));
+      return;
+    }
+
     try {
       setIsRemoving(true);
       const studentIds = Array.from(selectedStudentIds);
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const studentId of studentIds) {
-        try {
-          // Get current student data
-          const studentResponse = await studentService.getStudentById(studentId);
-          if (studentResponse.status !== 200 || !studentResponse.data) {
-            throw new Error(tNotif('errorGetStudentInfo'));
-          }
-
-          const student = studentResponse.data;
-          // Update student with empty classId to remove from class
-          const updateData: StudentRequest = {
-            fullName: student.fullName,
-            email: student.email,
-            phoneNumber: student.phoneNumber,
-            dob: student.dob,
-            gender: student.gender,
-            fullNameParent: student.fullNameParent,
-            phoneNumberParent: student.phoneNumberParent,
-            classId: '', // Empty string to remove from class
-            classShiftId: undefined,
-          };
-
-          await studentService.updateStudent(updateData, studentId);
-          successCount++;
-        } catch (error) {
-          console.error(`Error removing student ${studentId} from class`, error);
-          errorCount++;
-        }
-      }
+      const { successCount, errorCount, failedIds } = await bulkRemoveStudentsFromClass.mutateAsync({
+        classId,
+        studentIds,
+      });
 
       if (successCount > 0) {
         toast.success(tNotif('successRemoveStudents', { count: successCount }));
         setSelectedStudentIds(new Set());
         setIsRemoveDialogOpen(false);
-        if (onStudentsUpdate) {
-          onStudentsUpdate();
-        }
+        if (onStudentsUpdate) onStudentsUpdate();
       }
 
       if (errorCount > 0) {
+        console.error('Failed to remove students for studentIds:', failedIds);
         toast.error(tNotif('errorRemoveStudentsFail', { count: errorCount }));
       }
     } catch (error) {
@@ -323,34 +284,28 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
     try {
       setIsUpdatingShift(true);
       const studentIds = Array.from(selectedStudentIds);
-      let successCount = 0;
-      let errorCount = 0;
+      const classShiftId = selectedShiftId === '__none__' ? undefined : (selectedShiftId || undefined);
 
-      for (const studentId of studentIds) {
-        try {
-          await studentService.updateStudentShift({
-            studentId,
-            classId,
-            classShiftId: selectedShiftId === '__none__' ? undefined : (selectedShiftId || undefined),
-          });
-          successCount++;
-        } catch (error) {
-          console.error(`Error updating shift for student ${studentId}`, error);
-          errorCount++;
-        }
-      }
+      const { successCount, errorCount, failedIds } = await bulkUpdateStudentShift.mutateAsync({
+        classId,
+        studentIds,
+        classShiftId,
+      });
 
       if (successCount > 0) {
         toast.success(tNotif('successUpdateShift', { count: successCount }));
         setSelectedStudentIds(new Set());
         setSelectedShiftId('__none__');
         setIsShiftDialogOpen(false);
+
+        // Hook `useBulkUpdateStudentShift` đã invalidate các query liên quan để UI tự refresh
         if (onStudentsUpdate) {
           onStudentsUpdate();
         }
       }
 
       if (errorCount > 0) {
+        console.error('Failed to update shift for studentIds:', failedIds);
         toast.error(tNotif('errorUpdateShiftFail', { count: errorCount }));
       }
     } catch (error) {

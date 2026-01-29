@@ -9,13 +9,12 @@ import {
 } from '@/components/ui/dialog';
 import { PaymentStatusCalendar, PaymentMonthStatus } from '../[id]/_components/payment-status-calendar';
 import { PaymentHistoryItem } from '../[id]/_components';
-import { StudentType, MonthPaymentStatus, CreateStudentPaymentData, PaymentResponse } from '@/types';
-import { studentService, paymentService } from '@/services';
-import { toast } from 'react-toastify';
-import { useEffect, useState, useMemo } from 'react';
-import { formatCurrency } from '@/utils/helper';
+import { MonthPaymentStatus, CreateStudentPaymentData, PaymentResponse } from '@/types';
 import { useTranslations } from 'next-intl';
 import { PageLoading } from '@/components/page-loading';
+import { useStudent } from '@/hooks/use-students';
+import { useCreateStudentPayment, usePaymentsByStudent } from '@/hooks/use-payments';
+import { toast } from 'react-toastify';
 
 interface PaymentCalendarDialogProps {
   open: boolean;
@@ -88,64 +87,24 @@ export function PaymentCalendarDialog({
 }: PaymentCalendarDialogProps) {
   const t = useTranslations('student-detail');
   const tNotif = useTranslations('notifications');
-  const [studentData, setStudentData] = useState<StudentType | null>(null);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const studentId = student?.id ?? '';
+
+  const { data: studentData, isLoading: isLoadingStudent } = useStudent(studentId);
+  const { data: payments = [], isLoading: isLoadingPayments } = usePaymentsByStudent(studentId);
+  const createStudentPayment = useCreateStudentPayment();
 
   // Convert API monthPaymentStatuses to component format
-  const monthlyPayments = useMemo(() => {
-    if (studentData?.monthPaymentStatuses && studentData.monthPaymentStatuses.length > 0) {
-      return convertToPaymentMonthStatus(studentData.monthPaymentStatuses);
-    }
-    // Fallback to empty array if no data
-    return [];
-  }, [studentData?.monthPaymentStatuses]);
+  const monthlyPayments: PaymentMonthStatus[] =
+    studentData?.monthPaymentStatuses && studentData.monthPaymentStatuses.length > 0
+      ? convertToPaymentMonthStatus(studentData.monthPaymentStatuses)
+      : [];
 
-  // Fetch student data when dialog opens
-  useEffect(() => {
-    const fetchStudentData = async () => {
-      if (!student?.id || !open) return;
-
-      setLoading(true);
-      try {
-        const response = await studentService.getStudentById(student.id);
-        if (response.status === 200 && response.data) {
-          setStudentData(response.data);
-        } else {
-          toast.error(tNotif('errorLoadStudentInfo'));
-        }
-      } catch (error) {
-        console.error('Lỗi fetch thông tin học viên', error);
-        toast.error(tNotif('errorLoadStudentInfo'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStudentData();
-  }, [student?.id, open]);
-
-  // Fetch payment history when dialog opens
-  useEffect(() => {
-    const fetchPaymentHistory = async () => {
-      if (!student?.id || !open) return;
-
-      try {
-        const response = await paymentService.getPaymentsByStudentId(student.id);
-        if (response.status === 200 && response.data) {
-          const convertedHistory = response.data.map(convertToPaymentHistoryItem).sort((a, b) => {
-            return new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime();
-          });
-          setPaymentHistory(convertedHistory);
-        }
-      } catch (error) {
-        console.error('Lỗi fetch lịch sử thanh toán', error);
-        // Don't show error toast, just log it
-      }
-    };
-
-    fetchPaymentHistory();
-  }, [student?.id, open]);
+  const paymentHistory: PaymentHistoryItem[] =
+    payments && payments.length > 0
+      ? (payments as PaymentResponse[])
+          .map(convertToPaymentHistoryItem)
+          .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
+      : [];
 
   // Handle payment submit from calendar
   const handlePaymentSubmit = async (data: CreateStudentPaymentData) => {
@@ -155,48 +114,18 @@ export function PaymentCalendarDialog({
         return;
       }
 
-      // Call API to create payment
-      const response = await paymentService.createStudentPayment(data, studentData.class.monthlyFee);
+      await createStudentPayment.mutateAsync({
+        data,
+        monthlyFee: studentData.class.monthlyFee,
+      });
 
-      if (response.status === 201 && response.data) {
-        toast.success(tNotif('successRecordPayment', { amount: formatCurrency(data.amount), month: data.month, year: data.year }));
-
-        // Tự động tải hóa đơn PDF
-        if (response.data.paymentId || response.data.id) {
-          try {
-            const paymentId = response.data.paymentId || response.data.id;
-            await paymentService.downloadInvoiceAndSave(paymentId, `HoaDon_${paymentId}.pdf`);
-          } catch (error) {
-            console.error('Lỗi khi tải hóa đơn:', error);
-            // Không hiển thị lỗi để không làm gián đoạn flow
-          }
-        }
-
-        // Refresh student data to update payment status
-        const studentResponse = await studentService.getStudentById(data.studentId);
-        if (studentResponse.status === 200 && studentResponse.data) {
-          setStudentData(studentResponse.data);
-        }
-
-        // Refresh payment history
-        const paymentHistoryResponse = await paymentService.getPaymentsByStudentId(data.studentId);
-        if (paymentHistoryResponse.status === 200 && paymentHistoryResponse.data) {
-          const convertedHistory = paymentHistoryResponse.data.map(convertToPaymentHistoryItem).sort((a, b) => {
-            return new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime();
-          });
-          setPaymentHistory(convertedHistory);
-        }
-
-        // Call success callback if provided
-        if (onPaymentSuccess) {
-          onPaymentSuccess();
-        }
-      } else {
-        toast.error(tNotif('errorRecordPayment'));
+      // Call success callback if provided
+      if (onPaymentSuccess) {
+        onPaymentSuccess();
       }
     } catch (error) {
       console.error('Lỗi khi ghi nhận thanh toán', error);
-      toast.error(tNotif('errorRecordPayment'));
+      // Toast đã được handle trong hook useCreateStudentPayment
     }
   };
 
@@ -215,7 +144,7 @@ export function PaymentCalendarDialog({
         </DialogHeader>
 
         <div className="px-4 sm:px-6 pb-4 sm:pb-6">
-          {loading ? (
+          {isLoadingStudent || isLoadingPayments ? (
             <div className="py-8">
               <PageLoading />
             </div>
@@ -227,12 +156,13 @@ export function PaymentCalendarDialog({
                 studentId={studentData?.id}
                 paymentHistory={paymentHistory}
                 onPaymentSubmit={handlePaymentSubmit}
+                isSubmittingPayment={createStudentPayment.isPending}
               />
             </div>
           ) : (
             <div className="py-8 text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Không thể tải thông tin học viên
+                {tNotif('errorLoadStudentInfo')}
               </p>
             </div>
           )}

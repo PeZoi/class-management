@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { CartesianGrid, Line, LineChart, XAxis, YAxis, Legend, ResponsiveContainer } from 'recharts';
 
@@ -20,6 +21,7 @@ interface ClassroomRevenueChartProps {
   formatCurrency: (amount: number) => string;
   classNames: Array<{ id: number; name: string; color: string }>;
   className?: string;
+  isLoading: boolean;
 }
 
 export function ClassroomRevenueChart({
@@ -29,6 +31,7 @@ export function ClassroomRevenueChart({
   formatCurrency,
   classNames,
   className,
+  isLoading
 }: ClassroomRevenueChartProps) {
   const t = useTranslations('classroom-management');
 
@@ -121,7 +124,7 @@ export function ClassroomRevenueChart({
           className="h-[400px] w-full"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={revenueData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+            {isLoading ? (<div className='flex items-center justify-center h-full'><Loader2 className='size-10 animate-spin' /></div>) : (<LineChart data={revenueData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
               <CartesianGrid
                 strokeDasharray="3 3"
                 className="stroke-slate-200 dark:stroke-slate-800"
@@ -195,7 +198,7 @@ export function ClassroomRevenueChart({
                   animationDuration={800}
                 />
               ))}
-            </LineChart>
+            </LineChart>)}
           </ResponsiveContainer>
         </ChartContainer>
       </CardContent>

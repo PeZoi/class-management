@@ -1,11 +1,11 @@
 'use client';
 
 import { PageLoading } from '@/components/page-loading';
-import { teacherService } from '@/services';
+import { useCreateTeacher, useResetTeacherPassword, useTeachers, useUpdateTeacher } from '@/hooks/use-teachers';
 import { TeacherRequest, TeacherType } from '@/types';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { TeacherDialog } from './_components/teacher-dialog';
 import { TeacherTable } from './_components/teacher-table';
@@ -15,30 +15,28 @@ export default function TeacherManagementPage() {
   const locale = useLocale();
   const tNotif = useTranslations('notifications');
   const tCommon = useTranslations('common');
-  const [teachers, setTeachers] = useState<TeacherType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherType | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchTeachers = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const response = await teacherService.getAllTeachers();
-      if (response.status === 200) {
-        setTeachers(response.data || []);
-      }
-    } catch (error) {
-      toast.error(tNotif('errorLoadTeachers'));
-      console.error('Error fetching teachers:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [tNotif]);
+  const { data: teachersData = [], isLoading, error: teachersError } = useTeachers();
+  const createTeacher = useCreateTeacher();
+  const updateTeacher = useUpdateTeacher();
+  const resetPassword = useResetTeacherPassword();
 
   useEffect(() => {
-    fetchTeachers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (teachersError) {
+      toast.error(tNotif('errorLoadTeachers'));
+      console.error('Error fetching teachers:', teachersError);
+    }
+  }, [teachersError, tNotif]);
+
+  // Optional: local remove for optimistic UI when child component "deletes" from table
+  // (actual delete API isn't present in teacherService currently)
+  const [deletedTeacherIds, setDeletedTeacherIds] = useState<string[]>([]);
+  const teachers = useMemo(() => {
+    if (!deletedTeacherIds.length) return teachersData;
+    return teachersData.filter((t) => !deletedTeacherIds.includes(t.id));
+  }, [teachersData, deletedTeacherIds]);
 
   const handleAdd = useCallback(() => {
     setSelectedTeacher(null);
@@ -51,7 +49,7 @@ export default function TeacherManagementPage() {
   }, []);
 
   const handleDelete = useCallback((id: string) => {
-    setTeachers((prev) => prev.filter((t) => t.id !== id));
+    setDeletedTeacherIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
   }, []);
 
   const handleSave = useCallback(
@@ -69,35 +67,23 @@ export default function TeacherManagementPage() {
 
       if (selectedTeacher) {
         try {
-          const response = await teacherService.updateTeacher(selectedTeacher.id, teacherRequest);
-          if (response.status === 200 && response.data) {
-            const updatedTeacher = response.data;
-            toast.success(tNotif('successUpdateTeacher'));
-            setIsDialogOpen(false);
-            setSelectedTeacher(null);
-            setTeachers((prev) => prev.map((t) => (t.id === selectedTeacher.id ? { ...t, ...updatedTeacher } : t)));
-          }
+          await updateTeacher.mutateAsync({ id: selectedTeacher.id, data: teacherRequest });
+          setIsDialogOpen(false);
+          setSelectedTeacher(null);
         } catch (error) {
           console.error('Error updating teacher:', error);
-          toast.error(tNotif('errorUpdateTeacher'));
         }
       } else {
         try {
-          const response = await teacherService.createTeacher(teacherRequest);
-          if (response.status === 201 && response.data) {
-            const newTeacher = response.data;
-            toast.success(tNotif('successCreateTeacher'));
-            setIsDialogOpen(false);
-            setSelectedTeacher(null);
-            setTeachers((prev) => [...prev, newTeacher]);
-          }
+          await createTeacher.mutateAsync(teacherRequest);
+          setIsDialogOpen(false);
+          setSelectedTeacher(null);
         } catch (error) {
           console.error('Error creating teacher:', error);
-          toast.error(tNotif('errorCreateTeacher'));
         }
       }
     },
-    [selectedTeacher, tNotif],
+    [createTeacher, selectedTeacher, updateTeacher],
   );
 
   const handleViewDetail = useCallback(
@@ -105,6 +91,17 @@ export default function TeacherManagementPage() {
       router.push(`/${locale}/teacher-management/${teacher.id}`);
     },
     [router, locale],
+  );
+
+  const handleResetPassword = useCallback(
+    async (teacher: TeacherType) => {
+      try {
+        await resetPassword.mutateAsync(teacher.id as string);
+      } catch (error) {
+        console.error('Error resetting password:', error);
+      }
+    },
+    [resetPassword],
   );
 
   if (isLoading) {
@@ -120,11 +117,18 @@ export default function TeacherManagementPage() {
         onDelete={handleDelete}
         onAdd={handleAdd}
         onViewDetail={handleViewDetail}
+        onResetPassword={handleResetPassword}
         showActions={true}
       />
 
       {/* Teacher Dialog */}
-      <TeacherDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} teacher={selectedTeacher} onSave={handleSave} />
+      <TeacherDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        teacher={selectedTeacher}
+        onSave={handleSave}
+        isSubmitting={createTeacher.isPending || updateTeacher.isPending}
+      />
     </div>
   );
 }

@@ -36,8 +36,6 @@ public class Class extends Auditable {
     @Column(name = "monthly_fee", nullable = false)
     private int monthlyFee;
 
-    private String schedule;
-
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "teacher_id", nullable = false)
     private User teacher;

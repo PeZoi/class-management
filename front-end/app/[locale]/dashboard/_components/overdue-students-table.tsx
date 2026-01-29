@@ -1,18 +1,20 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 import { StudentType } from '@/types';
 import { formatDate } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
-import { BookOpen, Calendar, CheckCircle, Clock, DollarSign, Eye, Mail, Phone, User, Users } from 'lucide-react';
+import { BookOpen, Calendar, CheckCircle, Clock, CreditCard, DollarSign, Mail, Phone, User, Users } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 interface OverdueStudentsTableProps {
   students: StudentType[];
   formatCurrency: (amount: number) => string;
+  onPayment?: (student: { id: string; fullName: string }) => void;
 }
 
 interface OverdueStudentItem extends StudentType {
@@ -71,7 +73,7 @@ const getCurrentMonthPaymentStatus = (
   };
 };
 
-export function OverdueStudentsTable({ students, formatCurrency }: OverdueStudentsTableProps) {
+export function OverdueStudentsTable({ students, formatCurrency, onPayment }: OverdueStudentsTableProps) {
   const t = useTranslations('dashboard');
   const locale = useLocale();
 
@@ -317,13 +319,18 @@ export function OverdueStudentsTable({ students, formatCurrency }: OverdueStuden
         const student = row.original;
         return (
           <div className="text-center">
-            <Link
-              href={`/${locale}/student-management/${student.id}`}
-              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 px-2.5 gap-1.5"
+              onClick={() => {
+                onPayment?.({ id: student.id, fullName: student.fullName });
+              }}
             >
-              <Eye className="size-4" />
-              {t('viewDetail')}
-            </Link>
+              <CreditCard className="size-4" />
+              {t('payment')}
+            </Button>
           </div>
         );
       },

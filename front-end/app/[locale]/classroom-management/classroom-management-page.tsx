@@ -1,16 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { PageLoading } from '@/components/page-loading';
+import {
+  useClasses,
+  useClassRevenueData,
+  useCreateClass,
+  useUpdateClass,
+  useClassShiftsSummary,
+} from '@/hooks/use-classes';
+import { ClassRequest, ClassRevenueDataResponse, ClassType } from '@/types/class-type';
 import { formatCurrency } from '@/utils/helper';
-import { ClassroomTable } from './_components/classroom-table';
+import { useTranslations } from 'next-intl';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-toastify';
 import { ClassroomDialog } from './_components/classroom-dialog';
 import { ClassroomRevenueChart } from './_components/classroom-revenue-chart';
-import { useTranslations } from 'next-intl';
-import { ClassRequest, ClassType, ClassRevenueDataResponse } from '@/types/class-type';
-import { classService } from '@/services/class-service';
-import { classShiftService } from '@/services';
-import { toast } from 'react-toastify';
-import { PageLoading } from '@/components/page-loading';
+import { ClassroomTable } from './_components/classroom-table';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -28,122 +33,62 @@ const colorPalette = [
   '#14b8a6', // Teal
 ];
 
-
 export default function ClassroomManagementPage() {
   const t = useTranslations('classroom-management');
   const tNotif = useTranslations('notifications');
   const tCommon = useTranslations('common');
-  const [classes, setClasses] = useState<ClassType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassType | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingRevenue, setIsLoadingRevenue] = useState(false);
-  const [classShiftSummaryByClassId, setClassShiftSummaryByClassId] = useState<Record<string, string>>({});
-
-  // Chart state
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
-  const [revenueData, setRevenueData] = useState<Array<{
-    month: string;
-    label: string;
-    [key: string]: string | number;
-  }>>([]);
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const response = await classService.getAllClasses();
-      if (response.status === 200) {
-        setClasses(response.data || []);
-      }
-    } catch (error) {
-      console.error(error);
+  // Sử dụng TanStack Query hooks
+  const {
+    data: classes = [],
+    isLoading,
+    error: classesError,
+  } = useClasses();
+
+  const {
+    data: revenueDataResponse = [],
+    isLoading: isLoadingRevenue,
+    error: revenueError,
+  } = useClassRevenueData(selectedPeriod);
+
+  const createClass = useCreateClass();
+  const updateClass = useUpdateClass();
+
+  // Sử dụng custom hook để prefetch và tính toán class shifts summary
+  const classShiftSummaryByClassId = useClassShiftsSummary(classes);
+
+  // Hiển thị error toast nếu có lỗi
+  useEffect(() => {
+    if (classesError) {
       toast.error(tNotif('errorLoadClasses'));
-    } finally {
-      setIsLoading(false);
     }
-  }, [tNotif]);
+  }, [classesError, tNotif]);
 
-  // Fetch revenue data from BE
-  const fetchRevenueData = useCallback(async (period: TimePeriod) => {
-    try {
-      setIsLoadingRevenue(true);
-      const response = await classService.getRevenueDataByPeriod(period);
-      if (response.status === 200 && response.data) {
-        // Map dữ liệu từ BE sang format mà component cần
-        const mappedData = response.data.map((item: ClassRevenueDataResponse) => {
-          const revenueItem: { month: string; label: string; [key: string]: string | number } = {
-            month: item.month,
-            label: item.label,
-          };
-          
-          // Map classRevenues từ Map sang object
-          Object.entries(item.classRevenues || {}).forEach(([key, value]) => {
-            revenueItem[key] = value || 0;
-          });
-          
-          return revenueItem;
-        });
-        
-        setRevenueData(mappedData);
-      }
-    } catch (error) {
-      console.error('Error fetching revenue data:', error);
+  useEffect(() => {
+    if (revenueError) {
       toast.error(tNotif('errorLoadRevenue'));
-      setRevenueData([]);
-    } finally {
-      setIsLoadingRevenue(false);
     }
-  }, [tNotif]);
+  }, [revenueError, tNotif]);
 
-  // Call API to get all classes
-  useEffect(() => {
-    fetchClasses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Map revenue data từ BE sang format mà component cần
+  const revenueData = useMemo(() => {
+    return revenueDataResponse.map((item: ClassRevenueDataResponse) => {
+      const revenueItem: { month: string; label: string; [key: string]: string | number } = {
+        month: item.month,
+        label: item.label,
+      };
 
-  // Fetch shifts for each class to xây dựng lịch học từ ca
-  useEffect(() => {
-    const fetchShiftsForClasses = async () => {
-      if (!classes || classes.length === 0) {
-        setClassShiftSummaryByClassId({});
-        return;
-      }
+      // Map classRevenues từ Map sang object
+      Object.entries(item.classRevenues || {}).forEach(([key, value]) => {
+        revenueItem[key] = value || 0;
+      });
 
-      try {
-        const results = await Promise.allSettled(
-          classes.map((cls) => classShiftService.getByClassId(cls.id)),
-        );
-
-        const summaryMap: Record<string, string> = {};
-
-        results.forEach((result, index) => {
-          const classId = classes[index].id;
-          if (result.status === 'fulfilled' && result.value.status === 200 && result.value.data) {
-            const shifts = result.value.data;
-            if (!shifts || shifts.length === 0) return;
-
-            // Ghép tên các ca lại, giới hạn để không quá dài
-            const names = shifts.map((s) => s.name);
-            const preview = names.slice(0, 2).join('\n');
-            const moreCount = names.length - 2;
-
-            summaryMap[classId] = moreCount > 0 ? `${preview} (+${moreCount} ca khác)` : preview;
-          }
-        });
-
-        setClassShiftSummaryByClassId(summaryMap);
-      } catch (error) {
-        console.error('Error fetching class shifts for classes', error);
-      }
-    };
-
-    fetchShiftsForClasses();
-  }, [classes]);
-
-  // Fetch revenue data when period changes
-  useEffect(() => {
-    fetchRevenueData(selectedPeriod);
-  }, [selectedPeriod, fetchRevenueData]);
+      return revenueItem;
+    });
+  }, [revenueDataResponse]);
 
   const handleAdd = useCallback(() => {
     setSelectedClass(null);
@@ -156,45 +101,25 @@ export default function ClassroomManagementPage() {
   }, []);
 
   const handleDelete = useCallback((id: string) => {
-    setClasses((prevClasses) => prevClasses.filter((c) => c.id !== id));
+    // Chỉ xóa khỏi UI, không có API delete
+    // Nếu có API delete sau này, có thể thêm mutation ở đây
+    console.log('Delete class:', id);
   }, []);
 
-  // Type cho form data - chỉ chứa các field có trong form
-  
+  const handleSave = useCallback(
+    async (formData: ClassRequest, id?: string) => {
+      if (id) {
+        await updateClass.mutateAsync({ id, data: formData });
+      } else {
+        await createClass.mutateAsync(formData);
+      }
+      setIsDialogOpen(false);
+      setSelectedClass(null);
+    },
+    [createClass, updateClass]
+  );
 
-  const handleSave = useCallback(async (formData: ClassRequest, id?: string) => {
-    if (id) {
-      try {
-        const response = await classService.updateClass(id, formData);
-        if (response.status === 200 && response.data) {
-          const updatedClass = response.data;
-          toast.success(tNotif('successUpdateClass'));
-          setIsDialogOpen(false);
-          setSelectedClass(null);
-          setClasses((prevClasses) => 
-            prevClasses.map((c) => c.id === id ? updatedClass : c)
-          );
-        }
-      } catch (error) {
-        console.error(error);
-        toast.error(tNotif('errorUpdateClass'));
-      }
-    } else {
-      try {
-        const response = await classService.createClass(formData);
-        if (response.status === 201 && response.data) {
-          const newClass = response.data;
-          toast.success(tNotif('successCreateClass'));
-          setIsDialogOpen(false);
-          setSelectedClass(null);
-          setClasses((prevClasses) => [...prevClasses, newClass]);
-        }
-      } catch (error) {
-        console.error(error);
-        toast.error(tNotif('errorCreateClass'));
-      }
-    }
-  }, [tNotif]);
+  const isSavingClass = createClass.isPending || updateClass.isPending;
 
   // Map classes to classColors dynamically
   // Sort classes by id to match BE order (BE sorts classes by id before mapping to class_1, class_2, ...)
@@ -231,21 +156,21 @@ export default function ClassroomManagementPage() {
       />
 
       {/* Revenue Chart */}
-      {!isLoadingRevenue && revenueData.length > 0 && (
-        <ClassroomRevenueChart
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={handlePeriodChange}
-          revenueData={revenueData}
-          formatCurrency={formatCurrency}
-          classNames={classColors}
-        />
-      )}
+      <ClassroomRevenueChart
+        selectedPeriod={selectedPeriod}
+        onPeriodChange={handlePeriodChange}
+        revenueData={revenueData}
+        formatCurrency={formatCurrency}
+        classNames={classColors}
+        isLoading={isLoadingRevenue}
+      />
 
       <ClassroomDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         classItem={selectedClass}
         onSave={handleSave}
+        isSubmitting={isSavingClass}
       />
     </div>
   );

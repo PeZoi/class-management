@@ -140,7 +140,7 @@ export function ClassroomTable({
       },
     },
     {
-      accessorKey: 'schedule',
+      id: 'schedule',
       header: ({ column }) => (
         <SortableHeader column={column}>
           <div className="flex items-center gap-2">

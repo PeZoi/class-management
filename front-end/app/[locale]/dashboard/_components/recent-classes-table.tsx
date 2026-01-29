@@ -16,6 +16,7 @@ interface RecentClassesTableProps {
 
 export function RecentClassesTable({ topClasses, formatCurrency, className }: RecentClassesTableProps) {
   const t = useTranslations('dashboard');
+  const tCommon = useTranslations('common');
   const locale = useLocale();
 
   return (
@@ -113,7 +114,9 @@ export function RecentClassesTable({ topClasses, formatCurrency, className }: Re
                   <TableCell>
                     <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
                       <Calendar className="size-3.5" />
-                      <span>{classItem.schedule || 'N/A'}</span>
+                      <span className="italic text-slate-500 dark:text-slate-400">
+                        {tCommon('noShift')}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>

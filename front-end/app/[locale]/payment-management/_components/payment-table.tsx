@@ -47,7 +47,7 @@ interface PaymentTableProps {
   onEdit?: (payment: PaymentItem) => void;
   onDelete?: (id: number) => void;
   onAdd?: () => void;
-  onPersonClick?: (name: string, type: 'student' | 'teacher') => void;
+  onPersonClick?: (payment: PaymentItem) => void;
   title?: string;
   description?: string;
   showActions?: boolean;
@@ -224,7 +224,7 @@ export function PaymentTable({
           <div className="font-medium text-slate-900 dark:text-slate-100">
             {displayName ? (
               <button
-                onClick={() => onPersonClick?.(displayName, payment.type === 'income' ? 'student' : 'teacher')}
+                onClick={() => onPersonClick?.(payment)}
                 className="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer group w-full text-left"
               >
                 <User className="size-4 text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors shrink-0" />

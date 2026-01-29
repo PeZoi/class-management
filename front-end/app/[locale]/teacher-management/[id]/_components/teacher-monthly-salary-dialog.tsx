@@ -37,6 +37,7 @@ interface TeacherMonthlySalaryDialogProps {
     paymentDate: string;
     notes: string;
   }) => void;
+  isSubmitting?: boolean;
 }
 
 export function TeacherMonthlySalaryDialog({
@@ -46,9 +47,11 @@ export function TeacherMonthlySalaryDialog({
   baseSalary,
   monthNames,
   onSubmit,
+  isSubmitting,
 }: TeacherMonthlySalaryDialogProps) {
   const tPayment = useTranslations('payment-management');
   const t = useTranslations('teacher-detail');
+  const tCommon = useTranslations('common');
 
   const [formData, setFormData] = useState({
     baseSalary: baseSalary,
@@ -321,9 +324,9 @@ export function TeacherMonthlySalaryDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Hủy
             </Button>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+            <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={!!isSubmitting}>
               <DollarSign className="size-4 mr-2" />
-              Xác Nhận Trả Lương
+              {isSubmitting ? tCommon('saving') : 'Xác Nhận Trả Lương'}
             </Button>
           </DialogFooter>
         </form>

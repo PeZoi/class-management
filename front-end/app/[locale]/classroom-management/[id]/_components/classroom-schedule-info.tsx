@@ -1,9 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
-import { classShiftService } from '@/services';
-import { ClassShiftType } from '@/types/class-type';
+import { useClassShiftsByClass } from '@/hooks/use-classes';
 
 interface ClassroomScheduleInfoProps {
   classId: string;
@@ -12,30 +10,7 @@ interface ClassroomScheduleInfoProps {
 export function ClassroomScheduleInfo({ classId }: ClassroomScheduleInfoProps) {
   const t = useTranslations('classroom-detail');
   const tCommon = useTranslations('common');
-  const [shifts, setShifts] = useState<ClassShiftType[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchShifts = async () => {
-      if (!classId) return;
-      setLoading(true);
-      try {
-        const response = await classShiftService.getByClassId(classId);
-        if (response.status === 200 && response.data) {
-          setShifts(response.data);
-        } else {
-          setShifts([]);
-        }
-      } catch (error) {
-        console.error('Error fetching class shifts for schedule info:', error);
-        setShifts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchShifts();
-  }, [classId]);
+  const { data: shifts = [], isLoading: loading } = useClassShiftsByClass(classId);
 
   return (
     <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg">
