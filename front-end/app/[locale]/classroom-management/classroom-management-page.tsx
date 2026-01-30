@@ -6,7 +6,6 @@ import {
   useClassRevenueData,
   useCreateClass,
   useUpdateClass,
-  useClassShiftsSummary,
 } from '@/hooks/use-classes';
 import { ClassRequest, ClassRevenueDataResponse, ClassType } from '@/types/class-type';
 import { formatCurrency } from '@/utils/helper';
@@ -57,8 +56,29 @@ export default function ClassroomManagementPage() {
   const createClass = useCreateClass();
   const updateClass = useUpdateClass();
 
-  // Sử dụng custom hook để prefetch và tính toán class shifts summary
-  const classShiftSummaryByClassId = useClassShiftsSummary(classes);
+  // Tính summary ca học trực tiếp từ dữ liệu classShifts trả về trong lớp (tránh gọi API riêng theo từng lớp)
+  const classShiftSummaryByClassId = useMemo(() => {
+    if (!classes || classes.length === 0) {
+      return {};
+    }
+
+    const summaryMap: Record<string, string> = {};
+
+    classes.forEach((cls) => {
+      const shifts = cls.classShifts ?? [];
+      if (shifts.length === 0) {
+        return;
+      }
+
+      const names = shifts.map((s) => s.name);
+      const preview = names.slice(0, 2).join('\n');
+      const moreCount = names.length - 2;
+
+      summaryMap[cls.id] = moreCount > 0 ? `${preview} (+${moreCount} ca khác)` : preview;
+    });
+
+    return summaryMap;
+  }, [classes]);
 
   // Hiển thị error toast nếu có lỗi
   useEffect(() => {

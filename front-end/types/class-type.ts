@@ -6,6 +6,13 @@ export interface ClassRequest {
   monthlyFee: number;
 }
 
+export interface ClassShiftType {
+  id: string;
+  name: string;
+  classId: string;
+  className: string;
+}
+
 export interface ClassType {
   id: string;
   name: string;
@@ -16,13 +23,8 @@ export interface ClassType {
   collected: number;
   total: number;
   teacher: TeacherType;
-}
-
-export interface ClassShiftType {
-  id: string;
-  name: string;
-  classId: string;
-  className: string;
+  // Danh sách ca học trả luôn trong response lớp để tránh gọi /api/class-shift/by-class cho từng lớp
+  classShifts?: ClassShiftType[];
 }
 
 export interface ClassRevenueDataResponse {

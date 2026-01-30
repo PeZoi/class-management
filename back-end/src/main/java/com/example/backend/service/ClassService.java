@@ -3,8 +3,10 @@ package com.example.backend.service;
 import com.example.backend.dto.classroom.ClassRequest;
 import com.example.backend.dto.classroom.ClassResponse;
 import com.example.backend.dto.classroom.ClassRevenueDataResponse;
+import com.example.backend.dto.classroom.ClassShiftResponse;
 import com.example.backend.dto.classroom.ClassSingleRevenueDataResponse;
 import com.example.backend.entity.Class;
+import com.example.backend.entity.ClassShift;
 import com.example.backend.entity.User;
 import com.example.backend.enums.PaymentDirection;
 import com.example.backend.enums.StudentStatus;
@@ -13,10 +15,6 @@ import com.example.backend.repository.ClassRepository;
 import com.example.backend.repository.PaymentRepository;
 import com.example.backend.repository.StudentClassRepository;
 import com.example.backend.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -24,6 +22,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +51,25 @@ public class ClassService {
         return firstDayOfMonth.atStartOfDay(ZoneOffset.UTC).toInstant();
     }
 
+    private List<ClassShiftResponse> mapClassShifts(Class classroom) {
+        if (classroom.getClassShifts() == null) {
+            return List.of();
+        }
+        return classroom.getClassShifts()
+                .stream()
+                .map(this::toClassShiftResponse)
+                .collect(Collectors.toList());
+    }
+
+    private ClassShiftResponse toClassShiftResponse(ClassShift shift) {
+        return ClassShiftResponse.builder()
+                .id(shift.getId())
+                .name(shift.getName())
+                .classId(shift.getClazz() != null ? shift.getClazz().getId() : null)
+                .className(shift.getClazz() != null ? shift.getClazz().getName() : null)
+                .build();
+    }
+
     public ClassResponse create(ClassRequest classRequest) {
         User teacher = userRepository.findById(classRequest.getTeacherId()).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
         Class classroom = modelMapper.map(classRequest, Class.class);
@@ -56,6 +77,7 @@ public class ClassService {
 
         Class savedClass = classRepository.save(classroom);
         ClassResponse classResponse = modelMapper.map(savedClass, ClassResponse.class);
+        classResponse.setClassShifts(mapClassShifts(savedClass));
         
         // Tính toán collected, revenue, total cho class mới tạo
         int studentCount = countActiveStudents(classResponse.getId());
@@ -72,10 +94,12 @@ public class ClassService {
 
     public List<ClassResponse> getAllClasses() {
         List<ClassResponse> classResponses = new ArrayList<>();
-        List<Class> classes = classRepository.findAll();
+        // Dùng findAllWithClassShifts để fetch join classShifts, tránh lazy loading
+        List<Class> classes = classRepository.findAllWithClassShifts();
 
         for (Class c : classes) {
             ClassResponse classResponse = modelMapper.map(c, ClassResponse.class);
+            classResponse.setClassShifts(mapClassShifts(c));
             int studentCount = countActiveStudents(classResponse.getId());
             int total = studentCount * classResponse.getMonthlyFee();
             
@@ -105,6 +129,7 @@ public class ClassService {
         classDB.setTeacher(TeacherDB);
         Class savedClass = classRepository.save(classDB);
         ClassResponse classResponse = modelMapper.map(savedClass, ClassResponse.class);
+        classResponse.setClassShifts(mapClassShifts(savedClass));
         
         // Tính toán collected, revenue, total sau khi update
         int studentCount = countActiveStudents(classResponse.getId());
@@ -129,10 +154,12 @@ public class ClassService {
     public List<ClassResponse> getClassesByTeacherId(String teacherId) {
         List<ClassResponse> classResponses = new ArrayList<>();
         User teacherDB = userRepository.findById(teacherId).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
-        List<Class> classesDB = classRepository.findAllByTeacher(teacherDB);
+        // Dùng findAllByTeacherWithClassShifts để fetch join classShifts
+        List<Class> classesDB = classRepository.findAllByTeacherWithClassShifts(teacherDB);
 
         for (Class c : classesDB) {
             ClassResponse classResponse = modelMapper.map(c, ClassResponse.class);
+            classResponse.setClassShifts(mapClassShifts(c));
             int studentCount = countActiveStudents(classResponse.getId());
             int total = classResponse.getMonthlyFee() * studentCount;
             
@@ -155,9 +182,11 @@ public class ClassService {
     }
 
     public ClassResponse getClassById(String classId) {
-        Class classDB = classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy " +
+        // Dùng findByIdWithClassShifts để fetch join classShifts
+        Class classDB = classRepository.findByIdWithClassShifts(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy " +
                 "lớp học"));
         ClassResponse classResponse = modelMapper.map(classDB, ClassResponse.class);
+        classResponse.setClassShifts(mapClassShifts(classDB));
         int studentCount = countActiveStudents(classResponse.getId());
         int total = studentCount * classResponse.getMonthlyFee();
         
@@ -305,12 +334,14 @@ public class ClassService {
     // Lấy top 3 lớp có doanh thu cao nhất theo tháng hiện tại
     public List<ClassResponse> getTop3ClassesByRevenue() {
         Instant currentMonth = getCurrentMonthStart();
-        List<Class> allClasses = classRepository.findAll();
+        // Dùng findAllWithClassShifts để fetch join classShifts
+        List<Class> allClasses = classRepository.findAllWithClassShifts();
         List<ClassResponse> classResponsesWithRevenue = new ArrayList<>();
 
         // Tính revenue cho mỗi class trong tháng hiện tại
         for (Class c : allClasses) {
             ClassResponse classResponse = modelMapper.map(c, ClassResponse.class);
+            classResponse.setClassShifts(mapClassShifts(c));
             int studentCount = countActiveStudents(classResponse.getId());
             int total = studentCount * classResponse.getMonthlyFee();
 

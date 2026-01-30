@@ -30,7 +30,7 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave, isSubmi
   const t = useTranslations('classroom-management');
   const tCommon = useTranslations('common');
 
-  const { data: teachers = [] } = useTeachers();
+  const { data: teachers = [] } = useTeachers({ enabled: open });
   const [formData, setFormData] = useState<ClassRequest>({
     name: '',
     teacherId: '',

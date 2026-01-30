@@ -16,7 +16,7 @@ import { TeacherRequest, TeacherType } from '@/types';
 /**
  * Hook để lấy tất cả teachers
  */
-export function useTeachers() {
+export function useTeachers({ enabled = true }: { enabled?: boolean }) {
   return useQuery<TeacherType[]>({
     queryKey: queryKeys.teachers.list(),
     queryFn: async () => {
@@ -26,6 +26,7 @@ export function useTeachers() {
       }
       throw new Error('Failed to fetch teachers');
     },
+    enabled: enabled,
   });
 }
 

@@ -1,6 +1,7 @@
 package com.example.backend.dto.classroom;
 
 import com.example.backend.dto.teacher.TeacherResponse;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,4 +22,6 @@ public class ClassResponse {
     private int collected; // Số tiền đã nhận trong tháng này
     private int total; // Tổng số tiền phải nhận trong tháng này
     private TeacherResponse teacher;
+    // Danh sách ca học của lớp (được trả thẳng về để FE không phải gọi API riêng theo từng lớp)
+    private List<ClassShiftResponse> classShifts;
 }

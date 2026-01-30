@@ -18,7 +18,7 @@ export default function TeacherManagementPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherType | null>(null);
 
-  const { data: teachersData = [], isLoading, error: teachersError } = useTeachers();
+  const { data: teachersData = [], isLoading, error: teachersError } = useTeachers({ enabled: true });
   const createTeacher = useCreateTeacher();
   const updateTeacher = useUpdateTeacher();
   const resetPassword = useResetTeacherPassword();
