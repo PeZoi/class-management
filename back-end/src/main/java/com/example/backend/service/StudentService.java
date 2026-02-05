@@ -540,7 +540,7 @@ public class StudentService {
         YearMonth currentMonth = YearMonth.now();
         
         // Lấy tất cả payments của student để tìm các tháng có payment (có thể là tháng trước)
-        List<Payment> allPayments = paymentRepository.findByStudentIdAndClazzId(studentId, classId);
+        List<Payment> allPayments = paymentRepository.findByStudentIdAndClazzId(studentId, classId, joinAt, Instant.now());
         Set<YearMonth> monthsWithPayments = new HashSet<>();
         
         // Tìm tất cả các tháng có payment

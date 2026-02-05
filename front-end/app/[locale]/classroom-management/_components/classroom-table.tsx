@@ -42,8 +42,6 @@ interface ClassroomTableProps {
   description?: string;
   showActions?: boolean;
   className?: string;
-  // Lịch học lớp lấy theo ca: map classId -> chuỗi mô tả ca (ví dụ: "Ca tối - T2, T4, T6 - 19:00 - 21:00")
-  classShiftSummaryByClassId?: Record<string, string>;
 }
 
 export function ClassroomTable({
@@ -56,7 +54,6 @@ export function ClassroomTable({
   description,
   showActions = true,
   className,
-  classShiftSummaryByClassId,
 }: ClassroomTableProps) {
   const t = useTranslations('classroom-management');
   const tDashboard = useTranslations('dashboard');
@@ -150,18 +147,17 @@ export function ClassroomTable({
         </SortableHeader>
       ),
       cell: ({ row }) => {
-        const shiftSummary = classShiftSummaryByClassId?.[row.original.id];
-        const shiftSummaryArr = shiftSummary?.split('\n');
-        
+        const classShifts = row.original.classShifts ?? [];
         return (
           <div className="flex flex-col gap-1.5 text-sm text-slate-600 dark:text-slate-400">
-            {shiftSummaryArr?.map((item) => (
-              <div className="flex items-center gap-1.5" key={item}>
-                <Calendar className="size-3.5 mt-0.5" />
-                {item}
-              </div>
-            ))}
-            {(!shiftSummaryArr || shiftSummaryArr.length === 0) && (
+            {classShifts.length > 0 ? (
+              classShifts.map((shift) => (
+                <div className="flex items-center gap-1.5" key={shift.id}>
+                  <Calendar className="size-3.5 mt-0.5" />
+                  {shift.name}
+                </div>
+              ))
+            ) : (
               <div className="flex items-center gap-1.5 italic">
                 <Calendar className="size-3.5 mt-0.5" />
                 {t('noSchedule')}

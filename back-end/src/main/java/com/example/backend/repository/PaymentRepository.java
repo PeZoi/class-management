@@ -31,8 +31,16 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     List<Payment> findByStudentId(@Param("studentId") String studentId);
 
     // Lấy tất cả payments của một student và class
-    @Query("SELECT p FROM Payment p WHERE p.student.id = :studentId AND p.clazz.id = :classId ORDER BY p.billingMonth DESC, p.createdAt DESC")
-    List<Payment> findByStudentIdAndClazzId(@Param("studentId") String studentId, @Param("classId") String classId);
+    @Query("""
+        SELECT p
+        FROM Payment p
+        WHERE p.student.id = :studentId
+          AND p.clazz.id = :classId
+          AND (:fromTime IS NULL OR p.createdAt >= :fromTime)
+          AND (:toTime IS NULL OR p.createdAt <= :toTime)
+        ORDER BY p.billingMonth DESC, p.createdAt DESC
+    """)
+    List<Payment> findByStudentIdAndClazzId(@Param("studentId") String studentId, @Param("classId") String classId, @Param("fromTime") Instant fromTime, @Param("toTime") Instant toTime);
 
     // Lấy tất cả payments của một teacher
     @Query("SELECT p FROM Payment p WHERE p.teacher.id = :teacherId ORDER BY p.billingMonth DESC, p.createdAt DESC")

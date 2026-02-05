@@ -112,11 +112,22 @@ export function RecentClassesTable({ topClasses, formatCurrency, className }: Re
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
-                      <Calendar className="size-3.5" />
-                      <span className="italic text-slate-500 dark:text-slate-400">
-                        {tCommon('noShift')}
-                      </span>
+                    <div className="flex flex-col gap-1.5 text-sm text-slate-600 dark:text-slate-400">
+                      {classItem.classShifts && classItem.classShifts.length > 0 ? (
+                        classItem.classShifts.map((shift) => (
+                          <div className="flex items-center gap-1.5" key={shift.id}>
+                            <Calendar className="size-3.5" />
+                            <span>{shift.name}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-center gap-1.5 italic">
+                          <Calendar className="size-3.5" />
+                          <span className="text-slate-500 dark:text-slate-400">
+                            {tCommon('noShift')}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
