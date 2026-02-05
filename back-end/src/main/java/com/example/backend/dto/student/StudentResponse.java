@@ -32,8 +32,13 @@ public class StudentResponse {
     private StudentClassResponse clazz;
     
     // Danh sách trạng thái thanh toán của tất cả các tháng từ joinAt đến hiện tại
+    // DEPRECATED: Giữ lại để backward compatibility, sẽ dùng sessionPaymentStatuses thay thế
     @Builder.Default
     private List<MonthPaymentStatus> monthPaymentStatuses = new ArrayList<>();
+    
+    // Danh sách trạng thái thanh toán theo gói buổi học (mới)
+    @Builder.Default
+    private List<SessionPaymentStatusDTO> sessionPaymentStatuses = new ArrayList<>();
 
     @Getter
     @Setter

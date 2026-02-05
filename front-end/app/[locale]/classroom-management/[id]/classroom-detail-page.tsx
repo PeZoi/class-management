@@ -12,6 +12,7 @@ import {
   ClassroomTeacherInfo,
   ClassroomStudentAttendance,
   ClassroomShiftsSection,
+  AttendanceSheet,
 } from './_components';
 import { StudentDialog } from '../../student-management/_components/student-dialog';
 import { PaymentCalendarDialog } from '../../student-management/_components/payment-calendar-dialog';
@@ -24,6 +25,8 @@ import { useClass, useClassRevenueDataByClassId, useClassShiftsByClass } from '@
 import { useStudentsByClass, useUpdateStudent } from '@/hooks/use-students';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
+import { Button } from '@/components/ui/button';
+import { ClipboardCheck } from 'lucide-react';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -40,6 +43,7 @@ export default function ClassroomDetailPage() {
   const [selectedStudent, setSelectedStudent] = useState<StudentType | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [studentForPayment, setStudentForPayment] = useState<{ id: string; fullName: string } | null>(null);
+  const [isAttendanceSheetOpen, setIsAttendanceSheetOpen] = useState(false);
 
   // Sử dụng TanStack Query hooks
   const {
@@ -230,8 +234,20 @@ export default function ClassroomDetailPage() {
         }}
       />
 
+      {/* Attendance Button */}
+      <div className="flex justify-end">
+        <Button
+          onClick={() => setIsAttendanceSheetOpen(true)}
+          className="bg-blue-600 hover:bg-blue-700"
+          size="lg"
+        >
+          <ClipboardCheck className="size-5 mr-2" />
+          {tCommon('takeAttendance')}
+        </Button>
+      </div>
+
       {/* Student Attendance */}
-      <ClassroomStudentAttendance students={students} />
+      <ClassroomStudentAttendance students={students} classId={classId} />
 
       {/* Student Edit Dialog */}
       <StudentDialog
@@ -252,6 +268,20 @@ export default function ClassroomDetailPage() {
         onOpenChange={setIsPaymentDialogOpen}
         student={studentForPayment}
         onPaymentSuccess={handlePaymentSuccess}
+      />
+
+      {/* Attendance Sheet */}
+      <AttendanceSheet
+        open={isAttendanceSheetOpen}
+        onOpenChange={setIsAttendanceSheetOpen}
+        classId={classId}
+        students={students}
+        shifts={shifts}
+        onSuccess={() => {
+          // TanStack Query tự động refetch students và attendance
+          queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+          queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all });
+        }}
       />
     </div>
   );

@@ -11,6 +11,8 @@ import { StudentDialog } from './_components/student-dialog';
 import { FilterState, StudentFilter } from './_components/student-filter';
 import { StudentTable } from './_components/student-table';
 
+const NO_CLASS_FILTER_VALUE = '__no_class__';
+
 export interface StudentItem extends StudentType {
   idCard?: string; // ID card number (optional, not in API)
   status: 'active' | 'pending' | 'completed';
@@ -247,8 +249,25 @@ export default function StudentManagementPage() {
 
   // Get unique class names for filter
   const availableClasses = useMemo(() => {
-    const classes = [...new Set(students.map((s) => s.class?.name || tCommon('noClass')))];
-    return classes.sort();
+    // IMPORTANT: don't use translated text as filter "value" (breaks when locale changes)
+    // We keep stable values, and only translate labels in the filter UI.
+    const classNames = new Set<string>();
+    let hasNoClass = false;
+
+    for (const s of students) {
+      if (s.class?.name) classNames.add(s.class.name);
+      else hasNoClass = true;
+    }
+
+    const options = Array.from(classNames)
+      .sort()
+      .map((name) => ({ value: name, label: name }));
+
+    if (hasNoClass) {
+      options.unshift({ value: NO_CLASS_FILTER_VALUE, label: tCommon('noClass') });
+    }
+
+    return options;
   }, [students, tCommon]);
 
   // Filter and sort students
@@ -275,7 +294,10 @@ export default function StudentManagementPage() {
 
     // Apply class filter
     if (filters.className !== 'all') {
-      result = result.filter((student) => (student.class?.name || tCommon('noClass')) === filters.className);
+      result = result.filter((student) => {
+        const classValue = student.class?.name ? student.class.name : NO_CLASS_FILTER_VALUE;
+        return classValue === filters.className;
+      });
     }
 
     // Apply gender filter
@@ -308,7 +330,7 @@ export default function StudentManagementPage() {
     });
 
     return result;
-  }, [students, filters.searchQuery, filters.paymentStatus, filters.className, filters.gender, filters.sortBy, filters.sortOrder, tCommon]);
+  }, [students, filters.searchQuery, filters.paymentStatus, filters.className, filters.gender, filters.sortBy, filters.sortOrder]);
 
   if (isLoading) {
     return <PageLoading message={tCommon('loadingStudents')} />;

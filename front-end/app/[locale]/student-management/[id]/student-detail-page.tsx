@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   StudentDetailHeader,
@@ -10,19 +10,18 @@ import {
   StudentClassInfo,
   StudentClassHistory,
   StudentPaymentHistory,
-  StudentAttendance,
-  PaymentStatusCalendar,
+  SessionPaymentList,
+  StudentAttendanceSessions,
   ClassHistoryItem,
   PaymentHistoryItem,
-  AttendanceSession,
-  PaymentMonthStatus,
 } from './_components';
-import { MonthPaymentStatus, CreateStudentPaymentData, PaymentResponse, ClassHistoryResponse } from '@/types';
+import { CreateSessionPaymentData, PaymentResponse, ClassHistoryResponse, SessionPaymentStatus } from '@/types';
 import { toast } from 'react-toastify';
 import { PageLoading } from '@/components/page-loading';
 import { HttpError } from '@/lib/http';
 import { useStudent, useStudentClassHistory } from '@/hooks/use-students';
-import { useCreateStudentPayment, usePaymentsByStudent } from '@/hooks/use-payments';
+import { useCreateSessionPayment, usePaymentsByStudent } from '@/hooks/use-payments';
+import { useAttendanceByStudent } from '@/hooks/use-attendance';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidatePaymentsByStudent, invalidateStudent, invalidateStudentClassHistory } from '@/lib/queryHelpers';
 
@@ -47,81 +46,13 @@ const convertToClassHistoryItem = (apiHistory: ClassHistoryResponse): ClassHisto
   };
 };
 
-// Mock data for attendance
-const generateMockAttendance = (): AttendanceSession[] => {
-  const sessions: AttendanceSession[] = [];
-  const currentDate = new Date();
-
-  // Generate sessions for the last 3 months
-  for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
-    const month = new Date(currentDate.getFullYear(), currentDate.getMonth() - monthOffset, 1);
-    const year = month.getFullYear();
-    const monthNum = month.getMonth() + 1;
-
-    // Generate 8 sessions per month (2 per week)
-    for (let week = 0; week < 4; week++) {
-      // Monday session
-      const mondayDate = new Date(year, monthNum - 1, 1 + week * 7);
-      if (mondayDate.getMonth() === monthNum - 1) {
-        const random = Math.random();
-        sessions.push({
-          id: `session-${sessions.length + 1}`,
-          date: mondayDate.toISOString().split('T')[0],
-          sessionNumber: sessions.length + 1,
-          status: random > 0.2 ? 'present' : random > 0.15 ? 'late' : 'absent',
-          checkInTime: random > 0.2 ? '19:00' : random > 0.15 ? '19:15' : undefined,
-        });
-      }
-
-      // Thursday session
-      const thursdayDate = new Date(year, monthNum - 1, 4 + week * 7);
-      if (thursdayDate.getMonth() === monthNum - 1) {
-        const random = Math.random();
-        sessions.push({
-          id: `session-${sessions.length + 1}`,
-          date: thursdayDate.toISOString().split('T')[0],
-          sessionNumber: sessions.length + 1,
-          status: random > 0.2 ? 'present' : random > 0.15 ? 'late' : 'absent',
-          checkInTime: random > 0.2 ? '19:00' : random > 0.15 ? '19:10' : undefined,
-        });
-      }
-    }
-  }
-
-  return sessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-};
-
-// Convert MonthPaymentStatus from API to PaymentMonthStatus for component
-const convertToPaymentMonthStatus = (apiPayments: MonthPaymentStatus[]): PaymentMonthStatus[] => {
-  return apiPayments.map((payment) => {
-    const date = new Date(payment.month);
-    const month = date.getMonth() + 1; // JavaScript months are 0-indexed
-    const year = date.getFullYear();
-
-    // Convert status from API format (PAID, PARTIAL, UNPAID) to component format (paid, partial, unpaid)
-    const statusMap: Record<string, 'paid' | 'unpaid' | 'partial'> = {
-      PAID: 'paid',
-      PARTIAL: 'partial',
-      UNPAID: 'unpaid',
-    };
-
-    return {
-      month,
-      year,
-      status: statusMap[payment.status] || 'unpaid',
-      amount: payment.expectedAmount,
-      paidAmount: payment.paidAmount,
-      dueDate: payment.month, // Using month as dueDate for reference
-    };
-  });
-};
 
 // Convert PaymentResponse from API to PaymentHistoryItem for component
-const convertToPaymentHistoryItem = (apiPayment: PaymentResponse): PaymentHistoryItem => {
+const convertToPaymentHistoryItem = (apiPayment: PaymentResponse, monthNames: string[]): PaymentHistoryItem => {
   const billingDate = new Date(apiPayment.billingMonth);
   const month = billingDate.getMonth() + 1;
   const year = billingDate.getFullYear();
-  const period = `Tháng ${month}/${year}`;
+  const period = `${monthNames[month - 1] || `Month ${month}`} ${year}`;
 
   // Convert payment method
   const paymentMethodMap: Record<string, 'cash' | 'bank_transfer'> = {
@@ -152,6 +83,7 @@ export default function StudentDetailPage() {
   const router = useRouter();
   const studentId = params.id as string;
   const locale = params.locale as string;
+  const t = useTranslations('student-detail');
   const tNotif = useTranslations('notifications');
 
   const queryClient = useQueryClient();
@@ -172,16 +104,13 @@ export default function StudentDetailPage() {
     isLoading: isLoadingPayments,
   } = usePaymentsByStudent(studentId);
 
-  const createStudentPayment = useCreateStudentPayment();
+  const createSessionPayment = useCreateSessionPayment();
 
-  const [attendanceSessions] = useState<AttendanceSession[]>(() => generateMockAttendance());
-
-  // Convert API monthPaymentStatuses to component format
-  // (compute trực tiếp; dữ liệu nhỏ nên không cần useMemo)
-  const monthlyPayments =
-    studentData?.monthPaymentStatuses && studentData.monthPaymentStatuses.length > 0
-      ? convertToPaymentMonthStatus(studentData.monthPaymentStatuses)
-      : [];
+  // Fetch attendance data
+  const {
+    data: attendances = [],
+    isLoading: isLoadingAttendance,
+  } = useAttendanceByStudent(studentId, studentData?.class?.id);
 
   useEffect(() => {
     if (studentError instanceof HttpError && studentError.status === 404) {
@@ -202,26 +131,42 @@ export default function StudentDetailPage() {
     invalidatePaymentsByStudent(queryClient, studentId);
   }, [queryClient, studentId]);
 
+  const monthNames = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const monthKey = `month${i + 1}` as const;
+      return t(monthKey) || `Month ${i + 1}`;
+    });
+  }, [t]);
+
   const paymentHistory = useMemo(() => {
     return paymentsApi
-      .map(convertToPaymentHistoryItem)
+      .map((payment) => convertToPaymentHistoryItem(payment, monthNames))
       .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
-  }, [paymentsApi]);
+  }, [paymentsApi, monthNames]);
 
   const classHistory = useMemo(() => {
     return classHistoryApi.map(convertToClassHistoryItem);
   }, [classHistoryApi]);
 
-  // Handle payment submit from calendar
-  const handlePaymentSubmit = async (data: CreateStudentPaymentData) => {
+  // Handle session payment submit (new - session-based)
+  const handleSessionPaymentSubmit = async (data: {
+    studentId: string;
+    packageNumber: number;
+    startSessionNumber: number;
+    endSessionNumber: number;
+    amount: number;
+    paymentMethod: 'cash' | 'bank_transfer';
+    paymentDate: string;
+    notes: string;
+  }) => {
     try {
       if (!studentData?.class?.monthlyFee) {
         toast.error(tNotif('errorGetFeeInfo'));
         return;
       }
 
-      await createStudentPayment.mutateAsync({
-        data,
+      await createSessionPayment.mutateAsync({
+        data: data as CreateSessionPaymentData,
         monthlyFee: studentData.class.monthlyFee,
       });
     } catch (error) {
@@ -230,7 +175,15 @@ export default function StudentDetailPage() {
     }
   };
 
-  const isLoading = isLoadingStudent || isLoadingClassHistory || isLoadingPayments;
+  // Convert session payment statuses from API
+  const sessionPayments: SessionPaymentStatus[] = useMemo(() => {
+    return studentData?.sessionPaymentStatuses || [];
+  }, [studentData?.sessionPaymentStatuses]);
+
+  // Get current unpaid package for progress indicator
+  const currentUnpaidPackage = sessionPayments.find((p) => p.status === 'UNPAID' || p.status === 'PARTIAL');
+
+  const isLoading = isLoadingStudent || isLoadingClassHistory || isLoadingPayments || isLoadingAttendance;
 
   if (isLoading) {
     return <PageLoading />;
@@ -240,7 +193,7 @@ export default function StudentDetailPage() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <p className="text-lg text-slate-600 dark:text-slate-400">Không tìm thấy thông tin học viên</p>
+          <p className="text-lg text-slate-600 dark:text-slate-400">{t('noStudentInfo')}</p>
         </div>
       </div>
     );
@@ -261,19 +214,25 @@ export default function StudentDetailPage() {
         />
       </div>
 
-      {/* Payment Status Calendar - Quick Overview */}
-      <PaymentStatusCalendar
-        monthlyPayments={monthlyPayments}
+      {/* Session Payment Status - New Session-based Payment */}
+      <SessionPaymentList
+        sessionPayments={sessionPayments}
         monthlyFee={studentData?.class?.monthlyFee || 0}
         studentId={studentData?.id}
         paymentHistory={paymentHistory}
-        onPaymentSubmit={handlePaymentSubmit}
-        isSubmittingPayment={createStudentPayment.isPending}
+        onPaymentSubmit={handleSessionPaymentSubmit}
+        isSubmittingPayment={createSessionPayment.isPending}
       />
 
       <StudentPaymentHistory paymentHistory={paymentHistory} />
 
-      <StudentAttendance attendanceSessions={attendanceSessions} studentName={studentData.fullName} />
+      {/* Attendance Sessions - New Component */}
+      <StudentAttendanceSessions
+        attendances={attendances}
+        currentPackageNumber={currentUnpaidPackage?.packageNumber}
+        currentPackageStartSession={currentUnpaidPackage?.startSessionNumber}
+        currentPackageEndSession={currentUnpaidPackage?.endSessionNumber}
+      />
 
       {/* Class History - Full Width */}
       <StudentClassHistory classHistory={classHistory} />

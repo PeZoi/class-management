@@ -6,6 +6,8 @@ export { StudentClassHistory } from './student-class-history';
 export { StudentPaymentHistory } from './student-payment-history';
 export { StudentAttendance } from './student-attendance';
 export { PaymentStatusCalendar } from './payment-status-calendar';
+export { SessionPaymentList } from './session-payment-list';
+export { StudentAttendanceSessions } from './student-attendance-sessions';
 export type { ClassHistoryItem } from './student-class-history';
 export type { PaymentHistoryItem } from './student-payment-history';
 export type { AttendanceSession } from './student-attendance';

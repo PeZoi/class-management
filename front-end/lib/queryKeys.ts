@@ -74,6 +74,13 @@ export const queryKeys = {
     all: ['profile'] as const,
     me: () => ['profile', 'me'] as const,
   },
+
+  // Attendance queries
+  attendance: {
+    all: ['attendance'] as const,
+    byStudent: (studentId: string, classId?: string) => ['attendance', 'student', studentId, classId] as const,
+    byClass: (classId: string) => ['attendance', 'class', classId] as const,
+  },
 } as const;
 
 /**

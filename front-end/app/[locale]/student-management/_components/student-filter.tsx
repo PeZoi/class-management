@@ -23,7 +23,7 @@ export interface FilterState {
 interface StudentFilterProps {
   filters: FilterState;
   onFilterChange: (filters: FilterState) => void;
-  availableClasses: string[];
+  availableClasses: Array<{ value: string; label: string }>;
   className?: string;
 }
 
@@ -115,8 +115,8 @@ export function StudentFilter({
           <SelectContent>
             <SelectItem value="all">{t('filter_all_classes')}</SelectItem>
             {availableClasses.map((cls) => (
-              <SelectItem key={cls} value={cls}>
-                {cls}
+              <SelectItem key={cls.value} value={cls.value}>
+                {cls.label}
               </SelectItem>
             ))}
           </SelectContent>

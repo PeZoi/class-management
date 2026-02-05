@@ -6,3 +6,4 @@ export * from './payment-service';
 export * from './dashboard-service';
 export * from './class-shift-service';
 export * from './profile-service';
+export * from './attendance-service';

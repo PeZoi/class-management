@@ -5,3 +5,4 @@ export * from './response-type';
 export * from './student-type';
 export * from './payment-type';
 export * from './profile-type';
+export * from './attendance-type';

@@ -49,11 +49,11 @@ const convertToPaymentMonthStatus = (apiPayments: MonthPaymentStatus[]): Payment
 };
 
 // Convert PaymentResponse from API to PaymentHistoryItem for component
-const convertToPaymentHistoryItem = (apiPayment: PaymentResponse): PaymentHistoryItem => {
+const convertToPaymentHistoryItem = (apiPayment: PaymentResponse, monthNames: string[]): PaymentHistoryItem => {
   const billingDate = new Date(apiPayment.billingMonth);
   const month = billingDate.getMonth() + 1;
   const year = billingDate.getFullYear();
-  const period = `Tháng ${month}/${year}`;
+  const period = `${monthNames[month - 1] || `Month ${month}`} ${year}`;
 
   // Convert payment method
   const paymentMethodMap: Record<string, 'cash' | 'bank_transfer'> = {
@@ -88,6 +88,10 @@ export function PaymentCalendarDialog({
   const t = useTranslations('student-detail');
   const tNotif = useTranslations('notifications');
   const studentId = student?.id ?? '';
+  const monthNames = Array.from({ length: 12 }, (_, i) => {
+    const monthKey = `month${i + 1}` as const;
+    return t(monthKey) || `Month ${i + 1}`;
+  });
 
   const { data: studentData, isLoading: isLoadingStudent } = useStudent(studentId);
   const { data: payments = [], isLoading: isLoadingPayments } = usePaymentsByStudent(studentId);
@@ -102,7 +106,7 @@ export function PaymentCalendarDialog({
   const paymentHistory: PaymentHistoryItem[] =
     payments && payments.length > 0
       ? (payments as PaymentResponse[])
-          .map(convertToPaymentHistoryItem)
+          .map((payment) => convertToPaymentHistoryItem(payment, monthNames))
           .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
       : [];
 

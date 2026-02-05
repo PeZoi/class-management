@@ -56,8 +56,19 @@ public class Payment extends Auditable {
     private Long deduction;
 
     // Đại diện cho tháng học phí (ví dụ: 2025-09-01)
-    @Column(name = "billing_month", nullable = false)
+    // DEPRECATED: Giữ lại để backward compatibility, sẽ dùng session-based thay thế
+    @Column(name = "billing_month")
     private Instant billingMonth;
+
+    // Session-based payment fields (mới)
+    @Column(name = "session_start_number")
+    private Integer sessionStartNumber; // Buổi bắt đầu của gói thanh toán
+
+    @Column(name = "session_end_number")
+    private Integer sessionEndNumber; // Buổi kết thúc của gói thanh toán
+
+    @Column(name = "package_number")
+    private Integer packageNumber; // Số thứ tự gói (1, 2, 3...)
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false)

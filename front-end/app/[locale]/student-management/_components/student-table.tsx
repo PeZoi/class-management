@@ -194,7 +194,7 @@ export function StudentTable({
       header: () => (
         <div className="flex items-center justify-center gap-2">
           <Clock className="size-4" />
-          <span>Ca học</span>
+          <span>{t('shift')}</span>
         </div>
       ),
       cell: ({ row }) => {

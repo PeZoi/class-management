@@ -8,7 +8,7 @@ export type PaymentStatus = 'COMPLETED' | 'INCOMPLETE';
 export interface PaymentRequest {
   amount: number;
   paid: number;
-  billingMonth: string; // ISO date string for the first day of the month
+  billingMonth?: string; // ISO date string for the first day of the month (DEPRECATED - backward compatibility)
   feeSnapshot: number;
   bonus?: number; // Thưởng (chỉ dùng cho teacher salary)
   deduction?: number; // Khấu trừ (chỉ dùng cho teacher salary)
@@ -19,6 +19,10 @@ export interface PaymentRequest {
   teacherId?: string;
   classId?: string;
   note?: string;
+  // Session-based payment fields (new)
+  packageNumber?: number; // Số thứ tự gói (1, 2, 3...)
+  sessionStartNumber?: number; // Buổi bắt đầu của gói thanh toán
+  sessionEndNumber?: number; // Buổi kết thúc của gói thanh toán
 }
 
 // Nested types for PaymentResponse
@@ -67,6 +71,7 @@ export interface PaymentResponse {
 }
 
 // Helper type for creating student fee payment (simplified)
+// DEPRECATED: Giữ lại để backward compatibility, sẽ dùng CreateSessionPaymentData thay thế
 export interface CreateStudentPaymentData {
   studentId: string;
   month: number;
@@ -75,6 +80,33 @@ export interface CreateStudentPaymentData {
   paymentMethod: 'cash' | 'bank_transfer';
   paymentDate: string;
   notes: string;
+}
+
+// Helper type for creating session-based student payment (new)
+export interface CreateSessionPaymentData {
+  studentId: string;
+  packageNumber: number; // Số thứ tự gói (1, 2, 3...)
+  startSessionNumber: number; // Buổi bắt đầu (1, 9, 17...)
+  endSessionNumber: number; // Buổi kết thúc (8, 16, 24...)
+  amount: number;
+  paymentMethod: 'cash' | 'bank_transfer';
+  paymentDate: string;
+  notes: string;
+}
+
+// Session payment status (from backend)
+export type SessionPaymentStatusEnum = 'PAID' | 'PARTIAL' | 'UNPAID';
+
+export interface SessionPaymentStatus {
+  packageNumber: number;
+  startSessionNumber: number;
+  endSessionNumber: number;
+  expectedAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status: SessionPaymentStatusEnum;
+  createdAtPackage?: string;
+  completedAt?: string;
 }
 
 // Helper type for creating teacher salary payment

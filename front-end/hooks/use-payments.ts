@@ -5,8 +5,9 @@ import { toast } from 'react-toastify';
 import { invalidateDashboard, invalidatePaymentsByStudent, invalidatePaymentsByTeacher, invalidateStudent, invalidateStudentLists, invalidateTeacher } from '@/lib/queryHelpers';
 import { queryKeys } from '@/lib/queryKeys';
 import { paymentService } from '@/services/payment-service';
+import { CreateSessionPaymentData } from '@/types';
 import { formatCurrency } from '@/utils/helper';
-import { CreateStudentPaymentData, CreateTeacherPaymentData, PaymentResponse } from '@/types';
+import { CreateStudentPaymentData, CreateTeacherPaymentData, CreateSessionPaymentData, PaymentResponse } from '@/types';
 
 /**
  * Hook để lấy tất cả payments (payment management list)
@@ -155,6 +156,56 @@ export function useCreateTeacherPayment() {
     onError: (error) => {
       console.error('Error creating teacher payment:', error);
       toast.error(tNotif('errorPaySalary'));
+    },
+  });
+}
+
+/**
+ * Hook để tạo session-based payment cho học viên
+ */
+export function useCreateSessionPayment() {
+  const queryClient = useQueryClient();
+  const tNotif = useTranslations('notifications');
+
+  return useMutation({
+    mutationFn: async (params: {
+      data: CreateSessionPaymentData;
+      monthlyFee: number;
+    }) => {
+      const { data, monthlyFee } = params;
+      const response = await paymentService.createSessionPayment(data, monthlyFee);
+      if (response.status !== 201 || !response.data) {
+        throw new Error('Failed to create session payment');
+      }
+      return response.data;
+    },
+    onSuccess: async (payment, variables) => {
+      // Toast success
+      toast.success(
+        `Đã ghi nhận thanh toán ${formatCurrency(variables.data.amount)} cho Gói ${variables.data.packageNumber}`,
+      );
+
+      // Auto download invoice (best-effort)
+      const paymentId = (payment as { paymentId?: string; id?: string })?.paymentId || (payment as { id?: string })?.id;
+      if (paymentId) {
+        try {
+          await paymentService.downloadInvoiceAndSave(paymentId, `${paymentId}.pdf`);
+        } catch (error) {
+          console.error('Error downloading invoice:', error);
+        }
+      }
+
+      // Invalidate related data
+      invalidatePaymentsByStudent(queryClient, variables.data.studentId);
+      invalidateStudent(queryClient, variables.data.studentId);
+      invalidateStudentLists(queryClient);
+      invalidateDashboard(queryClient);
+
+      await queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+    },
+    onError: (error) => {
+      console.error('Error creating session payment:', error);
+      toast.error(tNotif('errorRecordPayment'));
     },
   });
 }

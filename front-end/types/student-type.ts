@@ -26,7 +26,8 @@ export interface StudentType {
   fullNameParent: string;
   phoneNumberParent: string;
   class?: StudentClassResponse | null;
-  monthPaymentStatuses?: MonthPaymentStatus[];
+  monthPaymentStatuses?: MonthPaymentStatus[]; // DEPRECATED: Giữ lại để backward compatibility
+  sessionPaymentStatuses?: import('./payment-type').SessionPaymentStatus[]; // Mới: session-based payment
 }
 
 export interface StudentRequest {

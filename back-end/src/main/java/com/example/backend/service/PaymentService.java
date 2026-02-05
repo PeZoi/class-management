@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.example.backend.entity.SessionPaymentPackage;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,7 @@ public class PaymentService {
     private final StudentClassRepository studentClassRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final SessionPaymentService sessionPaymentService;
 
     @Transactional
     public PaymentResponse createPayment(PaymentRequest paymentRequest) {
@@ -69,44 +72,78 @@ public class PaymentService {
         }
 
         // Tính số tiền còn lại cần đóng (remaining amount)
-        // Lấy tất cả payments đã có trong tháng này
         Long remainingAmount = paymentRequest.getFeeSnapshot(); // Mặc định = feeSnapshot nếu chưa có payment nào
-        if (paymentRequest.getStudentId() != null && paymentRequest.getBillingMonth() != null) {
-            List<Payment> existingPayments = paymentRepository.findAllByStudentIdAndBillingMonth(
-                    paymentRequest.getStudentId(),
-                    paymentRequest.getBillingMonth()
-            );
-            
-            if (!existingPayments.isEmpty()) {
-                // Tính tổng số tiền đã đóng từ các payments trước đó
-                Long totalPaidAmount = 0L;
-                for (Payment existingPayment : existingPayments) {
-                    totalPaidAmount += existingPayment.getPaid() != null ? existingPayment.getPaid() : 0L;
+        
+        // Kiểm tra xem đây là session-based payment hay month-based payment
+        boolean isSessionBased = paymentRequest.getPackageNumber() != null 
+                && paymentRequest.getSessionStartNumber() != null 
+                && paymentRequest.getSessionEndNumber() != null;
+        
+        if (isSessionBased) {
+            // Session-based payment: tính theo package
+            if (paymentRequest.getStudentId() != null && paymentRequest.getClassId() != null) {
+                List<Payment> existingPayments = paymentRepository.findAllByStudentIdAndClassIdAndPackageNumber(
+                        paymentRequest.getStudentId(),
+                        paymentRequest.getClassId(),
+                        paymentRequest.getPackageNumber()
+                );
+                
+                if (!existingPayments.isEmpty()) {
+                    Long totalPaidAmount = existingPayments.stream()
+                            .mapToLong(p -> p.getPaid() != null ? p.getPaid() : 0L)
+                            .sum();
+                    remainingAmount = paymentRequest.getFeeSnapshot() - totalPaidAmount;
+                    if (remainingAmount < 0) {
+                        remainingAmount = 0L;
+                    }
                 }
-                // Số tiền còn lại = feeSnapshot - tổng đã đóng
-                remainingAmount = paymentRequest.getFeeSnapshot() - totalPaidAmount;
-                // Đảm bảo không âm
-                if (remainingAmount < 0) {
-                    remainingAmount = 0L;
+            }
+        } else {
+            // Month-based payment (backward compatibility)
+            if (paymentRequest.getStudentId() != null && paymentRequest.getBillingMonth() != null) {
+                List<Payment> existingPayments = paymentRepository.findAllByStudentIdAndBillingMonth(
+                        paymentRequest.getStudentId(),
+                        paymentRequest.getBillingMonth()
+                );
+                
+                if (!existingPayments.isEmpty()) {
+                    Long totalPaidAmount = 0L;
+                    for (Payment existingPayment : existingPayments) {
+                        totalPaidAmount += existingPayment.getPaid() != null ? existingPayment.getPaid() : 0L;
+                    }
+                    remainingAmount = paymentRequest.getFeeSnapshot() - totalPaidAmount;
+                    if (remainingAmount < 0) {
+                        remainingAmount = 0L;
+                    }
                 }
             }
         }
 
         // Luôn tạo payment mới để lưu lịch sử đóng tiền
         // Mỗi lần đóng tiền sẽ tạo một record mới, không cập nhật record cũ
-        Payment payment = Payment.builder()
+        Payment.PaymentBuilder paymentBuilder = Payment.builder()
                 .paymentId(generatePaymentId(paymentRequest.getDirection()))
                 .amount(remainingAmount) // Amount = số tiền còn lại cần đóng
                 .feeSnapshot(paymentRequest.getFeeSnapshot())
                 .paid(paymentRequest.getPaid()) // Số tiền đóng trong lần này
-                .billingMonth(paymentRequest.getBillingMonth())
                 .paymentMethod(paymentRequest.getPaymentMethod())
                 .paymentType(paymentRequest.getPaymentType())
                 .direction(paymentRequest.getDirection())
                 .student(student)
                 .clazz(clazz)
-                .note(paymentRequest.getNote())
-                .build();
+                .note(paymentRequest.getNote());
+        
+        // Set session-based fields nếu có
+        if (isSessionBased) {
+            paymentBuilder.packageNumber(paymentRequest.getPackageNumber())
+                         .sessionStartNumber(paymentRequest.getSessionStartNumber())
+                         .sessionEndNumber(paymentRequest.getSessionEndNumber());
+        }
+        
+        // Set billingMonth (có thể null nếu là session-based)
+        paymentBuilder.billingMonth(paymentRequest.getBillingMonth());
+        
+        Payment payment = paymentBuilder.build();
 
         // Set payment status cho lần đóng này
         // Khi paid >= amount (số tiền đóng >= số tiền còn lại) thì hoàn thành
@@ -117,6 +154,20 @@ public class PaymentService {
         }
 
         Payment savedPayment = paymentRepository.save(payment);
+        
+        // Cập nhật package status nếu là session-based payment
+        if (isSessionBased && paymentRequest.getPackageNumber() != null && clazz != null && student != null) {
+            Optional<SessionPaymentPackage> packageOpt = sessionPaymentService.getPackageByNumber(
+                    student.getId(), 
+                    clazz.getId(), 
+                    paymentRequest.getPackageNumber()
+            );
+            if (packageOpt.isPresent()) {
+                // Tính lại tổng paid amount từ tất cả payments
+                Long totalPaid = calculatePaidAmountForPackage(student.getId(), clazz.getId(), paymentRequest.getPackageNumber());
+                sessionPaymentService.updatePackageAfterPayment(packageOpt.get().getId(), totalPaid);
+            }
+        }
         
         // Map to response using helper method
         PaymentResponse paymentResponse = mapToPaymentResponse(savedPayment);
@@ -349,6 +400,15 @@ public class PaymentService {
                 .toUpperCase();
         
         return String.format("%s-%s%s", prefix, dateStr, randomPart);
+    }
+
+    // Helper method để tính tổng paid amount cho một package
+    private Long calculatePaidAmountForPackage(String studentId, String classId, Integer packageNumber) {
+        List<Payment> payments = paymentRepository.findAllByStudentIdAndClassIdAndPackageNumber(
+                studentId, classId, packageNumber);
+        return payments.stream()
+                .mapToLong(p -> p.getPaid() != null ? p.getPaid() : 0L)
+                .sum();
     }
 }
 

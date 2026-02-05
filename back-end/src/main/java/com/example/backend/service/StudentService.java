@@ -2,6 +2,7 @@ package com.example.backend.service;
 
 import com.example.backend.dto.student.ClassHistoryResponse;
 import com.example.backend.dto.student.MonthPaymentStatus;
+import com.example.backend.dto.student.SessionPaymentStatusDTO;
 import com.example.backend.dto.student.UpdateStudentShiftRequest;
 import com.example.backend.dto.student.BulkUpdateStudentShiftRequest;
 import com.example.backend.dto.student.RemoveStudentsFromClassRequest;
@@ -45,6 +46,7 @@ public class StudentService {
     private final PaymentRepository paymentRepository;
     private final ClassShiftRepository classShiftRepository;
     private final ModelMapper modelMapper;
+    private final SessionPaymentService sessionPaymentService;
 
     private boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
@@ -77,6 +79,15 @@ public class StudentService {
                     classDB.getMonthlyFee()
             );
             studentResponse.setMonthPaymentStatuses(monthPaymentStatuses);
+            
+            // Tính session-based payment statuses (mới)
+            List<SessionPaymentStatusDTO> sessionPaymentStatuses = sessionPaymentService.calculateSessionPaymentStatuses(
+                    student.getId(),
+                    classDB.getId(),
+                    studentClass.getJoinedAt(),
+                    classDB.getMonthlyFee()
+            );
+            studentResponse.setSessionPaymentStatuses(sessionPaymentStatuses);
         }
 
         return studentResponse;
@@ -512,6 +523,15 @@ public class StudentService {
                     classDB.getMonthlyFee()
             );
             studentResponse.setMonthPaymentStatuses(monthPaymentStatuses);
+            
+            // Tính session-based payment statuses (mới)
+            List<SessionPaymentStatusDTO> sessionPaymentStatuses = sessionPaymentService.calculateSessionPaymentStatuses(
+                    student.getId(),
+                    classDB.getId(),
+                    studentClass.getJoinedAt(),
+                    classDB.getMonthlyFee()
+            );
+            studentResponse.setSessionPaymentStatuses(sessionPaymentStatuses);
         }
 
         return studentResponse;

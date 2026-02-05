@@ -1,5 +1,5 @@
 import http from '@/lib/http';
-import { ResponseType, PaymentRequest, PaymentResponse, CreateStudentPaymentData, CreateTeacherPaymentData } from '@/types';
+import { ResponseType, PaymentRequest, PaymentResponse, CreateStudentPaymentData, CreateTeacherPaymentData, CreateSessionPaymentData } from '@/types';
 
 // Helper function to convert CreateStudentPaymentData to PaymentRequest
 const convertToPaymentRequest = (data: CreateStudentPaymentData, monthlyFee: number): PaymentRequest => {
@@ -25,6 +25,30 @@ const convertToPaymentRequest = (data: CreateStudentPaymentData, monthlyFee: num
     direction: 'INCOME',
     studentId: data.studentId,
     note: data.notes || undefined,
+  };
+};
+
+// Helper function to convert CreateSessionPaymentData to PaymentRequest (new - session-based)
+const convertToSessionPaymentRequest = (data: CreateSessionPaymentData, monthlyFee: number): PaymentRequest => {
+  // Map payment method from FE format to BE format
+  const paymentMethodMap: Record<'cash' | 'bank_transfer', 'CASH' | 'BANK_TRANSFER'> = {
+    cash: 'CASH',
+    bank_transfer: 'BANK_TRANSFER',
+  };
+
+  return {
+    amount: 0, // Will be calculated by backend (remaining amount)
+    paid: data.amount, // The amount being paid now
+    feeSnapshot: monthlyFee, // Total expected fee for the package (same as monthlyFee)
+    paymentMethod: paymentMethodMap[data.paymentMethod] || 'BANK_TRANSFER',
+    paymentType: 'STUDENT_FEE',
+    direction: 'INCOME',
+    studentId: data.studentId,
+    note: data.notes || undefined,
+    // Session-based fields
+    packageNumber: data.packageNumber,
+    sessionStartNumber: data.startSessionNumber,
+    sessionEndNumber: data.endSessionNumber,
   };
 };
 
@@ -63,6 +87,11 @@ export const paymentService = {
   
   createStudentPayment: (data: CreateStudentPaymentData, monthlyFee: number) => {
     const paymentRequest = convertToPaymentRequest(data, monthlyFee);
+    return paymentService.createPayment(paymentRequest);
+  },
+
+  createSessionPayment: (data: CreateSessionPaymentData, monthlyFee: number) => {
+    const paymentRequest = convertToSessionPaymentRequest(data, monthlyFee);
     return paymentService.createPayment(paymentRequest);
   },
 

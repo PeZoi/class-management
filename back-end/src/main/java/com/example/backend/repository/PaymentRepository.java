@@ -71,4 +71,14 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     // Tính tổng revenue cho tất cả classes trong một tháng cụ thể (direction = INCOME)
     @Query("SELECT COALESCE(SUM(p.paid), 0) FROM Payment p WHERE p.direction = :direction AND p.billingMonth = :billingMonth")
     Long sumTotalRevenueByMonth(@Param("direction") PaymentDirection direction, @Param("billingMonth") Instant billingMonth);
+
+    // ===== SESSION-BASED PAYMENT QUERIES (NEW) =====
+    
+    // Lấy tất cả payments của một student theo package number
+    @Query("SELECT p FROM Payment p WHERE p.student.id = :studentId AND p.clazz.id = :classId AND p.packageNumber = :packageNumber ORDER BY p.createdAt ASC")
+    List<Payment> findAllByStudentIdAndClassIdAndPackageNumber(@Param("studentId") String studentId, @Param("classId") String classId, @Param("packageNumber") Integer packageNumber);
+
+    // Lấy tất cả payments của một student theo session range
+    @Query("SELECT p FROM Payment p WHERE p.student.id = :studentId AND p.clazz.id = :classId AND p.sessionStartNumber = :startSession AND p.sessionEndNumber = :endSession ORDER BY p.createdAt ASC")
+    List<Payment> findAllByStudentIdAndClassIdAndSessionRange(@Param("studentId") String studentId, @Param("classId") String classId, @Param("startSession") Integer startSession, @Param("endSession") Integer endSession);
 }
