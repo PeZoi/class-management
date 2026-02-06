@@ -1,7 +1,18 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
@@ -10,17 +21,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { StudentType, Attendance } from '@/types';
+import { Attendance, AttendanceStatus, StudentType } from '@/types';
 import { formatDate } from '@/utils/helper';
-import { Calendar, CheckCircle2, Clock, XCircle, Users } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle2, Clock, Save, XCircle, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, useMemo } from 'react';
-import { useAttendanceByClass } from '@/hooks/use-attendance';
+import { useAttendanceByClass, useCreateAttendance, useUpdateAttendance } from '@/hooks/use-attendance';
+import { toast } from 'react-toastify';
 
 export interface AttendanceSession {
   id: string;
   date: string;
-  sessionNumber: number; // 1-8 for each month
+  sessionNumber: number; // 1..N within selected month
   status: 'present' | 'absent' | 'late' | 'excused' | 'no_data';
   notes?: string;
 }
@@ -38,17 +50,6 @@ interface ClassroomStudentAttendanceProps {
   currentYear?: number; // default to current year
 }
 
-// Convert backend Attendance to AttendanceSession format
-const convertToAttendanceSession = (attendance: Attendance): AttendanceSession => {
-  return {
-    id: attendance.id,
-    date: attendance.sessionDate.split('T')[0],
-    sessionNumber: attendance.sessionNumber,
-    status: attendance.status.toLowerCase() as 'present' | 'absent' | 'late' | 'excused',
-    notes: attendance.notes,
-  };
-};
-
 export function ClassroomStudentAttendance({
   students,
   classId,
@@ -56,45 +57,59 @@ export function ClassroomStudentAttendance({
   currentYear = new Date().getFullYear(),
 }: ClassroomStudentAttendanceProps) {
   const t = useTranslations('classroom-detail');
+  const tAttendance = useTranslations('attendance');
+  const tCommon = useTranslations('common');
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editStudent, setEditStudent] = useState<StudentType | null>(null);
+  const [editSession, setEditSession] = useState<AttendanceSession | null>(null);
+  const [editStatus, setEditStatus] = useState<AttendanceStatus | ''>('');
+  const [editNotes, setEditNotes] = useState<string>('');
+
+  const createAttendance = useCreateAttendance();
+  const updateAttendance = useUpdateAttendance();
   
   // Fetch attendance data from database
   const { data: attendanceData = [], isLoading } = useAttendanceByClass(classId);
   
   // Filter and process attendance data
   const { sessions, attendanceRecords } = useMemo(() => {
-    // Always create 8 sessions (1-8) for the selected month
-    const sessions: AttendanceSession[] = Array.from({ length: 8 }, (_, i) => ({
-      id: `session-${i + 1}`,
-      date: '',
-      sessionNumber: i + 1,
-      status: 'no_data' as const,
-      notes: undefined,
-    }));
-    
     // Filter attendance for selected month/year
     const filteredAttendance = attendanceData.filter((attendance) => {
       const date = new Date(attendance.sessionDate);
       return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
     });
-    
-    // Get unique session numbers and dates from actual data
-    const sessionDateMap = new Map<number, string>();
-    filteredAttendance.forEach((attendance) => {
-      if (!sessionDateMap.has(attendance.sessionNumber)) {
-        sessionDateMap.set(attendance.sessionNumber, attendance.sessionDate.split('T')[0]);
-      }
+
+    // Lấy danh sách ngày học duy nhất trong tháng này (theo thứ tự tăng dần)
+    const uniqueDates = Array.from(
+      new Set(
+        filteredAttendance.map((a) => a.sessionDate.split('T')[0])
+      )
+    ).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+    // Số buổi hiển thị: tối thiểu 8, nếu tháng đó có >8 buổi thì tăng theo số ngày thực tế
+    const totalSessions = Math.max(8, uniqueDates.length);
+
+    // Map từ date -> số buổi trong tháng (1..N)
+    const dateToSessionNumber = new Map<string, number>();
+    uniqueDates.forEach((date, index) => {
+      dateToSessionNumber.set(date, index + 1);
     });
-    
-    // Update sessions with actual dates
-    sessions.forEach((session) => {
-      const actualDate = sessionDateMap.get(session.sessionNumber);
-      if (actualDate) {
-        session.date = actualDate;
-      }
+
+    // Tạo danh sách sessions 1..totalSessions, gán ngày cho các buổi có dữ liệu
+    const sessions: AttendanceSession[] = Array.from({ length: totalSessions }, (_, i) => {
+      const date = uniqueDates[i] ?? '';
+      return {
+        id: date ? `session-${i + 1}-${date}` : `session-${i + 1}`,
+        date,
+        sessionNumber: i + 1,
+        status: 'no_data' as const,
+        notes: undefined,
+      };
     });
-    
+
     // Group attendance by student
     const studentAttendanceMap = new Map<string, Attendance[]>();
     filteredAttendance.forEach((attendance) => {
@@ -103,27 +118,94 @@ export function ClassroomStudentAttendance({
       }
       studentAttendanceMap.get(attendance.studentId)!.push(attendance);
     });
-    
+
     // Create attendance records for each student
     const attendanceRecords: StudentAttendanceRecord[] = students.map((student) => {
       const studentAttendances = studentAttendanceMap.get(student.id) || [];
-      const attendanceBySession = new Map(
-        studentAttendances.map((a) => [a.sessionNumber, convertToAttendanceSession(a)])
-      );
-      
+      const attendanceBySession = new Map<number, AttendanceSession>();
+
+      studentAttendances.forEach((a) => {
+        const dateStr = a.sessionDate.split('T')[0];
+        const sessionNumber = dateToSessionNumber.get(dateStr);
+        if (!sessionNumber) return;
+
+        attendanceBySession.set(sessionNumber, {
+          id: a.id,
+          date: dateStr,
+          sessionNumber,
+          status: a.status.toLowerCase() as 'present' | 'absent' | 'late' | 'excused',
+          notes: a.notes || undefined,
+        });
+      });
+
       return {
         studentId: student.id,
         studentName: student.fullName,
         sessions: sessions.map((session) => {
           const attendance = attendanceBySession.get(session.sessionNumber);
           // Use actual attendance or show "no_data" status
-          return attendance || { ...session, status: 'no_data' as const };
+          return attendance || session;
         }),
       };
     });
-    
+
     return { sessions, attendanceRecords };
   }, [attendanceData, selectedMonth, selectedYear, students]);
+
+  const openEditDialog = (studentId: string, session: AttendanceSession) => {
+    const student = students.find((s) => s.id === studentId) || null;
+    setEditStudent(student);
+    setEditSession(session);
+
+    const statusMap: Partial<Record<AttendanceSession['status'], AttendanceStatus>> = {
+      present: 'PRESENT',
+      absent: 'ABSENT',
+      late: 'LATE',
+      excused: 'EXCUSED',
+    };
+
+    setEditStatus(statusMap[session.status] || '');
+    setEditNotes(session.notes || '');
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editStudent || !editSession) return;
+
+    if (!editStatus) {
+      toast.error(tAttendance('selectStatus') || 'Vui lòng chọn trạng thái');
+      return;
+    }
+
+    if (!editSession.date) {
+      toast.error(t('attendanceNoSessionDate') || 'Buổi học này chưa có ngày, không thể cập nhật.');
+      return;
+    }
+
+    const payload = {
+      studentId: editStudent.id,
+      classId,
+      sessionDate: new Date(editSession.date).toISOString(),
+      status: editStatus as AttendanceStatus,
+      notes: editNotes || undefined,
+    };
+
+    try {
+      // Nếu session.id là id thật từ DB thì update, còn "session-*" thì create
+      const isDbRecord = !editSession.id.startsWith('session-') && editSession.status !== 'no_data';
+
+      if (isDbRecord) {
+        await updateAttendance.mutateAsync({ id: editSession.id, data: payload });
+      } else {
+        await createAttendance.mutateAsync(payload);
+      }
+
+      setEditOpen(false);
+    } catch (e) {
+      // toast đã được handle trong hook
+      console.error(e);
+    }
+  };
   
   const getStatusBadge = (session: AttendanceSession) => {
     const { status, notes } = session;
@@ -328,7 +410,13 @@ export function ClassroomStudentAttendance({
                     </TableCell>
                     {record.sessions.map((session) => (
                       <TableCell key={session.id} className="text-center">
-                        {getStatusBadge(session)}
+                        <button
+                          type="button"
+                          onClick={() => openEditDialog(record.studentId, session)}
+                          className="inline-flex cursor-pointer"
+                        >
+                          {getStatusBadge(session)}
+                        </button>
                       </TableCell>
                     ))}
                     <TableCell className="text-center">
@@ -347,6 +435,103 @@ export function ClassroomStudentAttendance({
         </div>
       </CardContent>
     </Card>
+
+    <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>{t('attendanceEditTitle')}</DialogTitle>
+          <DialogDescription>
+            {t('attendanceEditDesc')}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="text-sm font-medium text-slate-900 flex items-center gap-2">
+              <span>{editStudent?.fullName || '-'}</span>
+              {editStudent?.dob && (
+                <span className="flex items-center gap-1 text-xs text-slate-600">
+                  <Calendar className="size-3" />
+                  {formatDate(editStudent.dob)}
+                </span>
+              )}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+              {editStudent?.class?.shiftName && (
+                <span className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700">
+                  <Clock className="size-3" />
+                  {editStudent.class.shiftName}
+                </span>
+              )}
+              {editSession?.date && (
+                <span className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5">
+                  {tAttendance('date')}: {formatDate(editSession.date)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>{tAttendance('selectStatus')}</Label>
+            <Select value={editStatus} onValueChange={(v) => setEditStatus(v as AttendanceStatus)}>
+              <SelectTrigger className="h-10 border-slate-300 bg-white">
+                <SelectValue placeholder={tAttendance('selectStatus')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PRESENT">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-green-600" />
+                    <span>{tAttendance('status.present')}</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="ABSENT">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="size-4 text-red-600" />
+                    <span>{tAttendance('status.absent')}</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="LATE">
+                  <div className="flex items-center gap-2">
+                    <Clock className="size-4 text-yellow-600" />
+                    <span>{tAttendance('status.late')}</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="EXCUSED">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="size-4 text-blue-600" />
+                    <span>{tAttendance('status.excused')}</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {editStatus !== 'PRESENT' && (
+            <div className="grid gap-2">
+              <Label>{tAttendance('notes')}</Label>
+              <Input
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder={tAttendance('notesPlaceholder')}
+              />
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditOpen(false)}>
+            {tCommon('close')}
+          </Button>
+          <Button
+            onClick={handleSaveEdit}
+            disabled={createAttendance.isPending || updateAttendance.isPending}
+          >
+            <Save className="size-4 mr-2" />
+            {tCommon('save')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </TooltipProvider>
   );
 }

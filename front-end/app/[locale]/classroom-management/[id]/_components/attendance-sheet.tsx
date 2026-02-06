@@ -21,11 +21,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StudentType, AttendanceStatus, CreateAttendanceData, ClassShiftType } from '@/types';
-import { useCreateBulkAttendance, useAttendanceByClass } from '@/hooks/use-attendance';
-import { CheckCircle2, XCircle, Clock, AlertCircle, Save, Calendar, Search, Filter, Users, X } from 'lucide-react';
+import { useUpsertBulkAttendance, useAttendanceByClass } from '@/hooks/use-attendance';
+import { CheckCircle2, XCircle, Clock, AlertCircle, Save, Calendar, Search, Filter, Users, X, RotateCcw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { formatDate } from '@/utils/helper';
 
 interface AttendanceSheetProps {
   open: boolean;
@@ -41,6 +42,8 @@ interface StudentAttendanceForm {
   studentName: string;
   status?: AttendanceStatus; // undefined = chưa điểm danh
   notes?: string;
+  dob?: string; // Ngày sinh
+  shiftName?: string; // Ca học
 }
 
 export function AttendanceSheet({
@@ -59,6 +62,7 @@ export function AttendanceSheet({
   );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterShift, setFilterShift] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<AttendanceStatus | 'all'>('all');
   const [markedStudents, setMarkedStudents] = useState<Set<string>>(new Set());
 
   // Initialize attendance list from students prop
@@ -68,13 +72,15 @@ export function AttendanceSheet({
       studentName: student.fullName,
       status: undefined, // Mặc định chưa điểm danh
       notes: undefined,
+      dob: student.dob,
+      shiftName: student.class?.shiftName,
     }))
   );
 
-  const createBulkAttendance = useCreateBulkAttendance();
+  const upsertBulkAttendance = useUpsertBulkAttendance();
   
   // Fetch existing attendance data for this class
-  const { data: existingAttendanceData } = useAttendanceByClass(classId);
+  const { data: existingAttendanceData = [] } = useAttendanceByClass(classId);
 
   // Update attendance list when dialog opens or sessionDate changes
   useEffect(() => {
@@ -104,6 +110,8 @@ export function AttendanceSheet({
           studentName: student.fullName,
           status: existingAttendance.status,
           notes: existingAttendance.notes,
+          dob: student.dob,
+          shiftName: student.class?.shiftName,
         };
       }
       
@@ -112,6 +120,8 @@ export function AttendanceSheet({
         studentId: student.id,
         studentName: student.fullName,
         status: undefined,
+        dob: student.dob,
+        shiftName: student.class?.shiftName,
         notes: undefined,
       };
     });
@@ -136,6 +146,14 @@ export function AttendanceSheet({
     );
     // Mark as attended
     setMarkedStudents((prev) => new Set(prev).add(studentId));
+  };
+
+  const handleNotesChange = (studentId: string, notes: string) => {
+    setAttendanceList((prev) =>
+      prev.map((item) =>
+        item.studentId === studentId ? { ...item, notes } : item
+      )
+    );
   };
 
   const handleUnmark = (studentId: string) => {
@@ -168,6 +186,13 @@ export function AttendanceSheet({
     );
   };
 
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setFilterShift('all');
+    setSessionDate(new Date().toISOString().split('T')[0]); // Reset về ngày hôm nay
+    setFilterStatus('all');
+  };
+
   const handleSubmit = async () => {
     if (!sessionDate) {
       toast.error(t('errorSelectDate'));
@@ -184,6 +209,36 @@ export function AttendanceSheet({
       return;
     }
 
+    const selectedDateStr = new Date(sessionDate).toISOString().split('T')[0];
+    
+    // Kiểm tra xem ngày đã có records chưa
+    const existingRecordsForDate = existingAttendanceData.filter((attendance) => {
+      const attendanceDateStr = new Date(attendance.sessionDate).toISOString().split('T')[0];
+      return attendanceDateStr === selectedDateStr;
+    });
+
+    const isUpdating = existingRecordsForDate.length > 0;
+
+    // Nếu là tạo mới, validate ngày không được quá khứ của buổi mới nhất
+    if (!isUpdating && existingAttendanceData.length > 0) {
+      // Tìm ngày mới nhất trong các attendance records
+      const latestDate = existingAttendanceData.reduce((latest, record) => {
+        const recordDate = new Date(record.sessionDate);
+        return recordDate > latest ? recordDate : latest;
+      }, new Date(existingAttendanceData[0].sessionDate));
+
+      const latestDateStr = latestDate.toISOString().split('T')[0];
+      
+      // Nếu ngày chọn < ngày mới nhất, báo lỗi
+      if (selectedDateStr < latestDateStr) {
+        toast.error(
+          t('errorPastDate') || 
+          `Không thể tạo điểm danh cho ngày quá khứ. Buổi học mới nhất là ${new Date(latestDateStr).toLocaleDateString('vi-VN')}`
+        );
+        return;
+      }
+    }
+
     const attendanceData: CreateAttendanceData[] = markedAttendanceList.map((item) => ({
       studentId: item.studentId,
       classId,
@@ -193,7 +248,10 @@ export function AttendanceSheet({
     }));
 
     try {
-      await createBulkAttendance.mutateAsync(attendanceData);
+      await upsertBulkAttendance.mutateAsync({
+        dataList: attendanceData,
+        existingRecords: existingRecordsForDate,
+      });
       onSuccess?.();
       onOpenChange(false);
       // Reset form
@@ -205,10 +263,12 @@ export function AttendanceSheet({
           studentName: student.fullName,
           status: undefined, // Chưa điểm danh
           notes: undefined,
+          dob: student.dob,
+          shiftName: student.class?.shiftName,
         }))
       );
     } catch (error) {
-      console.error('Error creating attendance:', error);
+      console.error('Error upserting attendance:', error);
     }
   };
 
@@ -242,6 +302,21 @@ export function AttendanceSheet({
     }
   };
 
+  const getStatusIconColor = (status: AttendanceStatus) => {
+    switch (status) {
+      case 'PRESENT':
+        return 'text-green-600';
+      case 'ABSENT':
+        return 'text-red-600';
+      case 'LATE':
+        return 'text-yellow-600';
+      case 'EXCUSED':
+        return 'text-blue-600';
+      default:
+        return 'text-slate-600';
+    }
+  };
+
   const statusOptions: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
 
   // Get student's shift ID from students prop
@@ -269,6 +344,11 @@ export function AttendanceSheet({
       });
     }
 
+    // Filter by status if selected (chỉ lọc những học viên đã có status)
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter((student) => student.status === filterStatus);
+    }
+
     const unmarked = filtered.filter((s) => !markedStudents.has(s.studentId));
     const marked = filtered.filter((s) => markedStudents.has(s.studentId));
 
@@ -276,7 +356,18 @@ export function AttendanceSheet({
       unmarkedStudents: unmarked,
       markedStudentsList: marked,
     };
-  }, [attendanceList, searchQuery, markedStudents, filterShift, studentShiftMap]);
+  }, [attendanceList, searchQuery, markedStudents, filterShift, filterStatus, studentShiftMap]);
+
+  // Check if any filter is active
+  const hasActiveFilters = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return (
+      searchQuery !== '' ||
+      filterShift !== 'all' ||
+      filterStatus !== 'all' ||
+      sessionDate !== today
+    );
+  }, [searchQuery, filterShift, filterStatus, sessionDate]);
 
   const stats = useMemo(() => {
     // Chỉ đếm những học viên đã được tích (có status)
@@ -313,7 +404,7 @@ export function AttendanceSheet({
           {/* Filter Section */}
           <Card className="border border-slate-200 shadow-sm">
             <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 {/* Session Date */}
                 <div>
                   <Label htmlFor="sessionDate" className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
@@ -325,7 +416,7 @@ export function AttendanceSheet({
                     type="date"
                     value={sessionDate}
                     onChange={(e) => setSessionDate(e.target.value)}
-                    className="h-10 border-slate-300"
+                    className="h-10 border-slate-300" 
                   />
                 </div>
 
@@ -346,9 +437,39 @@ export function AttendanceSheet({
                   </div>
                 </div>
 
+                {/* Status Filter */}
+                <div>
+                  <Label className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                    <Filter className="size-4 text-slate-500" />
+                    {t('statusFilter') || t('statusLabel') || 'Trạng thái'}
+                  </Label>
+                  <Select
+                    value={filterStatus}
+                    onValueChange={(value) => setFilterStatus(value as AttendanceStatus | 'all')}
+                  >
+                    <SelectTrigger className="h-10 border-slate-300 w-full">
+                      <SelectValue placeholder={t('selectStatus')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allStatuses') || 'Tất cả trạng thái'}</SelectItem>
+                      {statusOptions.map((status) => {
+                        const Icon = getStatusIcon(status);
+                        return (
+                          <SelectItem key={status} value={status}>
+                            <div className="flex items-center gap-2">
+                              <Icon className={`size-4 ${getStatusIconColor(status)}`} />
+                              <span>{t(`status.${status.toLowerCase()}`)}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Shift Filter */}
                 {shifts && shifts.length > 0 ? (
-                  <div>
+                  <div className='col-span-2'>
                     <Label className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                       <Filter className="size-4 text-slate-500" />
                       {t('shift')}
@@ -369,6 +490,24 @@ export function AttendanceSheet({
                   </div>
                 ) : (
                   <div /> // Empty div for grid layout when no shifts
+                )}
+
+                
+
+                {/* Reset Filters Button */}
+                {hasActiveFilters ? (
+                  <div className="flex items-end justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={handleResetFilters}
+                      className="h-10 w-[100px] text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                    >
+                      <RotateCcw className="size-4 mr-2" />
+                      {tCommon('reset') || 'Đặt lại'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div /> // Empty div for grid layout when no filters
                 )}
               </div>
             </CardContent>
@@ -429,9 +568,27 @@ export function AttendanceSheet({
                       key={item.studentId} 
                       className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all"
                     >
-                      <span className="font-medium text-slate-700">
-                        {item.studentName}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-slate-700">
+                            {item.studentName}
+                          </span>
+                          {item.dob && (
+                            <span className="flex items-center gap-1 text-xs text-slate-500">
+                              <Calendar className="size-3" />
+                              {formatDate(item.dob)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          {item.shiftName && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+                              <Clock className="size-3" />
+                              {item.shiftName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                       <Select 
                         value={item.status || ''} 
                         onValueChange={(value) => handleStatusChange(item.studentId, value as AttendanceStatus)}
@@ -445,7 +602,7 @@ export function AttendanceSheet({
                             return (
                               <SelectItem key={status} value={status}>
                                 <div className="flex items-center gap-2">
-                                  <Icon className="size-4" />
+                                  <Icon className={`size-4 ${getStatusIconColor(status)}`} />
                                   <span>{t(`status.${status.toLowerCase()}`)}</span>
                                 </div>
                               </SelectItem>
@@ -500,46 +657,88 @@ export function AttendanceSheet({
                     return (
                       <div 
                         key={item.studentId} 
-                        className="flex items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all"
+                        className="flex flex-col gap-2 p-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all"
                       >
-                        <span className="font-medium text-slate-700 truncate">
-                          {item.studentName}
-                        </span>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <Select 
-                            value={item.status} 
-                            onValueChange={(value) => handleStatusChange(item.studentId, value as AttendanceStatus)}
-                          >
-                            <SelectTrigger className={`h-8 w-auto min-w-[140px] border ${getStatusColor(item.status)} font-medium text-sm`}>
-                              <div className="flex items-center gap-2">
-                                <StatusIcon className="size-4" />
-                                <span>{t(`status.${item.status.toLowerCase()}`)}</span>
+                        {/* Hàng 1: Tên + Info | Select + Button */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-1 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-700">
+                                {item.studentName}
+                              </span>
+                              {item.dob && (
+                                <span className="flex items-center gap-1 text-xs text-slate-500">
+                                  <Calendar className="size-3" />
+                                  {formatDate(item.dob)}
+                                </span>
+                              )}
+                              {/* Badge status nhỏ gọn inline */}
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(item.status)}`}>
+                                <StatusIcon className="size-3" />
+                                {t(`status.${item.status.toLowerCase()}`)}
+                              </span>
+                            </div>
+                            {item.shiftName && (
+                              <div className="flex items-center gap-2 text-xs text-slate-500">
+                                <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+                                  <Clock className="size-3" />
+                                  {item.shiftName}
+                                </span>
                               </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {statusOptions.map((status) => {
-                                const Icon = getStatusIcon(status);
-                                return (
-                                  <SelectItem key={status} value={status}>
-                                    <div className="flex items-center gap-2">
-                                      <Icon className="size-4" />
-                                      <span>{t(`status.${status.toLowerCase()}`)}</span>
-                                    </div>
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleUnmark(item.studentId)}
-                            className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                            title={t('unmark') || 'Bỏ tích'}
-                          >
-                            <X className="size-4" />
-                          </Button>
+                            )}
+                          </div>
+                          
+                          <div className='flex items-center justify-end gap-2 shrink-0'>
+                            {/* Select để thay đổi trạng thái */}
+                            <Select 
+                              value={item.status} 
+                              onValueChange={(value) => handleStatusChange(item.studentId, value as AttendanceStatus)}
+                            >
+                              <SelectTrigger className="h-8 w-[140px] border-slate-300">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {statusOptions.map((status) => {
+                                  const Icon = getStatusIcon(status);
+                                  return (
+                                    <SelectItem key={status} value={status}>
+                                      <div className="flex items-center gap-2 w-fit">
+                                        <Icon className={`size-4 ${getStatusIconColor(status)}`} />
+                                        <span>{t(`status.${status.toLowerCase()}`)}</span>
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                            
+                            {/* Button bỏ tích */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleUnmark(item.studentId)}
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                              title={t('unmark') || 'Bỏ tích'}
+                            >
+                              <X className="size-4" />
+                            </Button>
+                          </div>
                         </div>
+                        
+                        {/* Hàng 2: Input lý do (chỉ hiện khi không phải PRESENT) */}
+                        {item.status !== 'PRESENT' && (
+                          <div className="flex items-center gap-2">
+                            <Label className="text-sm text-slate-600 min-w-[80px]">
+                              {t('reason') || 'Lý do'}:
+                            </Label>
+                            <Input
+                              placeholder={t('reasonPlaceholder') || 'Nhập lý do...'}
+                              value={item.notes || ''}
+                              onChange={(e) => handleNotesChange(item.studentId, e.target.value)}
+                              className="h-8 flex-1 text-sm"
+                            />
+                          </div>
+                        )}
                       </div>
 
                     );
@@ -567,11 +766,11 @@ export function AttendanceSheet({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={createBulkAttendance.isPending}
+                disabled={upsertBulkAttendance.isPending}
                 className="bg-linear-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-8 h-11 shadow-md hover:shadow-lg transition-all"
               >
                 <Save className="size-5 mr-2" />
-                {createBulkAttendance.isPending ? t('saving') : t('saveAttendance')}
+                {upsertBulkAttendance.isPending ? t('saving') : t('saveAttendance')}
               </Button>
             </div>
           </div>

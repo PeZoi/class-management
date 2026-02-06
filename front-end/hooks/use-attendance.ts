@@ -85,3 +85,72 @@ export function useCreateBulkAttendance() {
   });
 }
 
+/**
+ * Hook để update attendance record
+ */
+export function useUpdateAttendance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: CreateAttendanceData }) => 
+      attendanceService.updateAttendance(id, { id, ...data }),
+    onSuccess: () => {
+      toast.success('Cập nhật điểm danh thành công');
+      queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+    },
+    onError: (error: Error) => {
+      toast.error(`Cập nhật điểm danh thất bại: ${error.message}`);
+    },
+  });
+}
+
+/**
+ * Hook để tạo hoặc cập nhật nhiều attendance records
+ * Tự động phát hiện record đã tồn tại hay chưa
+ */
+export function useUpsertBulkAttendance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      dataList, 
+      existingRecords 
+    }: { 
+      dataList: CreateAttendanceData[]; 
+      existingRecords: Attendance[] 
+    }) => {
+      // Tạo map để tra cứu nhanh existing records
+      const existingMap = new Map(
+        existingRecords.map(record => [record.studentId, record])
+      );
+
+      const promises = dataList.map(data => {
+        const existingRecord = existingMap.get(data.studentId);
+        
+        if (existingRecord) {
+          // Update nếu đã tồn tại
+          return attendanceService.updateAttendance(existingRecord.id, {
+            id: existingRecord.id,
+            ...data
+          });
+        } else {
+          // Create mới nếu chưa tồn tại
+          return attendanceService.createAttendance(data);
+        }
+      });
+
+      return Promise.all(promises);
+    },
+    onSuccess: (_, variables) => {
+      const hasExisting = variables.existingRecords.length > 0;
+      toast.success(hasExisting ? 'Cập nhật điểm danh thành công' : 'Điểm danh thành công');
+      queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+    },
+    onError: (error: Error) => {
+      toast.error(`Thao tác thất bại: ${error.message}`);
+    },
+  });
+}
+
