@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Attendance, AttendanceStatus, StudentType } from '@/types';
+import { ClassShiftType } from '@/types/class-type';
 import { formatDate } from '@/utils/helper';
 import { AlertCircle, Calendar, CheckCircle2, Clock, Save, XCircle, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -48,6 +49,7 @@ interface ClassroomStudentAttendanceProps {
   classId: string;
   currentMonth?: number; // 1-12, default to current month
   currentYear?: number; // default to current year
+  shifts?: ClassShiftType[]; // Danh sách ca học để lọc
 }
 
 export function ClassroomStudentAttendance({
@@ -55,12 +57,14 @@ export function ClassroomStudentAttendance({
   classId,
   currentMonth = new Date().getMonth() + 1,
   currentYear = new Date().getFullYear(),
+  shifts = [],
 }: ClassroomStudentAttendanceProps) {
   const t = useTranslations('classroom-detail');
   const tAttendance = useTranslations('attendance');
   const tCommon = useTranslations('common');
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [filterShift, setFilterShift] = useState<string>('all');
 
   const [editOpen, setEditOpen] = useState(false);
   const [editStudent, setEditStudent] = useState<StudentType | null>(null);
@@ -73,6 +77,17 @@ export function ClassroomStudentAttendance({
   
   // Fetch attendance data from database
   const { data: attendanceData = [], isLoading } = useAttendanceByClass(classId);
+  
+  // Map student ID to shift ID
+  const studentShiftMap = useMemo(() => {
+    const map = new Map<string, string>();
+    students.forEach((student) => {
+      if (student.class?.shiftId) {
+        map.set(student.id, student.class.shiftId);
+      }
+    });
+    return map;
+  }, [students]);
   
   // Filter and process attendance data
   const { sessions, attendanceRecords } = useMemo(() => {
@@ -120,7 +135,7 @@ export function ClassroomStudentAttendance({
     });
 
     // Create attendance records for each student
-    const attendanceRecords: StudentAttendanceRecord[] = students.map((student) => {
+    let allAttendanceRecords: StudentAttendanceRecord[] = students.map((student) => {
       const studentAttendances = studentAttendanceMap.get(student.id) || [];
       const attendanceBySession = new Map<number, AttendanceSession>();
 
@@ -149,8 +164,16 @@ export function ClassroomStudentAttendance({
       };
     });
 
-    return { sessions, attendanceRecords };
-  }, [attendanceData, selectedMonth, selectedYear, students]);
+    // Filter by shift if selected
+    if (filterShift !== 'all') {
+      allAttendanceRecords = allAttendanceRecords.filter((record) => {
+        const studentShift = studentShiftMap.get(record.studentId);
+        return studentShift === filterShift;
+      });
+    }
+
+    return { sessions, attendanceRecords: allAttendanceRecords };
+  }, [attendanceData, selectedMonth, selectedYear, students, filterShift, studentShiftMap]);
 
   const openEditDialog = (studentId: string, session: AttendanceSession) => {
     const student = students.find((s) => s.id === studentId) || null;
@@ -363,6 +386,21 @@ export function ClassroomStudentAttendance({
                 ))}
               </SelectContent>
             </Select>
+            {shifts && shifts.length > 0 && (
+              <Select value={filterShift} onValueChange={setFilterShift}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder={t('allShifts') || 'Tất cả ca'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('allShifts') || 'Tất cả ca'}</SelectItem>
+                  {shifts.map((shift) => (
+                    <SelectItem key={shift.id} value={shift.id}>
+                      {shift.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">

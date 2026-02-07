@@ -2,13 +2,6 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -380,21 +373,19 @@ export function AttendanceSheet({
   }, [attendanceList]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[80%]! max-w-[1400px]! h-[90vh] flex flex-col p-0 overflow-x-hidden">
+    <Card className="border border-slate-200 shadow-lg mt-4">
+      <div className="flex flex-col">
         {/* Header - Fixed */}
         <div className="px-6 py-5 pb-0 text-black shrink-0">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3 text-2xl font-semibold">
-              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                <Calendar className="size-6" />
-              </div>
-              {t('title')}
-            </DialogTitle>
-            <DialogDescription className="text-gray-500 mt-1.5">
-              {t('description')}
-            </DialogDescription>
-          </DialogHeader>
+          <div className="flex items-center gap-3 text-2xl font-semibold mb-2">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Calendar className="size-6 text-blue-600" />
+            </div>
+            {t('title')}
+          </div>
+          <p className="text-gray-500 text-sm">
+            {t('description')}
+          </p>
           <Separator className="my-6" />
         </div>
 
@@ -775,8 +766,8 @@ export function AttendanceSheet({
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </Card>
   );
 }
 

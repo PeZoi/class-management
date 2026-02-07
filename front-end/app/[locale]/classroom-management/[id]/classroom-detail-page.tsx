@@ -26,7 +26,8 @@ import { useStudentsByClass, useUpdateStudent } from '@/hooks/use-students';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { Button } from '@/components/ui/button';
-import { ClipboardCheck } from 'lucide-react';
+import { ClipboardCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 type TimePeriod = '3months' | '6months' | '12months';
 
@@ -234,20 +235,42 @@ export default function ClassroomDetailPage() {
         }}
       />
 
-      {/* Attendance Button */}
-      <div className="flex justify-end">
-        <Button
-          onClick={() => setIsAttendanceSheetOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-          size="lg"
-        >
-          <ClipboardCheck className="size-5 mr-2" />
-          {tCommon('takeAttendance')}
-        </Button>
-      </div>
-
       {/* Student Attendance */}
-      <ClassroomStudentAttendance students={students} classId={classId} />
+      <ClassroomStudentAttendance students={students} classId={classId} shifts={shifts} />
+
+      {/* Attendance Sheet with Collapse */}
+      <Collapsible open={isAttendanceSheetOpen} onOpenChange={setIsAttendanceSheetOpen}>
+        <div className="flex justify-end mb-4">
+          <CollapsibleTrigger asChild>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              size="lg"
+            >
+              <ClipboardCheck className="size-5 mr-2" />
+              {tCommon('takeAttendance')}
+              {isAttendanceSheetOpen ? (
+                <ChevronUp className="size-5 ml-2" />
+              ) : (
+                <ChevronDown className="size-5 ml-2" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent>
+          <AttendanceSheet
+            open={isAttendanceSheetOpen}
+            onOpenChange={setIsAttendanceSheetOpen}
+            classId={classId}
+            students={students}
+            shifts={shifts}
+            onSuccess={() => {
+              // TanStack Query tự động refetch students và attendance
+              queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+              queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all });
+            }}
+          />
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Student Edit Dialog */}
       <StudentDialog
@@ -268,20 +291,6 @@ export default function ClassroomDetailPage() {
         onOpenChange={setIsPaymentDialogOpen}
         student={studentForPayment}
         onPaymentSuccess={handlePaymentSuccess}
-      />
-
-      {/* Attendance Sheet */}
-      <AttendanceSheet
-        open={isAttendanceSheetOpen}
-        onOpenChange={setIsAttendanceSheetOpen}
-        classId={classId}
-        students={students}
-        shifts={shifts}
-        onSuccess={() => {
-          // TanStack Query tự động refetch students và attendance
-          queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
-          queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all });
-        }}
       />
     </div>
   );
