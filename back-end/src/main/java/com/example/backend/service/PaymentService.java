@@ -162,11 +162,25 @@ public class PaymentService {
                     clazz.getId(), 
                     paymentRequest.getPackageNumber()
             );
+            
+            SessionPaymentPackage paymentPackage;
             if (packageOpt.isPresent()) {
-                // Tính lại tổng paid amount từ tất cả payments
-                Long totalPaid = calculatePaidAmountForPackage(student.getId(), clazz.getId(), paymentRequest.getPackageNumber());
-                sessionPaymentService.updatePackageAfterPayment(packageOpt.get().getId(), totalPaid);
+                // Package đã tồn tại, sử dụng package hiện có
+                paymentPackage = packageOpt.get();
+            } else {
+                // Package chưa tồn tại, tạo mới với package number và session numbers từ request
+                paymentPackage = sessionPaymentService.createPackageWithNumber(
+                        student.getId(),
+                        clazz.getId(),
+                        paymentRequest.getPackageNumber(),
+                        paymentRequest.getSessionStartNumber(),
+                        paymentRequest.getSessionEndNumber()
+                );
             }
+            
+            // Tính lại tổng paid amount từ tất cả payments
+            Long totalPaid = calculatePaidAmountForPackage(student.getId(), clazz.getId(), paymentRequest.getPackageNumber());
+            sessionPaymentService.updatePackageAfterPayment(paymentPackage.getId(), totalPaid);
         }
         
         // Map to response using helper method

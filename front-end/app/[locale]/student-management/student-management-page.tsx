@@ -223,10 +223,20 @@ export default function StudentManagementPage() {
   };
 
   const handleSave = async (studentData: StudentRequest) => {
+    // Chuẩn hóa dữ liệu: nếu classShiftId là chuỗi rỗng hoặc không có ca học, loại bỏ khỏi payload
+    const normalizedData: StudentRequest = {
+      ...studentData,
+    };
+    
+    // Loại bỏ classShiftId nếu rỗng để tránh lỗi khi lớp chưa có ca học
+    if (!normalizedData.classShiftId || normalizedData.classShiftId.trim() === '') {
+      delete normalizedData.classShiftId;
+    }
+
     // Update existing student
     if (selectedStudent) {
       try {
-        await updateStudent.mutateAsync({ id: selectedStudent.id, data: studentData });
+        await updateStudent.mutateAsync({ id: selectedStudent.id, data: normalizedData });
         setIsDialogOpen(false);
         setSelectedStudent(null);
       } catch (error) {
@@ -238,7 +248,7 @@ export default function StudentManagementPage() {
 
     // Add new student
     try {
-      await createStudent.mutateAsync(studentData);
+      await createStudent.mutateAsync(normalizedData);
       setIsDialogOpen(false);
       setSelectedStudent(null);
     } catch (error) {

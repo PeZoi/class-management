@@ -166,7 +166,18 @@ export default function ClassroomDetailPage() {
   const handleSaveStudent = useCallback(
     async (studentData: StudentRequest) => {
       if (!selectedStudent) return;
-      await updateStudent.mutateAsync({ id: selectedStudent.id, data: studentData });
+      
+      // Chuẩn hóa dữ liệu: nếu classShiftId là chuỗi rỗng hoặc không có ca học, loại bỏ khỏi payload
+      const normalizedData: StudentRequest = {
+        ...studentData,
+      };
+      
+      // Loại bỏ classShiftId nếu rỗng để tránh lỗi khi lớp chưa có ca học
+      if (!normalizedData.classShiftId || normalizedData.classShiftId.trim() === '') {
+        delete normalizedData.classShiftId;
+      }
+      
+      await updateStudent.mutateAsync({ id: selectedStudent.id, data: normalizedData });
       setIsStudentDialogOpen(false);
       setSelectedStudent(null);
     },

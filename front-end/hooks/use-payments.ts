@@ -5,7 +5,6 @@ import { toast } from 'react-toastify';
 import { invalidateDashboard, invalidatePaymentsByStudent, invalidatePaymentsByTeacher, invalidateStudent, invalidateStudentLists, invalidateTeacher } from '@/lib/queryHelpers';
 import { queryKeys } from '@/lib/queryKeys';
 import { paymentService } from '@/services/payment-service';
-import { CreateSessionPaymentData } from '@/types';
 import { formatCurrency } from '@/utils/helper';
 import { CreateStudentPaymentData, CreateTeacherPaymentData, CreateSessionPaymentData, PaymentResponse } from '@/types';
 

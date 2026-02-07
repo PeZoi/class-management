@@ -222,5 +222,38 @@ public class SessionPaymentService {
     public Optional<SessionPaymentPackage> getPackageByNumber(String studentId, String classId, Integer packageNumber) {
         return packageRepository.findByStudentIdAndClazzIdAndPackageNumber(studentId, classId, packageNumber);
     }
+
+    /**
+     * Tạo package với package number và session numbers cụ thể
+     * Dùng khi tạo payment cho một package cụ thể mà package chưa tồn tại
+     */
+    @Transactional
+    public SessionPaymentPackage createPackageWithNumber(
+            String studentId, String classId, Integer packageNumber, 
+            Integer startSessionNumber, Integer endSessionNumber) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
+
+        Class clazz = classRepository.findById(classId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+
+        // Lấy monthlyFee từ class
+        Long expectedAmount = Long.valueOf(clazz.getMonthlyFee());
+
+        // Tạo package mới với package number cụ thể
+        SessionPaymentPackage paymentPackage = SessionPaymentPackage.builder()
+                .student(student)
+                .clazz(clazz)
+                .packageNumber(packageNumber)
+                .startSessionNumber(startSessionNumber)
+                .endSessionNumber(endSessionNumber)
+                .expectedAmount(expectedAmount)
+                .paidAmount(0L)
+                .status(SessionPaymentStatus.UNPAID)
+                .createdAtPackage(Instant.now())
+                .build();
+
+        return packageRepository.save(paymentPackage);
+    }
 }
 

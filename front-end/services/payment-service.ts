@@ -36,9 +36,17 @@ const convertToSessionPaymentRequest = (data: CreateSessionPaymentData, monthlyF
     bank_transfer: 'BANK_TRANSFER',
   };
 
+  // Convert paymentDate to billingMonth (first day of the month in UTC)
+  // paymentDate format: YYYY-MM-DD (e.g., "2025-01-15")
+  const paymentDate = new Date(data.paymentDate);
+  const year = paymentDate.getFullYear();
+  const month = String(paymentDate.getMonth() + 1).padStart(2, '0');
+  const billingMonth = `${year}-${month}-01T00:00:00.000Z`;
+
   return {
     amount: 0, // Will be calculated by backend (remaining amount)
     paid: data.amount, // The amount being paid now
+    billingMonth, // Required by backend - use first day of payment month
     feeSnapshot: monthlyFee, // Total expected fee for the package (same as monthlyFee)
     paymentMethod: paymentMethodMap[data.paymentMethod] || 'BANK_TRANSFER',
     paymentType: 'STUDENT_FEE',
