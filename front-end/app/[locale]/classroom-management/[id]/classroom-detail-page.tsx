@@ -11,7 +11,6 @@ import {
   ClassroomStudentsList,
   ClassroomTeacherInfo,
   ClassroomStudentAttendance,
-  ClassroomShiftsSection,
   AttendanceSheet,
 } from './_components';
 import { StudentDialog } from '../../student-management/_components/student-dialog';
@@ -65,18 +64,12 @@ export default function ClassroomDetailPage() {
     error: revenueError,
   } = useClassRevenueDataByClassId(classId, selectedPeriod);
 
-  // Fetch shifts ở component cha để quản lý loading + share cache
+  // Fetch shifts ở component cha để share cache với các component khác
   const {
     data: shifts = [],
-    isLoading: isLoadingShifts,
-    error: shiftsError,
   } = useClassShiftsByClass(classId);
 
   const queryClient = useQueryClient();
-  const refreshShifts = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.classShifts.byClass(classId) });
-  }, [queryClient, classId]);
-
   const updateStudent = useUpdateStudent();
 
   // Xử lý 404 error - redirect to not found
@@ -104,12 +97,6 @@ export default function ClassroomDetailPage() {
       toast.error(tNotif('errorLoadRevenue'));
     }
   }, [revenueError, tNotif]);
-
-  useEffect(() => {
-    if (shiftsError) {
-      toast.error(tNotif('errorLoadShifts'));
-    }
-  }, [shiftsError, tNotif]);
 
   // Map revenue data từ BE sang format mà component cần
   const revenueData = useMemo(() => {
@@ -186,7 +173,7 @@ export default function ClassroomDetailPage() {
     [selectedStudent, updateStudent]
   );
 
-  const isLoading = isLoadingClass || isLoadingStudents || isLoadingRevenue || isLoadingShifts;
+  const isLoading = isLoadingClass || isLoadingStudents;
 
   if (isLoading) {
     return <PageLoading />;
@@ -206,22 +193,13 @@ export default function ClassroomDetailPage() {
         {classId && <ClassroomScheduleInfo classId={classId as string} />}
       </div>
 
-      {/* Class Shifts Management */}
-      {classId && (
-        <ClassroomShiftsSection
-          classId={classId as string}
-          shifts={shifts}
-          isLoading={isLoadingShifts}
-          onRefresh={refreshShifts}
-        />
-      )}
-
       {/* Revenue Chart */}
       <ClassroomDetailRevenueChart
         selectedPeriod={selectedPeriod}
         onPeriodChange={setSelectedPeriod}
         revenueData={revenueData}
         color={currentClassData.color}
+        isLoading={isLoadingRevenue}
       />
 
       {/* Students List */}

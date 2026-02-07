@@ -383,7 +383,10 @@
     "clearSearch": "Xóa tìm kiếm",
     "noSearchResults": "Không tìm thấy học viên nào phù hợp với",
     "clearFilter": "Xóa bộ lọc",
-    "searchPlaceholder": "Tìm kiếm theo tên, email, số điện thoại..."
+    "searchPlaceholder": "Tìm kiếm theo tên, email, số điện thoại...",
+    "activeFilters": "Bộ lọc đang áp dụng",
+    "noStudentsInShift": "Không có học sinh trong ca này",
+    "debt": "Nợ"
   },
   "teacher-management": {
     "title": "Quản Lý Giảng Viên",
@@ -575,6 +578,7 @@
     "payment_paid": "Đã Thanh Toán",
     "payment_unpaid": "Chưa Thanh Toán",
     "payment_partial": "Thanh Toán Một Phần",
+    "debtLabel": "Nợ:",
     "required": "*",
     "namePlaceholder": "Nhập tên học viên",
     "emailPlaceholder": "hocvien@example.com",
@@ -668,6 +672,7 @@
     "attendanceAbsent": "Vắng mặt",
     "attendanceLate": "Đi muộn",
     "attendanceExcused": "Có phép",
+    "attendanceNoData": "Chưa điểm danh",
     "attendanceEditTitle": "Thông tin điểm danh",
     "attendanceEditDesc": "Xem thông tin cơ bản và chỉnh sửa trạng thái điểm danh.",
     "attendanceNoSessionDate": "Buổi học này chưa có ngày, không thể cập nhật.",

@@ -232,6 +232,7 @@ export default function StudentDetailPage() {
         currentPackageNumber={currentUnpaidPackage?.packageNumber}
         currentPackageStartSession={currentUnpaidPackage?.startSessionNumber}
         currentPackageEndSession={currentUnpaidPackage?.endSessionNumber}
+        studentName={studentData.fullName}
       />
 
       {/* Class History - Full Width */}

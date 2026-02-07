@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { formatCurrency } from '@/utils/helper';
 import { useTranslations } from 'next-intl';
+import { Loader2 } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 
 type TimePeriod = '3months' | '6months' | '12months';
@@ -12,6 +13,7 @@ interface ClassroomDetailRevenueChartProps {
   onPeriodChange: (period: TimePeriod) => void;
   revenueData: Array<{ month: string; revenue: number; label: string }>;
   color: string;
+  isLoading?: boolean;
 }
 
 export function ClassroomDetailRevenueChart({
@@ -19,6 +21,7 @@ export function ClassroomDetailRevenueChart({
   onPeriodChange,
   revenueData,
   color,
+  isLoading = false,
 }: ClassroomDetailRevenueChartProps) {
   const t = useTranslations('classroom-detail');
 
@@ -71,63 +74,69 @@ export function ClassroomDetailRevenueChart({
           className="h-[300px] w-full"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={revenueData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                className="stroke-slate-200 dark:stroke-slate-800"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="month"
-                tickLine={false}
-                axisLine={false}
-                className="text-slate-600 dark:text-slate-400"
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                className="text-slate-600 dark:text-slate-400"
-                tick={{ fontSize: 11 }}
-                tickFormatter={(value) => {
-                  if (value >= 1000000) return `${(value / 1000000).toFixed(0)}M`;
-                  return value.toString();
-                }}
-              />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    className="bg-slate-900 dark:bg-slate-800 text-white border-slate-700"
-                    labelFormatter={(label) => {
-                      const item = revenueData.find((d) => d.month === label);
-                      return item?.label || label;
-                    }}
-                    formatter={(value) => {
-                      return (
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-300 text-xs">Doanh thu:</span>
-                          <span className="font-bold text-white">{formatCurrency(Number(value))}</span>
-                        </div>
-                      );
-                    }}
-                  />
-                }
-                cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }}
-              />
-              <Bar dataKey="revenue" fill={color} radius={[8, 8, 0, 0]}>
-                <LabelList
-                  dataKey="revenue"
-                  position="top"
-                  className="fill-slate-600 dark:fill-slate-400 font-bold"
-                  fontSize={12}
-                  formatter={(value: number) => {
-                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                    return value;
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="size-10 animate-spin text-slate-400" />
+              </div>
+            ) : (
+              <BarChart data={revenueData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-slate-200 dark:stroke-slate-800"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-slate-600 dark:text-slate-400"
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-slate-600 dark:text-slate-400"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(value) => {
+                    if (value >= 1000000) return `${(value / 1000000).toFixed(0)}M`;
+                    return value.toString();
                   }}
                 />
-              </Bar>
-            </BarChart>
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      className="bg-slate-900 dark:bg-slate-800 text-white border-slate-700"
+                      labelFormatter={(label) => {
+                        const item = revenueData.find((d) => d.month === label);
+                        return item?.label || label;
+                      }}
+                      formatter={(value) => {
+                        return (
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-300 text-xs">Doanh thu:</span>
+                            <span className="font-bold text-white">{formatCurrency(Number(value))}</span>
+                          </div>
+                        );
+                      }}
+                    />
+                  }
+                  cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }}
+                />
+                <Bar dataKey="revenue" fill={color} radius={[8, 8, 0, 0]}>
+                  <LabelList
+                    dataKey="revenue"
+                    position="top"
+                    className="fill-slate-600 dark:fill-slate-400 font-bold"
+                    fontSize={12}
+                    formatter={(value: number) => {
+                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                      return value;
+                    }}
+                  />
+                </Bar>
+              </BarChart>
+            )}
           </ResponsiveContainer>
         </ChartContainer>
       </CardContent>

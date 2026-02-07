@@ -383,7 +383,10 @@
     "clearSearch": "Clear search",
     "noSearchResults": "No students found matching",
     "clearFilter": "Clear filter",
-    "searchPlaceholder": "Search by name, email, phone number..."
+    "searchPlaceholder": "Search by name, email, phone number...",
+    "activeFilters": "Active filters",
+    "noStudentsInShift": "No students in this shift",
+    "debt": "Debt"
   },
   "teacher-management": {
     "title": "Teacher Management",
@@ -587,6 +590,7 @@
     "attendanceAbsent": "Absent",
     "attendanceLate": "Late",
     "attendanceExcused": "Excused",
+    "attendanceNoData": "Not marked",
     "attendanceEditTitle": "Attendance details",
     "attendanceEditDesc": "View basic student info and update attendance status.",
     "attendanceNoSessionDate": "This session has no date yet, cannot update.",
@@ -752,6 +756,7 @@
     "payment_paid": "Paid",
     "payment_unpaid": "Unpaid",
     "payment_partial": "Partial",
+    "debtLabel": "Debt:",
     "required": "*",
     "namePlaceholder": "Enter student name",
     "emailPlaceholder": "student@example.com",

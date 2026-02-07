@@ -33,9 +33,11 @@ import {
   DollarSign,
   Edit,
   Eye,
+  Filter,
   Mail,
   MoreHorizontal,
   Phone,
+  RotateCcw,
   Search,
   User,
   UserMinus,
@@ -115,6 +117,7 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
   const tNotif = useTranslations('notifications');
   const locale = useLocale();
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterShift, setFilterShift] = useState<string>('all');
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [isShiftDialogOpen, setIsShiftDialogOpen] = useState(false);
   const [selectedShiftId, setSelectedShiftId] = useState<string>('__none__');
@@ -139,29 +142,39 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
     };
   });
 
-  // Filter students by search query (search in name, email, phone, parent name)
+  // Filter students by search query and shift
   const filteredStudents = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return mappedStudents;
+    let filtered = mappedStudents;
+
+    // Filter by search query (search in name, email, phone, parent name)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((student) => {
+        const fullName = student.fullName?.toLowerCase() || '';
+        const email = student.email?.toLowerCase() || '';
+        const phoneNumber = student.phoneNumber?.toLowerCase() || '';
+        const parentName = student.fullNameParent?.toLowerCase() || '';
+        const parentPhone = student.phoneNumberParent?.toLowerCase() || '';
+
+        return (
+          fullName.includes(query) ||
+          email.includes(query) ||
+          phoneNumber.includes(query) ||
+          parentName.includes(query) ||
+          parentPhone.includes(query)
+        );
+      });
     }
 
-    const query = searchQuery.toLowerCase().trim();
-    return mappedStudents.filter((student) => {
-      const fullName = student.fullName?.toLowerCase() || '';
-      const email = student.email?.toLowerCase() || '';
-      const phoneNumber = student.phoneNumber?.toLowerCase() || '';
-      const parentName = student.fullNameParent?.toLowerCase() || '';
-      const parentPhone = student.phoneNumberParent?.toLowerCase() || '';
+    // Filter by shift if selected
+    if (filterShift !== 'all') {
+      filtered = filtered.filter((student) => {
+        return student.class?.shiftId === filterShift;
+      });
+    }
 
-      return (
-        fullName.includes(query) ||
-        email.includes(query) ||
-        phoneNumber.includes(query) ||
-        parentName.includes(query) ||
-        parentPhone.includes(query)
-      );
-    });
-  }, [mappedStudents, searchQuery]);
+    return filtered;
+  }, [mappedStudents, searchQuery, filterShift]);
 
   const getPaymentBadge = (paymentStatus: ClassroomStudentItem['paymentStatus']) => {
     const paymentConfig = {
@@ -464,7 +477,8 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
       ),
       cell: ({ row }) => {
         return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
+          <div className="flex items-center justify-center gap-2 text-center text-slate-600 dark:text-slate-400 text-sm">
+            <Calendar className="size-4" />
             {formatDate(row.original.dob)}
           </div>
         );
@@ -476,36 +490,6 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
       },
     },
     {
-      id: 'unpaidMonths',
-      accessorFn: (row) => {
-        return row.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
-      },
-      header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
-            <Calendar className="size-4" />
-            {t('unpaidMonths')}
-          </div>
-        </SortableHeader>
-      ),
-      cell: ({ row }) => {
-        const unpaidMonths =
-          row.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
-        return (
-          <div className="text-center text-slate-700 dark:text-slate-300 text-sm font-medium">
-            {unpaidMonths}
-          </div>
-        );
-      },
-      sortingFn: (rowA, rowB) => {
-        const unpaidMonthsA =
-          rowA.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
-        const unpaidMonthsB =
-          rowB.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
-        return unpaidMonthsA - unpaidMonthsB;
-      },
-    },
-    {
       id: 'payment',
       header: () => (
         <div className="flex items-center justify-end gap-2">
@@ -514,6 +498,11 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
         </div>
       ),
       cell: ({ row }) => {
+        // Calculate total debt from all unpaid months
+        const totalDebt = row.original.monthPaymentStatuses?.reduce((sum, status) => {
+          return sum + (status.remainingAmount || 0);
+        }, 0) || 0;
+
         return (
           <div className="text-right space-y-1">
             {getPaymentBadge(row.original.paymentStatus)}
@@ -521,32 +510,13 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
               {formatCurrency(row.original.currentMonthPaidAmount ?? row.original.amountPaid)} /{' '}
               {formatCurrency(row.original.monthlyFee)}
             </div>
+            {totalDebt > 0 && (
+              <div className="text-xs font-bold text-red-600 dark:text-red-400">
+                {t('debt')}: {formatCurrency(totalDebt)}
+              </div>
+            )}
           </div>
         );
-      },
-    },
-    {
-      id: 'joinedAt',
-      accessorFn: (row) => row.class?.joinAt || '',
-      header: ({ column }) => (
-        <SortableHeader column={column} className="justify-center">
-          <div className="flex items-center justify-center gap-2">
-            <Calendar className="size-4" />
-            {t('joinedAt')}
-          </div>
-        </SortableHeader>
-      ),
-      cell: ({ row }) => {
-        return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm">
-            {formatDate(row.original.class?.joinAt || '')}
-          </div>
-        );
-      },
-      sortingFn: (rowA, rowB) => {
-        const dateA = rowA.original.class?.joinAt ? new Date(rowA.original.class.joinAt).getTime() : 0;
-        const dateB = rowB.original.class?.joinAt ? new Date(rowB.original.class.joinAt).getTime() : 0;
-        return dateA - dateB;
       },
     },
     {
@@ -617,6 +587,13 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
     setSearchQuery('');
   };
 
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setFilterShift('all');
+  };
+
+  const hasActiveFilters = searchQuery.trim() !== '' || filterShift !== 'all';
+
   return (
     <Card className="hover:shadow-xl transition-all duration-300 bg-white dark:bg-slate-900 border-0 shadow-lg">
       <CardHeader>
@@ -627,8 +604,8 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
                 <Users className="size-5 md:size-6 text-blue-600 dark:text-blue-400" />
                 {t('studentsList')}
                 <span className="text-sm md:text-base font-normal text-slate-500 dark:text-slate-400">
-                  ({searchQuery ? filteredStudents.length : students.length})
-                  {searchQuery && filteredStudents.length !== students.length && (
+                  ({hasActiveFilters ? filteredStudents.length : students.length})
+                  {hasActiveFilters && filteredStudents.length !== students.length && (
                     <span className="text-slate-400"> / {students.length}</span>
                   )}
                 </span>
@@ -662,25 +639,107 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
             )}
           </div>
           
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 md:size-5 text-slate-400" />
-            <Input
-              placeholder={t('searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-10 md:h-12 pl-9 md:pl-12 pr-9 md:pr-12 text-sm md:text-base bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-sm hover:shadow-md focus-visible:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500/20 transition-all"
-            />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleClearSearch}
-                className="absolute right-1 top-1/2 -translate-y-1/2 size-8 h-8 w-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="size-4 text-slate-400" />
-                <span className="sr-only">{t('clearSearch')}</span>
-              </Button>
+          {/* Search Bar and Filters */}
+          <div className="space-y-3">
+            {/* Main Filters Row */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Search Bar */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 md:size-5 text-slate-400 z-10" />
+                <Input
+                  placeholder={t('searchPlaceholder')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-11 md:h-12 pl-10 md:pl-12 pr-10 md:pr-12 text-sm md:text-base bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-md focus-visible:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-400 transition-all"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleClearSearch}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 size-8 h-8 w-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <X className="size-4 text-slate-400" />
+                    <span className="sr-only">{t('clearSearch')}</span>
+                  </Button>
+                )}
+              </div>
+
+              {/* Filters Group */}
+              <div className="flex items-center gap-2.5">
+                {/* Shift Filter */}
+                {shifts && shifts.length > 0 && (
+                  <div className="min-w-[180px]">
+                    <Select value={filterShift} onValueChange={setFilterShift}>
+                      <SelectTrigger className="h-11 md:h-12 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl shadow-sm hover:shadow-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all">
+                        <div className="flex items-center gap-2.5">
+                          <Filter className="size-4 text-blue-500 dark:text-blue-400" />
+                          <SelectValue placeholder={t('allShifts')} />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('allShifts')}</SelectItem>
+                        {shifts.map((shift) => (
+                          <SelectItem key={shift.id} value={shift.id}>
+                            {shift.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Clear Filters Button */}
+                {hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearFilters}
+                    className="h-11 md:h-12 px-4 text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all"
+                    title={t('clearFilter')}
+                  >
+                    <RotateCcw className="size-4 mr-2" />
+                    <span className="text-xs font-medium hidden sm:inline">{t('clearFilter')}</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Active Filters Pills */}
+            {hasActiveFilters && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mr-1">
+                  {t('activeFilters')}:
+                </span>
+                {searchQuery && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 text-xs font-medium border border-blue-200 dark:border-blue-800 shadow-sm">
+                    <Search className="size-3" />
+                    <span className="max-w-[200px] truncate">{searchQuery}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleClearSearch}
+                      className="h-4 w-4 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-full"
+                    >
+                      <X className="size-3" />
+                    </Button>
+                  </div>
+                )}
+                {filterShift !== 'all' && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 text-xs font-medium border border-indigo-200 dark:border-indigo-800 shadow-sm">
+                    <Clock className="size-3" />
+                    <span>{shifts.find(s => s.id === filterShift)?.name || filterShift}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setFilterShift('all')}
+                      className="h-4 w-4 p-0 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"
+                    >
+                      <X className="size-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -712,15 +771,19 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
           <div className="text-center py-8">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('noStudentsInClass')}</p>
           </div>
-        ) : filteredStudents.length === 0 && searchQuery ? (
+        ) : filteredStudents.length === 0 && hasActiveFilters ? (
           <div className="text-center py-8">
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {t('noSearchResults')} &quot;{searchQuery}&quot;
+              {searchQuery 
+                ? `${t('noSearchResults')} "${searchQuery}"`
+                : filterShift !== 'all'
+                ? t('noStudentsInShift')
+                : t('noSearchResults')}
             </p>
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleClearSearch}
+              onClick={handleClearFilters}
               className="mt-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
             >
               <X className="size-4 mr-1" />

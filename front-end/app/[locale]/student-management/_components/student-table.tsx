@@ -244,13 +244,23 @@ export function StudentTable({
         </div>
       ),
       cell: ({ row }) => {
+        // Calculate total debt from all unpaid months
+        const totalDebt = row.original.monthPaymentStatuses?.reduce((sum, status) => {
+          return sum + (status.remainingAmount || 0);
+        }, 0) || 0;
+
         return (
-          <div className="text-center space-y-1">
+          <div className="text-right space-y-1">
             {getPaymentBadge(row.original.paymentStatus)}
             <div className="text-xs text-slate-500 dark:text-slate-400">
               {formatCurrency(row.original.currentMonthPaidAmount ?? row.original.amountPaid)} /{' '}
               {formatCurrency(row.original.monthlyFee)}
             </div>
+            {totalDebt > 0 && (
+              <div className="text-xs font-bold text-red-600 dark:text-red-400">
+                {t('debtLabel')} {formatCurrency(totalDebt)}
+              </div>
+            )}
           </div>
         );
       },
