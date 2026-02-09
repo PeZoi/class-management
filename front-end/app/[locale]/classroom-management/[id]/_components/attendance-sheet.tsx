@@ -246,20 +246,6 @@ export function AttendanceSheet({
         existingRecords: existingRecordsForDate,
       });
       onSuccess?.();
-      onOpenChange(false);
-      // Reset form
-      setSessionDate(new Date().toISOString().split('T')[0]);
-      setMarkedStudents(new Set());
-      setAttendanceList(
-        students.map((student) => ({
-          studentId: student.id,
-          studentName: student.fullName,
-          status: undefined, // Chưa điểm danh
-          notes: undefined,
-          dob: student.dob,
-          shiftName: student.class?.shiftName,
-        }))
-      );
     } catch (error) {
       console.error('Error upserting attendance:', error);
     }
