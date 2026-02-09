@@ -15,6 +15,7 @@ import { Calendar, CheckCircle2, Clock, Package, XCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, useMemo } from 'react';
 import { Attendance } from '@/types';
+import { SessionPaymentStatus } from '@/types';
 
 interface StudentAttendanceSessionsProps {
   attendances: Attendance[];
@@ -22,6 +23,7 @@ interface StudentAttendanceSessionsProps {
   currentPackageStartSession?: number;
   currentPackageEndSession?: number;
   studentName?: string;
+  sessionPayments?: SessionPaymentStatus[]; // Danh sách packages để filter
 }
 
 interface AttendanceSession {
@@ -38,69 +40,143 @@ export function StudentAttendanceSessions({
   currentPackageStartSession,
   currentPackageEndSession,
   studentName = '',
+  sessionPayments = [],
 }: StudentAttendanceSessionsProps) {
   const t = useTranslations('student-detail');
+  
+  // State for filter mode: 'month' or 'package'
+  const [filterMode, setFilterMode] = useState<'month' | 'package'>('month');
   
   // State for month/year filter, default to current month/year
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  
+  // State for package filter
+  const [selectedPackageNumber, setSelectedPackageNumber] = useState<number | null>(
+    currentPackageNumber || null
+  );
 
-  // Filter attendances by selected month/year
+  // Filter attendances based on filter mode
   const filteredAttendances = useMemo(() => {
-    return attendances.filter((attendance) => {
-      const date = new Date(attendance.sessionDate);
-      return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
-    });
-  }, [attendances, selectedMonth, selectedYear]);
+    if (filterMode === 'package') {
+      // Filter by package: find selected package and filter by sessionNumber range
+      if (!selectedPackageNumber) return [];
+      
+      const selectedPackage = sessionPayments.find(
+        (p) => p.packageNumber === selectedPackageNumber
+      );
+      
+      if (!selectedPackage) return [];
+      
+      return attendances.filter((attendance) => {
+        return (
+          attendance.sessionNumber >= selectedPackage.startSessionNumber &&
+          attendance.sessionNumber <= selectedPackage.endSessionNumber
+        );
+      });
+    } else {
+      // Filter by month/year
+      return attendances.filter((attendance) => {
+        const date = new Date(attendance.sessionDate);
+        return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
+      });
+    }
+  }, [attendances, filterMode, selectedMonth, selectedYear, selectedPackageNumber, sessionPayments]);
 
-  // Create 8 sessions and map attendance data
+  // Create sessions and map attendance data
   const sessions: AttendanceSession[] = useMemo(() => {
-    // Get unique dates from filtered attendances and sort them
-    const uniqueDates = Array.from(
-      new Set(filteredAttendances.map((a) => a.sessionDate.split('T')[0]))
-    ).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-
-    // Map date to session number (1-8) within the month
-    const dateToSessionNumber = new Map<string, number>();
-    uniqueDates.forEach((date, index) => {
-      dateToSessionNumber.set(date, index + 1);
-    });
-
-    // Create a map of session number to attendance
-    const attendanceMap = new Map<number, Attendance>();
-    filteredAttendances.forEach((attendance) => {
-      const dateStr = attendance.sessionDate.split('T')[0];
-      const sessionNumber = dateToSessionNumber.get(dateStr);
-      if (sessionNumber) {
-        attendanceMap.set(sessionNumber, attendance);
-      }
-    });
-
-    // Create 8 sessions (Buổi 1-8)
-    return Array.from({ length: 8 }, (_, i) => {
-      const sessionNumber = i + 1;
-      const attendance = attendanceMap.get(sessionNumber);
-      const date = uniqueDates[i] || '';
+    if (filterMode === 'package') {
+      // Filter by package: use actual session numbers from package
+      if (!selectedPackageNumber) return [];
       
-      if (attendance) {
+      const selectedPackage = sessionPayments.find(
+        (p) => p.packageNumber === selectedPackageNumber
+      );
+      
+      if (!selectedPackage) return [];
+      
+      const startSession = selectedPackage.startSessionNumber;
+      const endSession = selectedPackage.endSessionNumber;
+      const totalSessions = endSession - startSession + 1;
+      
+      // Create a map of session number to attendance
+      const attendanceMap = new Map<number, Attendance>();
+      filteredAttendances.forEach((attendance) => {
+        attendanceMap.set(attendance.sessionNumber, attendance);
+      });
+      
+      // Create sessions for the package range
+      return Array.from({ length: totalSessions }, (_, i) => {
+        const sessionNumber = startSession + i;
+        const attendance = attendanceMap.get(sessionNumber);
+        
+        if (attendance) {
+          return {
+            id: attendance.id,
+            date: attendance.sessionDate.split('T')[0],
+            sessionNumber,
+            status: attendance.status.toLowerCase() as 'present' | 'absent' | 'late' | 'excused',
+            notes: attendance.notes || undefined,
+          };
+        }
+        
         return {
-          id: attendance.id,
-          date: attendance.sessionDate.split('T')[0],
+          id: `session-${sessionNumber}`,
+          date: '',
           sessionNumber,
-          status: attendance.status.toLowerCase() as 'present' | 'absent' | 'late' | 'excused',
-          notes: attendance.notes || undefined,
+          status: 'no_data' as const,
+          notes: undefined,
         };
-      }
-      
-      return {
-        id: `session-${sessionNumber}`,
-        date,
-        sessionNumber,
-        status: 'no_data' as const,
-        notes: undefined,
-      };
-    });
-  }, [filteredAttendances]);
+      });
+    } else {
+      // Filter by month: use existing logic
+      // Get unique dates from filtered attendances and sort them
+      const uniqueDates = Array.from(
+        new Set(filteredAttendances.map((a) => a.sessionDate.split('T')[0]))
+      ).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+      // Map date to session number (1-8) within the month
+      const dateToSessionNumber = new Map<string, number>();
+      uniqueDates.forEach((date, index) => {
+        dateToSessionNumber.set(date, index + 1);
+      });
+
+      // Create a map of session number to attendance
+      const attendanceMap = new Map<number, Attendance>();
+      filteredAttendances.forEach((attendance) => {
+        const dateStr = attendance.sessionDate.split('T')[0];
+        const sessionNumber = dateToSessionNumber.get(dateStr);
+        if (sessionNumber) {
+          attendanceMap.set(sessionNumber, attendance);
+        }
+      });
+
+      // Create 8 sessions (Buổi 1-8)
+      return Array.from({ length: 8 }, (_, i) => {
+        const sessionNumber = i + 1;
+        const attendance = attendanceMap.get(sessionNumber);
+        const date = uniqueDates[i] || '';
+        
+        if (attendance) {
+          return {
+            id: attendance.id,
+            date: attendance.sessionDate.split('T')[0],
+            sessionNumber,
+            status: attendance.status.toLowerCase() as 'present' | 'absent' | 'late' | 'excused',
+            notes: attendance.notes || undefined,
+          };
+        }
+        
+        return {
+          id: `session-${sessionNumber}`,
+          date,
+          sessionNumber,
+          status: 'no_data' as const,
+          notes: undefined,
+        };
+      });
+    }
+  }, [filteredAttendances, filterMode, selectedPackageNumber, sessionPayments]);
 
   // Calculate progress for current package
   const currentPackageSessions = useMemo(() => {
@@ -110,9 +186,12 @@ export function StudentAttendanceSessions({
     );
   }, [sessions, currentPackageStartSession, currentPackageEndSession]);
 
+  // Calculate progress for current package (only when filtering by month)
   const currentPackageProgress =
-    currentPackageStartSession && currentPackageEndSession
+    filterMode === 'month' && currentPackageStartSession && currentPackageEndSession
       ? ((currentPackageSessions.filter((s) => s.status !== 'no_data').length / 8) * 100).toFixed(0)
+      : filterMode === 'package' && selectedPackageNumber
+      ? ((sessions.filter((s) => s.status !== 'no_data').length / sessions.length) * 100).toFixed(0)
       : '0';
 
   // Calculate statistics
@@ -210,42 +289,124 @@ export function StudentAttendanceSessions({
               <Calendar className="size-5 md:size-6 text-blue-600 dark:text-blue-400" />
               {t('attendanceSessions')}
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Select
-                value={selectedMonth.toString()}
-                onValueChange={(value) => setSelectedMonth(Number(value))}
-              >
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {monthNames.map((month, index) => (
-                    <SelectItem key={index + 1} value={(index + 1).toString()}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={selectedYear.toString()}
-                onValueChange={(value) => setSelectedYear(Number(value))}
-              >
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {currentPackageNumber && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Filter Mode Toggle */}
+              <div className="flex items-center gap-2 border rounded-lg p-1 bg-slate-50 dark:bg-slate-800">
+                <button
+                  onClick={() => {
+                    setFilterMode('month');
+                    if (currentPackageNumber) {
+                      setSelectedPackageNumber(currentPackageNumber);
+                    }
+                  }}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    filterMode === 'month'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  }`}
+                >
+                  <Calendar className="size-4 inline mr-1.5" />
+                  {t('filterByMonth') || 'Theo tháng'}
+                </button>
+                <button
+                  onClick={() => {
+                    setFilterMode('package');
+                    if (!selectedPackageNumber && currentPackageNumber) {
+                      setSelectedPackageNumber(currentPackageNumber);
+                    }
+                  }}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    filterMode === 'package'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  }`}
+                >
+                  <Package className="size-4 inline mr-1.5" />
+                  {t('filterByPackage') || 'Theo gói'}
+                </button>
+              </div>
+
+              {/* Month/Year Filter (only show when filter mode is 'month') */}
+              {filterMode === 'month' && (
+                <>
+                  <Select
+                    value={selectedMonth.toString()}
+                    onValueChange={(value) => setSelectedMonth(Number(value))}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {monthNames.map((month, index) => (
+                        <SelectItem key={index + 1} value={(index + 1).toString()}>
+                          {month}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={selectedYear.toString()}
+                    onValueChange={(value) => setSelectedYear(Number(value))}
+                  >
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+
+              {/* Package Filter (only show when filter mode is 'package') */}
+              {filterMode === 'package' && sessionPayments.length > 0 && (
+                <Select
+                  value={selectedPackageNumber?.toString() || ''}
+                  onValueChange={(value) => setSelectedPackageNumber(Number(value))}
+                >
+                  <SelectTrigger className="w-fit">
+                    <SelectValue placeholder={t('selectPackage') || 'Chọn gói'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sessionPayments.map((pkg) => (
+                      <SelectItem key={pkg.packageNumber} value={pkg.packageNumber.toString()}>
+                        {t('packageLabel')} {pkg.packageNumber} ({pkg.startSessionNumber}-{pkg.endSessionNumber})
+                        {pkg.isCurrent && (
+                          <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400">
+                            - {t('current')}
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {/* Progress Indicator */}
+              {filterMode === 'month' && currentPackageNumber && (
                 <div className="flex items-center gap-2 text-sm ml-2">
                   <Package className="size-4 text-indigo-600" />
                   <span className="text-slate-600 dark:text-slate-400">
                     {t('packageLabel')} {currentPackageNumber}: {currentPackageSessions.filter((s) => s.status !== 'no_data').length}/8 {t('sessions')}
+                  </span>
+                  <div className="w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-linear-to-r from-indigo-500 to-indigo-600 rounded-full transition-all"
+                      style={{ width: `${currentPackageProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {filterMode === 'package' && selectedPackageNumber && (
+                <div className="flex items-center gap-2 text-sm ml-2">
+                  <Package className="size-4 text-indigo-600" />
+                  <span className="text-slate-600 dark:text-slate-400">
+                    {sessions.filter((s) => s.status !== 'no_data').length}/{sessions.length} {t('sessions')}
                   </span>
                   <div className="w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div

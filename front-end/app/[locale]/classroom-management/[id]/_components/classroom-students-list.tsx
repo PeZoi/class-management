@@ -62,6 +62,7 @@ interface ClassroomStudentItem extends StudentType {
   monthlyFee: number;
   amountPaid: number;
   currentMonthPaidAmount?: number;
+  totalRemainingAmount?: number;
 }
 
 const getCurrentMonthPaymentStatus = (
@@ -131,14 +132,38 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
 
   const mappedStudents: ClassroomStudentItem[] = students.map((student) => {
     const monthlyFee = student.class?.monthlyFee || 0;
-    const currentMonthPayment = getCurrentMonthPaymentStatus(student.monthPaymentStatuses, monthlyFee);
+
+    // Ưu tiên sử dụng sessionPaymentStatuses (payment theo gói buổi học)
+    let paymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
+    let paidAmount = 0;
+
+    const currentPackage = student.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+    if (currentPackage) {
+      const statusMap: Record<string, 'paid' | 'unpaid' | 'partial'> = {
+        PAID: 'paid',
+        PARTIAL: 'partial',
+        UNPAID: 'unpaid',
+      };
+      paymentStatus = statusMap[currentPackage.status as string] || 'unpaid';
+      paidAmount = currentPackage.paidAmount ?? 0;
+    } else {
+      // Fallback: dùng monthPaymentStatuses nếu chưa có sessionPaymentStatuses
+      const currentMonthPayment = getCurrentMonthPaymentStatus(student.monthPaymentStatuses, monthlyFee);
+      paymentStatus = currentMonthPayment.paymentStatus;
+      paidAmount = currentMonthPayment.paidAmount;
+    }
+
+    // Tổng nợ theo gói: cộng tất cả remainingAmount các package
+    const totalRemainingAmount =
+      student.sessionPaymentStatuses?.reduce((sum, pkg) => sum + (pkg.remainingAmount || 0), 0) ?? 0;
 
     return {
       ...student,
-      paymentStatus: currentMonthPayment.paymentStatus,
+      paymentStatus,
       monthlyFee,
-      amountPaid: currentMonthPayment.paidAmount,
-      currentMonthPaidAmount: currentMonthPayment.paidAmount,
+      amountPaid: paidAmount,
+      currentMonthPaidAmount: paidAmount,
+      totalRemainingAmount,
     };
   });
 
@@ -490,6 +515,48 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
       },
     },
     {
+      id: 'unpaidPackages',
+      accessorFn: (row) => {
+        const currentPackage = row.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+        const packageUnpaid =
+          row.sessionPaymentStatuses?.filter(
+            (pkg) =>
+              (pkg.packageNumber ?? 0) <= (currentPackage?.packageNumber ?? 0) &&
+              (pkg.status === 'UNPAID' || pkg.status === 'PARTIAL'),
+          ) ?? [];
+        return packageUnpaid.length;
+      },
+      header: ({ column }) => (
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
+            <Calendar className="size-4" />
+            {t('unpaidMonths')}
+          </SortableHeader>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const currentPackage = row.original.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+        const packageUnpaid =
+          row.original.sessionPaymentStatuses?.filter(
+            (pkg) =>
+              (pkg.packageNumber ?? 0) <= (currentPackage?.packageNumber ?? 0) &&
+              (pkg.status === 'UNPAID' || pkg.status === 'PARTIAL'),
+          ) ?? [];
+        const packageUnpaidCount = packageUnpaid.length;
+
+        return (
+          <div className="text-center text-slate-700 dark:text-slate-300 text-sm font-medium">
+            {packageUnpaidCount}
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const a = rowA.getValue<number>('unpaidPackages') ?? 0;
+        const b = rowB.getValue<number>('unpaidPackages') ?? 0;
+        return a - b;
+      },
+    },
+    {
       id: 'payment',
       header: () => (
         <div className="flex items-center justify-end gap-2">
@@ -498,17 +565,35 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
         </div>
       ),
       cell: ({ row }) => {
-        // Calculate total debt from all unpaid months
-        const totalDebt = row.original.monthPaymentStatuses?.reduce((sum, status) => {
-          return sum + (status.remainingAmount || 0);
-        }, 0) || 0;
+        // Tìm package hiện tại từ sessionPaymentStatuses (có isCurrent = true)
+        const currentPackage = row.original.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+
+        // Lấy số tiền đã đóng và cần đóng của package hiện tại
+        const currentPackagePaidAmount =
+          currentPackage?.paidAmount ?? row.original.currentMonthPaidAmount ?? row.original.amountPaid ?? 0;
+        const currentPackageExpectedAmount = currentPackage?.expectedAmount ?? row.original.monthlyFee ?? 0;
+
+        // Tính tổng nợ: tổng remainingAmount của tất cả các package từ trước đến gói hiện tại (<= currentPackageNumber)
+        let totalDebt = 0;
+
+        const currentPackageNumber = currentPackage?.packageNumber;
+
+        if (currentPackageNumber != null) {
+          totalDebt =
+            row.original.sessionPaymentStatuses
+              ?.filter((pkg) => (pkg.packageNumber ?? 0) <= currentPackageNumber)
+              ?.reduce((sum, pkg) => sum + (pkg.remainingAmount || 0), 0) ?? 0;
+        } else {
+          // Nếu không xác định được currentPackage, fallback: tính nợ của tất cả package
+          totalDebt =
+            row.original.sessionPaymentStatuses?.reduce((sum, pkg) => sum + (pkg.remainingAmount || 0), 0) ?? 0;
+        }
 
         return (
           <div className="text-right space-y-1">
             {getPaymentBadge(row.original.paymentStatus)}
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              {formatCurrency(row.original.currentMonthPaidAmount ?? row.original.amountPaid)} /{' '}
-              {formatCurrency(row.original.monthlyFee)}
+              {formatCurrency(currentPackagePaidAmount)} / {formatCurrency(currentPackageExpectedAmount)}
             </div>
             {totalDebt > 0 && (
               <div className="text-xs font-bold text-red-600 dark:text-red-400">

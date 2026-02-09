@@ -2,85 +2,80 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, CheckCircle, XCircle, DollarSign } from 'lucide-react';
+import { CheckCircle, XCircle, DollarSign, Package, AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/utils/helper';
-import { useState } from 'react';
-import { MonthlyPaymentDialog } from './monthly-payment-dialog';
-import { PaymentDetailDialog } from './payment-detail-dialog';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { SessionPaymentStatus } from '@/types';
+import { SessionPaymentDialog } from './session-payment-dialog';
+import { SessionPaymentDetailDialog } from './session-payment-detail-dialog';
 import { PaymentHistoryItem } from './student-payment-history';
-
-export interface PaymentMonthStatus {
-  month: number; // 1-12
-  year: number;
-  status: 'paid' | 'unpaid' | 'partial';
-  amount?: number;
-  paidAmount?: number;
-  dueDate?: string;
-}
+import { toast } from 'react-toastify';
 
 interface PaymentStatusCalendarProps {
-  monthlyPayments: PaymentMonthStatus[];
+  sessionPayments: SessionPaymentStatus[];
   monthlyFee: number;
   studentId?: string;
   paymentHistory?: PaymentHistoryItem[];
   onPaymentSubmit?: (data: {
     studentId: string;
-    month: number;
-    year: number;
+    packageNumber: number;
+    startSessionNumber: number;
+    endSessionNumber: number;
     amount: number;
     paymentMethod: 'cash' | 'bank_transfer';
     paymentDate: string;
     notes: string;
-  }) => void;
+  }) => Promise<void> | void;
   isSubmittingPayment?: boolean;
+  onPaymentSuccess?: () => void;
 }
 
 export function PaymentStatusCalendar({
-  monthlyPayments,
+  sessionPayments,
   monthlyFee,
   studentId,
   paymentHistory = [],
   onPaymentSubmit,
   isSubmittingPayment,
+  onPaymentSuccess,
 }: PaymentStatusCalendarProps) {
   const t = useTranslations('student-detail');
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth() + 1;
-
-  // Get available years from payments
-  const availableYears = Array.from(new Set(monthlyPayments.map((p) => p.year))).sort((a, b) => b - a);
-
-  // Default to current year if available, otherwise use the most recent year
-  const defaultYear = availableYears.includes(currentYear) ? currentYear : availableYears[0] || currentYear;
-  const [selectedYear, setSelectedYear] = useState(defaultYear);
 
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentMonthStatus | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<SessionPaymentStatus | null>(null);
 
-  const getStatusBadge = (status: string, amount?: number, paidAmount?: number) => {
+  // Track previous submitting state to detect when submission completes
+  const prevSubmittingRef = useRef(isSubmittingPayment);
+
+  useEffect(() => {
+    if (prevSubmittingRef.current && !isSubmittingPayment && paymentDialogOpen) {
+      // Fallback – dialog is normally closed in handleDialogSubmit on success
+    }
+    prevSubmittingRef.current = isSubmittingPayment;
+  }, [isSubmittingPayment, paymentDialogOpen]);
+
+  const getStatusBadge = (status: SessionPaymentStatus['status'], amount?: number, paidAmount?: number) => {
     const variants: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
-      paid: {
+      PAID: {
         label: t('statusPaid'),
         icon: CheckCircle,
         className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
       },
-      unpaid: {
+      UNPAID: {
         label: t('statusUnpaid'),
         icon: XCircle,
         className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
       },
-      partial: {
+      PARTIAL: {
         label: t('statusPartial'),
         icon: CheckCircle,
         className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
       },
     };
-    const variant = variants[status] || variants.unpaid;
+    const variant = variants[status] || variants.UNPAID;
     const Icon = variant.icon;
 
     return (
@@ -89,7 +84,7 @@ export function PaymentStatusCalendar({
           <Icon className="size-3 mr-1" />
           {variant.label}
         </Badge>
-        {status === 'partial' && amount && paidAmount && (
+        {status === 'PARTIAL' && amount && paidAmount !== undefined && (
           <div className="text-xs text-center">
             <div className="text-slate-600 dark:text-slate-400">
               {formatCurrency(paidAmount)} / {formatCurrency(amount)}
@@ -100,78 +95,82 @@ export function PaymentStatusCalendar({
     );
   };
 
-  // Get month names
-  const monthNames = Array.from({ length: 12 }, (_, i) => {
-    const monthKey = `month${i + 1}` as const;
-    return t(monthKey) || `Tháng ${i + 1}`;
-  });
+  // Calculate statistics
+  const paidCount = sessionPayments.filter((p) => p.status === 'PAID').length;
+  const unpaidCount = sessionPayments.filter((p) => p.status === 'UNPAID').length;
+  const partialCount = sessionPayments.filter((p) => p.status === 'PARTIAL').length;
 
-  // Filter payments by selected year
-  const filteredPayments = monthlyPayments.filter((p) => p.year === selectedYear);
+  // Check if a package can be paid (all previous packages must be fully paid)
+  const canPayPackage = useMemo(() => {
+    const canPayMap = new Map<number, boolean>();
 
-  // Group by month for selected year
-  const paymentsByMonth = filteredPayments.reduce(
-    (acc, payment) => {
-      acc[payment.month] = payment;
-      return acc;
-    },
-    {} as Record<number, PaymentMonthStatus>,
-  );
+    sessionPayments.forEach((payment) => {
+      if (payment.status === 'PAID') {
+        canPayMap.set(payment.packageNumber, true);
+      } else {
+        const previousPackages = sessionPayments.filter((p) => p.packageNumber < payment.packageNumber);
+        const allPreviousPaid = previousPackages.every((p) => p.status === 'PAID');
+        canPayMap.set(payment.packageNumber, allPreviousPaid);
+      }
+    });
 
-  // Calculate statistics for selected year
-  const yearPaid = filteredPayments.filter((p) => p.status === 'paid').length;
-  const yearUnpaid = filteredPayments.filter((p) => p.status === 'unpaid').length;
-  const yearPartial = filteredPayments.filter((p) => p.status === 'partial').length;
+    return canPayMap;
+  }, [sessionPayments]);
 
-  // Handle month item click
-  const handleMonthClick = (month: number, payment: PaymentMonthStatus | undefined) => {
+  const handlePackageClick = (payment: SessionPaymentStatus) => {
     if (!studentId) return;
 
-    // If no payment data exists, create a new payment status for this month
-    if (!payment) {
-      const newPayment: PaymentMonthStatus = {
-        month,
-        year: selectedYear,
-        status: 'unpaid',
-        amount: monthlyFee,
-        paidAmount: 0,
-      };
-      setSelectedPayment(newPayment);
-      setPaymentDialogOpen(true);
-      return;
-    }
-
-    // If payment is paid, show detail dialog
-    if (payment.status === 'paid') {
+    if (payment.status === 'PAID') {
       setSelectedPayment(payment);
       setDetailDialogOpen(true);
       return;
     }
 
-    // If payment is unpaid or partial, show payment dialog
-    if (payment.status === 'unpaid' || payment.status === 'partial') {
+    if (payment.status === 'UNPAID' || payment.status === 'PARTIAL') {
+      const canPay = canPayPackage.get(payment.packageNumber);
+
+      if (!canPay) {
+        const unpaidPackage = sessionPayments
+          .filter((p) => p.packageNumber < payment.packageNumber)
+          .find((p) => p.status !== 'PAID');
+
+        if (unpaidPackage) {
+          toast.warning(
+            t('mustPayPreviousPackage') ||
+              `Vui lòng thanh toán đầy đủ Gói ${unpaidPackage.packageNumber} trước khi thanh toán Gói ${payment.packageNumber}`,
+          );
+        }
+        return;
+      }
+
       setSelectedPayment(payment);
       setPaymentDialogOpen(true);
-      return;
     }
   };
 
-  // Handle payment submit from dialog
-  const handleDialogSubmit = (data: {
-    month: number;
-    year: number;
+  const handleDialogSubmit = async (data: {
+    packageNumber: number;
+    startSessionNumber: number;
+    endSessionNumber: number;
     amount: number;
     paymentMethod: 'cash' | 'bank_transfer';
     paymentDate: string;
     notes: string;
   }) => {
     if (studentId && onPaymentSubmit) {
-      onPaymentSubmit({
-        studentId,
-        ...data,
-      });
-      setPaymentDialogOpen(false);
-      setSelectedPayment(null);
+      try {
+        await onPaymentSubmit({
+          studentId,
+          ...data,
+        });
+        setPaymentDialogOpen(false);
+        setSelectedPayment(null);
+        if (onPaymentSuccess) {
+          onPaymentSuccess();
+        }
+      } catch {
+        // Keep dialog open so user can retry
+      }
     }
   };
 
@@ -180,128 +179,132 @@ export function PaymentStatusCalendar({
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <CardTitle className="text-lg sm:text-xl md:text-2xl font-bold flex items-center gap-2">
-            <Calendar className="size-5 md:size-6 text-indigo-600 dark:text-indigo-400" />
-            {t('paymentStatusCalendar')}
+            <Package className="size-5 md:size-6 text-indigo-600 dark:text-indigo-400" />
+            {t('sessionPaymentStatus')}
           </CardTitle>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-            <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(Number(value))}>
-              <SelectTrigger className="w-full sm:w-30">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {availableYears.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="size-4 text-green-600" />
-                <span className="text-slate-600 dark:text-slate-400">
-                  {t('paid')}: <span className="font-bold text-green-600">{yearPaid}</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <XCircle className="size-4 text-red-600" />
-                <span className="text-slate-600 dark:text-slate-400">
-                  {t('unpaid')}: <span className="font-bold text-red-600">{yearUnpaid}</span>
-                </span>
-              </div>
-              {yearPartial > 0 && (
-                <div className="flex items-center gap-2">
-                  <DollarSign className="size-4 text-orange-600" />
-                  <span className="text-slate-600 dark:text-slate-400">
-                    {t('partial')}: <span className="font-bold text-orange-600">{yearPartial}</span>
-                  </span>
-                </div>
-              )}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="size-4 text-green-600" />
+              <span className="text-slate-600 dark:text-slate-400">
+                {t('paid')}: <span className="font-bold text-green-600">{paidCount}</span>
+              </span>
             </div>
+            <div className="flex items-center gap-2">
+              <XCircle className="size-4 text-red-600" />
+              <span className="text-slate-600 dark:text-slate-400">
+                {t('unpaid')}: <span className="font-bold text-red-600">{unpaidCount}</span>
+              </span>
+            </div>
+            {partialCount > 0 && (
+              <div className="flex items-center gap-2">
+                <DollarSign className="size-4 text-orange-600" />
+                <span className="text-slate-600 dark:text-slate-400">
+                  {t('partial')}: <span className="font-bold text-orange-600">{partialCount}</span>
+                </span>
+              </div>
+            )}
           </div>
         </div>
         <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           {t('monthlyFee')}:{' '}
           <span className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(monthlyFee)}</span>
+          <span className="ml-2 text-xs">({t('sessionsPerPackage')})</span>
         </div>
       </CardHeader>
       <CardContent className="pt-3">
-        {availableYears.length === 0 ? (
+        {sessionPayments.length === 0 ? (
           <div className="text-center py-8">
+            <Package className="size-10 text-slate-400 mx-auto mb-2" />
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('noPaymentData')}</p>
           </div>
         ) : (
-          <div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
-                const payment = paymentsByMonth[month];
-                const isCurrentMonth = selectedYear === currentYear && month === currentMonth;
-                return (
-                  <div
-                    key={`${selectedYear}-${month}`}
-                    onClick={() => handleMonthClick(month, payment)}
-                    className={`p-4 border rounded-lg transition-all cursor-pointer ${
-                      isCurrentMonth
-                        ? 'border-indigo-300 dark:border-indigo-700 bg-linear-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 shadow-md hover:shadow-lg'
-                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-md'
-                    }`}
-                  >
-                    <div className="text-center mb-3">
-                      <div
-                        className={`text-sm font-semibold ${
-                          isCurrentMonth ? 'text-indigo-900 dark:text-indigo-100' : 'text-slate-900 dark:text-slate-100'
-                        }`}
-                      >
-                        {monthNames[month - 1]}
-                        {isCurrentMonth && (
-                          <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400">
-                            ({t('current')})
-                          </span>
-                        )}
-                      </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sessionPayments.map((payment) => {
+              const isCurrentPackage = payment.isCurrent === true;
+              const isUnpaidOrPartial = payment.status === 'UNPAID' || payment.status === 'PARTIAL';
+              const canPay = canPayPackage.get(payment.packageNumber) ?? false;
+              const isDisabled = isUnpaidOrPartial && !canPay;
+
+              return (
+                <div
+                  key={`package-${payment.packageNumber}`}
+                  onClick={() => !isDisabled && handlePackageClick(payment)}
+                  className={`p-4 border rounded-lg transition-all ${
+                    isDisabled
+                      ? 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/30 opacity-60 cursor-not-allowed'
+                      : 'cursor-pointer'
+                  } ${
+                    isCurrentPackage || (isUnpaidOrPartial && canPay)
+                      ? 'border-indigo-300 dark:border-indigo-700 bg-linear-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 shadow-md hover:shadow-lg'
+                      : payment.status === 'PAID'
+                      ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-md'
+                      : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'
+                  }`}
+                >
+                  <div className="text-center mb-3">
+                    <div
+                      className={`text-sm font-semibold ${
+                        isDisabled
+                          ? 'text-slate-500 dark:text-slate-400'
+                          : isCurrentPackage || (isUnpaidOrPartial && canPay)
+                          ? 'text-indigo-900 dark:text-indigo-100'
+                          : 'text-slate-900 dark:text-slate-100'
+                      }`}
+                    >
+                      <Package className="size-4 inline mr-1" />
+                      {t('packageLabel')} {payment.packageNumber}
+                      {isCurrentPackage && (
+                        <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400">({t('current')})</span>
+                      )}
+                      {isDisabled && (
+                        <span className="ml-2 text-xs text-orange-600 dark:text-orange-400 flex items-center justify-center gap-1 mt-1">
+                          <AlertCircle className="size-3" />
+                          {t('mustPayPreviousFirst') || 'Cần thanh toán gói trước'}
+                        </span>
+                      )}
                     </div>
-                    {payment ? (
-                      <div className="flex flex-col items-center gap-2">
-                        {getStatusBadge(payment.status, payment.amount, payment.paidAmount)}
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <Badge
-                          variant="outline"
-                          className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                        >
-                          {t('noData')}
-                        </Badge>
+                    <div
+                      className={`text-xs mt-1 ${
+                        isDisabled ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {t('sessionLabel')} {payment.startSessionNumber} - {payment.endSessionNumber}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    {getStatusBadge(payment.status, payment.expectedAmount, payment.paidAmount)}
+                    {payment.status !== 'PAID' && (
+                      <div className="text-xs text-center text-slate-600 dark:text-slate-400 mt-1">
+                        {t('remaining')}:{' '}
+                        <span className="font-bold">{formatCurrency(payment.remainingAmount)}</span>
                       </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>
 
       {/* Payment Dialog */}
-      <MonthlyPaymentDialog
+      <SessionPaymentDialog
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
         payment={selectedPayment}
         monthlyFee={monthlyFee}
-        monthNames={monthNames}
         onSubmit={handleDialogSubmit}
         isSubmitting={isSubmittingPayment}
       />
 
       {/* Payment Detail Dialog */}
-      {selectedPayment && selectedPayment.status === 'paid' && (
-        <PaymentDetailDialog
+      {selectedPayment && selectedPayment.status === 'PAID' && (
+        <SessionPaymentDetailDialog
           open={detailDialogOpen}
           onOpenChange={setDetailDialogOpen}
           payment={selectedPayment}
           monthlyFee={monthlyFee}
-          monthNames={monthNames}
-          paymentHistory={paymentHistory}
+          paymentHistory={paymentHistory.filter((p) => p.packageNumber === selectedPayment.packageNumber)}
         />
       )}
     </Card>

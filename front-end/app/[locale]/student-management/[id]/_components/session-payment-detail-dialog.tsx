@@ -34,13 +34,8 @@ export function SessionPaymentDetailDialog({
   const t = useTranslations('student-detail');
   const tPayment = useTranslations('payment-management');
 
-  // Filter payment history for this specific package
-  const packagePayments = paymentHistory.filter((p) => {
-    // Extract package info from period or notes if available
-    // For now, we'll match by checking if payment is within the session range
-    // This is a simplified approach - you may need to adjust based on your data structure
-    return true; // Placeholder - adjust based on your payment history structure
-  });
+  // Payment history đã được filter theo packageNumber ở parent component
+  const packagePayments = paymentHistory;
 
   const getPaymentMethodBadge = (method: string) => {
     const methods: Record<string, { label: string; className: string; icon: typeof Banknote }> = {

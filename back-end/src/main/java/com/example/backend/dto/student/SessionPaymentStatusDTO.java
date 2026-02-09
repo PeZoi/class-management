@@ -24,5 +24,6 @@ public class SessionPaymentStatusDTO {
     private SessionPaymentStatus status; // PAID, PARTIAL, UNPAID
     private Instant createdAtPackage;
     private Instant completedAt;
+    private Boolean isCurrent; // Package đang được sử dụng (dựa trên số buổi đã học)
 }
 

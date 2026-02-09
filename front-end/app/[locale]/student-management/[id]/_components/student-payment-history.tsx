@@ -39,6 +39,7 @@ export interface PaymentHistoryItem {
   status: 'paid' | 'partial';
   period: string; // VD: "Tháng 12/2024"
   notes?: string;
+  packageNumber?: number; // Số thứ tự gói (1, 2, 3...) - cho session-based payment
 }
 
 interface StudentPaymentHistoryProps {

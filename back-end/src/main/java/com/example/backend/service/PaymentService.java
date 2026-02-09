@@ -1,5 +1,6 @@
 package com.example.backend.service;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -24,6 +25,7 @@ import com.example.backend.enums.PaymentStatus;
 import com.example.backend.enums.PaymentType;
 import com.example.backend.enums.StudentClassStatus;
 import com.example.backend.exception.NotFoundException;
+import com.example.backend.exception.CustomException;
 import com.example.backend.repository.ClassRepository;
 import com.example.backend.repository.PaymentRepository;
 import com.example.backend.repository.StudentClassRepository;
@@ -73,6 +75,7 @@ public class PaymentService {
 
         // Tính số tiền còn lại cần đóng (remaining amount)
         Long remainingAmount = paymentRequest.getFeeSnapshot(); // Mặc định = feeSnapshot nếu chưa có payment nào
+        Long totalPaidBefore = 0L; // Tổng số tiền đã đóng trước lần này
         
         // Kiểm tra xem đây là session-based payment hay month-based payment
         boolean isSessionBased = paymentRequest.getPackageNumber() != null 
@@ -89,10 +92,10 @@ public class PaymentService {
                 );
                 
                 if (!existingPayments.isEmpty()) {
-                    Long totalPaidAmount = existingPayments.stream()
+                    totalPaidBefore = existingPayments.stream()
                             .mapToLong(p -> p.getPaid() != null ? p.getPaid() : 0L)
                             .sum();
-                    remainingAmount = paymentRequest.getFeeSnapshot() - totalPaidAmount;
+                    remainingAmount = paymentRequest.getFeeSnapshot() - totalPaidBefore;
                     if (remainingAmount < 0) {
                         remainingAmount = 0L;
                     }
@@ -107,11 +110,10 @@ public class PaymentService {
                 );
                 
                 if (!existingPayments.isEmpty()) {
-                    Long totalPaidAmount = 0L;
                     for (Payment existingPayment : existingPayments) {
-                        totalPaidAmount += existingPayment.getPaid() != null ? existingPayment.getPaid() : 0L;
+                        totalPaidBefore += existingPayment.getPaid() != null ? existingPayment.getPaid() : 0L;
                     }
-                    remainingAmount = paymentRequest.getFeeSnapshot() - totalPaidAmount;
+                    remainingAmount = paymentRequest.getFeeSnapshot() - totalPaidBefore;
                     if (remainingAmount < 0) {
                         remainingAmount = 0L;
                     }
@@ -135,6 +137,40 @@ public class PaymentService {
         
         // Set session-based fields nếu có
         if (isSessionBased) {
+            // Validation: Kiểm tra tất cả gói trước đó đã thanh toán đủ chưa
+            if (paymentRequest.getPackageNumber() != null && student != null && clazz != null) {
+                Integer currentPackageNumber = paymentRequest.getPackageNumber();
+                
+                // Kiểm tra tất cả gói có packageNumber < currentPackageNumber
+                for (int i = 1; i < currentPackageNumber; i++) {
+                    Optional<SessionPaymentPackage> prevPackageOpt = sessionPaymentService.getPackageByNumber(
+                            student.getId(), clazz.getId(), i);
+                    
+                    if (prevPackageOpt.isPresent()) {
+                        SessionPaymentPackage prevPackage = prevPackageOpt.get();
+                        // Tính số tiền đã đóng cho gói trước đó
+                        Long paidAmount = sessionPaymentService.calculatePaidAmountForPackage(
+                                student.getId(), clazz.getId(), i);
+                        
+                        // Nếu gói trước đó chưa thanh toán đủ
+                        if (paidAmount < prevPackage.getExpectedAmount()) {
+                            throw new CustomException(
+                                    String.format("Không thể thanh toán Gói %d. Vui lòng thanh toán đầy đủ Gói %d trước.", 
+                                            currentPackageNumber, i),
+                                    org.springframework.http.HttpStatus.BAD_REQUEST
+                            );
+                        }
+                    } else {
+                        // Gói trước đó chưa tồn tại, không cho phép đóng gói sau
+                        throw new CustomException(
+                                String.format("Không thể thanh toán Gói %d. Vui lòng thanh toán đầy đủ Gói %d trước.", 
+                                        currentPackageNumber, i),
+                                org.springframework.http.HttpStatus.BAD_REQUEST
+                        );
+                    }
+                }
+            }
+            
             paymentBuilder.packageNumber(paymentRequest.getPackageNumber())
                          .sessionStartNumber(paymentRequest.getSessionStartNumber())
                          .sessionEndNumber(paymentRequest.getSessionEndNumber());
@@ -145,15 +181,48 @@ public class PaymentService {
         
         Payment payment = paymentBuilder.build();
 
-        // Set payment status cho lần đóng này
-        // Khi paid >= amount (số tiền đóng >= số tiền còn lại) thì hoàn thành
-        if (payment.getPaid() >= payment.getAmount()) {
+        // Tính tổng số tiền đã đóng sau lần thanh toán này (bao gồm cả lần này)
+        Long totalPaidAfterThisPayment = totalPaidBefore + paymentRequest.getPaid();
+
+        // Set payment status cho payment này:
+        // - Nếu tổng số tiền đã đóng (bao gồm lần này) >= expectedAmount (feeSnapshot) 
+        //   => Payment này làm cho tổng đã đủ => Status = COMPLETED (Hoàn thành)
+        // - Hoặc nếu số tiền đóng trong lần này >= số tiền còn lại (remainingAmount)
+        //   => Payment này đóng đủ số tiền còn lại => Status = COMPLETED
+        // - Ngược lại => Status = INCOMPLETE (Đóng một phần)
+        // 
+        // Ví dụ: expectedAmount = 800k
+        //   Lần 1: đóng 100k => totalPaidAfter = 100k < 800k => INCOMPLETE
+        //   Lần 2: đóng 700k => totalPaidAfter = 800k >= 800k => COMPLETED ✓
+        boolean isFullyPaid = totalPaidAfterThisPayment >= paymentRequest.getFeeSnapshot() || 
+                               payment.getPaid() >= payment.getAmount();
+        
+        if (isFullyPaid) {
             payment.setPaymentStatus(PaymentStatus.COMPLETED);
         } else {
             payment.setPaymentStatus(PaymentStatus.INCOMPLETE);
         }
 
         Payment savedPayment = paymentRepository.save(payment);
+        
+        // Cập nhật lại status cho tất cả payments trong nhóm (để đảm bảo chỉ payment mới nhất có COMPLETED)
+        if (student != null && clazz != null) {
+            if (isSessionBased && paymentRequest.getPackageNumber() != null) {
+                updatePaymentStatusesForGroup(
+                        student.getId(),
+                        clazz.getId(),
+                        null,
+                        paymentRequest.getPackageNumber()
+                );
+            } else if (paymentRequest.getBillingMonth() != null) {
+                updatePaymentStatusesForGroup(
+                        student.getId(),
+                        clazz.getId(),
+                        paymentRequest.getBillingMonth(),
+                        null
+                );
+            }
+        }
         
         // Cập nhật package status nếu là session-based payment
         if (isSessionBased && paymentRequest.getPackageNumber() != null && clazz != null && student != null) {
@@ -178,7 +247,7 @@ public class PaymentService {
                 );
             }
             
-            // Tính lại tổng paid amount từ tất cả payments
+            // Tính lại tổng paid amount từ tất cả payments (bao gồm payment vừa tạo)
             Long totalPaid = calculatePaidAmountForPackage(student.getId(), clazz.getId(), paymentRequest.getPackageNumber());
             sessionPaymentService.updatePackageAfterPayment(paymentPackage.getId(), totalPaid);
         }
@@ -338,11 +407,16 @@ public class PaymentService {
         response.setBonus(payment.getBonus());
         response.setDeduction(payment.getDeduction());
         response.setBillingMonth(payment.getBillingMonth());
-        response.setPaymentStatus(payment.getPaymentStatus());
+        response.setPaymentStatus(payment.getPaymentStatus()); // Lấy status trực tiếp từ DB
         response.setPaymentMethod(payment.getPaymentMethod());
         response.setPaymentType(payment.getPaymentType());
         response.setDirection(payment.getDirection());
         response.setNote(payment.getNote());
+        
+        // Map session-based payment fields
+        response.setPackageNumber(payment.getPackageNumber());
+        response.setSessionStartNumber(payment.getSessionStartNumber());
+        response.setSessionEndNumber(payment.getSessionEndNumber());
         
         // Map dates from Auditable
         if (payment.getCreatedAt() != null) {
@@ -424,5 +498,71 @@ public class PaymentService {
                 .mapToLong(p -> p.getPaid() != null ? p.getPaid() : 0L)
                 .sum();
     }
+
+    /**
+     * Cập nhật lại status cho các payment cũ dựa trên tổng đã đóng
+     * CHỈ payment mới nhất trong nhóm sẽ được set COMPLETED nếu tổng đã đủ
+     * Các payment trước đó sẽ giữ nguyên hoặc set INCOMPLETE
+     */
+    @Transactional
+    public void updatePaymentStatusesForGroup(String studentId, String classId, Instant billingMonth, Integer packageNumber) {
+        List<Payment> groupPayments;
+        
+        if (packageNumber != null) {
+            // Session-based payment: tính theo package
+            groupPayments = paymentRepository.findAllByStudentIdAndClassIdAndPackageNumber(
+                    studentId, classId, packageNumber);
+        } else if (billingMonth != null) {
+            // Month-based payment: tính theo billingMonth
+            groupPayments = paymentRepository.findAllByStudentIdAndBillingMonth(studentId, billingMonth);
+        } else {
+            return;
+        }
+
+        if (groupPayments.isEmpty()) {
+            return;
+        }
+
+        // Tính tổng đã đóng
+        Long totalPaid = groupPayments.stream()
+                .mapToLong(p -> p.getPaid() != null ? p.getPaid() : 0L)
+                .sum();
+
+        // Lấy expectedAmount từ payment đầu tiên (tất cả payments trong nhóm có cùng feeSnapshot)
+        Long expectedAmount = groupPayments.get(0).getFeeSnapshot();
+        if (expectedAmount == null || expectedAmount == 0) {
+            return;
+        }
+
+        // Tìm payment mới nhất (theo createdAt)
+        Payment latestPayment = groupPayments.stream()
+                .max((p1, p2) -> {
+                    java.time.Instant time1 = p1.getCreatedAt() != null ? p1.getCreatedAt() : java.time.Instant.MIN;
+                    java.time.Instant time2 = p2.getCreatedAt() != null ? p2.getCreatedAt() : java.time.Instant.MIN;
+                    return time1.compareTo(time2);
+                })
+                .orElse(null);
+
+        if (latestPayment == null) {
+            return;
+        }
+
+        // Cập nhật status cho tất cả payments trong nhóm
+        for (Payment payment : groupPayments) {
+            if (payment.getId().equals(latestPayment.getId())) {
+                // Payment mới nhất: set COMPLETED nếu tổng đã đủ
+                if (totalPaid >= expectedAmount) {
+                    payment.setPaymentStatus(PaymentStatus.COMPLETED);
+                } else {
+                    payment.setPaymentStatus(PaymentStatus.INCOMPLETE);
+                }
+            } else {
+                // Các payment trước đó: luôn là INCOMPLETE
+                payment.setPaymentStatus(PaymentStatus.INCOMPLETE);
+            }
+            paymentRepository.save(payment);
+        }
+    }
+
 }
 

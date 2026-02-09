@@ -236,6 +236,48 @@ export function StudentTable({
       },
     },
     {
+      id: 'unpaidPackages',
+      accessorFn: (row) => {
+        const currentPackage = row.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+        const packageUnpaid =
+          row.sessionPaymentStatuses?.filter(
+            (pkg) =>
+              (pkg.packageNumber ?? 0) <= (currentPackage?.packageNumber ?? 0) &&
+              (pkg.status === 'UNPAID' || pkg.status === 'PARTIAL'),
+          ) ?? [];
+        return packageUnpaid.length;
+      },
+      header: ({ column }) => (
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
+            <Calendar className="size-4" />
+            {t('unpaidMonths')}
+          </SortableHeader>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const currentPackage = row.original.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+        const packageUnpaid =
+          row.original.sessionPaymentStatuses?.filter(
+            (pkg) =>
+              (pkg.packageNumber ?? 0) <= (currentPackage?.packageNumber ?? 0) &&
+              (pkg.status === 'UNPAID' || pkg.status === 'PARTIAL'),
+          ) ?? [];
+        const packageUnpaidCount = packageUnpaid.length;
+
+        return (
+          <div className="text-center text-slate-700 dark:text-slate-300 text-sm font-medium">
+            {packageUnpaidCount}
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const a = rowA.getValue<number>('unpaidPackages') ?? 0;
+        const b = rowB.getValue<number>('unpaidPackages') ?? 0;
+        return a - b;
+      },
+    },
+    {
       id: 'payment',
       header: () => (
         <div className="flex items-center justify-center gap-2">
@@ -244,50 +286,47 @@ export function StudentTable({
         </div>
       ),
       cell: ({ row }) => {
-        // Calculate total debt from all unpaid months
-        const totalDebt = row.original.monthPaymentStatuses?.reduce((sum, status) => {
-          return sum + (status.remainingAmount || 0);
-        }, 0) || 0;
+        // Tìm package hiện tại từ sessionPaymentStatuses (có isCurrent = true)
+        const currentPackage = row.original.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+
+        // Lấy số tiền đã đóng và cần đóng của package hiện tại
+        // Format: (số tiền đã đóng của package hiện tại / số tiền cần đóng)
+        const currentPackagePaidAmount =
+          currentPackage?.paidAmount ?? row.original.currentMonthPaidAmount ?? row.original.amountPaid ?? 0;
+        const currentPackageExpectedAmount = currentPackage?.expectedAmount ?? row.original.monthlyFee ?? 0;
+
+        // Tính tổng nợ: tổng remainingAmount của tất cả các package từ trước đến gói hiện tại (<= currentPackageNumber)
+        let totalDebt = 0;
+
+        const currentPackageNumber = currentPackage?.packageNumber;
+
+        if (currentPackageNumber != null) {
+          totalDebt = row.original.sessionPaymentStatuses?.filter((pkg) => (pkg.packageNumber ?? 0) <= currentPackageNumber)?.reduce((sum, pkg) => sum + (pkg.remainingAmount || 0), 0) ?? 0;
+        } else {
+          // Nếu không xác định được currentPackage, fallback: tính nợ của tất cả package
+          totalDebt = row.original.sessionPaymentStatuses?.reduce(
+            (sum, pkg) => sum + (pkg.remainingAmount || 0),
+            0,
+          ) ?? 0;
+        }
 
         return (
-          <div className="text-right space-y-1">
-            {getPaymentBadge(row.original.paymentStatus)}
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              {formatCurrency(row.original.currentMonthPaidAmount ?? row.original.amountPaid)} /{' '}
-              {formatCurrency(row.original.monthlyFee)}
+          <div className="text-right space-y-1.5">
+            {/* Current package payment status */}
+            <div className="space-y-1">
+              {getPaymentBadge(row.original.paymentStatus)}
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {formatCurrency(currentPackagePaidAmount)} / {formatCurrency(currentPackageExpectedAmount)}
+              </div>
             </div>
+            {/* Total debt from unpaid packages */}
             {totalDebt > 0 && (
-              <div className="text-xs font-bold text-red-600 dark:text-red-400">
+              <div className="text-xs font-bold text-red-600 dark:text-red-400 pt-1 border-t border-slate-200 dark:border-slate-700">
                 {t('debtLabel')} {formatCurrency(totalDebt)}
               </div>
             )}
           </div>
         );
-      },
-    },
-    {
-      id: 'joinedAt',
-      accessorFn: (row) => row.class?.joinAt || '',
-      header: ({ column }) => (
-        <div className="flex items-center justify-center gap-2">
-          <SortableHeader column={column} className="justify-center">
-            <Calendar className="size-4" />
-            {t('joinedDate')}
-          </SortableHeader>
-        </div>
-      ),
-      cell: ({ row }) => {
-        return (
-          <div className="text-center text-slate-600 dark:text-slate-400 text-sm flex items-center justify-center gap-2">
-            <Calendar className="size-4 opacity-80" />
-            {formatDate(row.original?.class?.joinAt || '')}
-          </div>
-        );
-      },
-      sortingFn: (rowA, rowB) => {
-        const dateA = rowA.original.class?.joinAt ? new Date(rowA.original.class.joinAt).getTime() : 0;
-        const dateB = rowB.original.class?.joinAt ? new Date(rowB.original.class.joinAt).getTime() : 0;
-        return dateA - dateB;
       },
     },
   ];

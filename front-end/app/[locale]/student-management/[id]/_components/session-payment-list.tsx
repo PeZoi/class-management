@@ -2,14 +2,15 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, DollarSign, Package } from 'lucide-react';
+import { CheckCircle, XCircle, DollarSign, Package, AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/utils/helper';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { SessionPaymentStatus } from '@/types';
 import { SessionPaymentDialog } from './session-payment-dialog';
 import { SessionPaymentDetailDialog } from './session-payment-detail-dialog';
 import { PaymentHistoryItem } from './student-payment-history';
+import { toast } from 'react-toastify';
 
 interface SessionPaymentListProps {
   sessionPayments: SessionPaymentStatus[];
@@ -25,8 +26,9 @@ interface SessionPaymentListProps {
     paymentMethod: 'cash' | 'bank_transfer';
     paymentDate: string;
     notes: string;
-  }) => void;
+  }) => Promise<void> | void;
   isSubmittingPayment?: boolean;
+  onPaymentSuccess?: () => void;
 }
 
 export function SessionPaymentList({
@@ -36,6 +38,7 @@ export function SessionPaymentList({
   paymentHistory = [],
   onPaymentSubmit,
   isSubmittingPayment,
+  onPaymentSuccess,
 }: SessionPaymentListProps) {
   const t = useTranslations('student-detail');
   
@@ -43,6 +46,21 @@ export function SessionPaymentList({
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<SessionPaymentStatus | null>(null);
+  
+  // Close dialog when submission completes successfully
+  // Track previous submitting state to detect when submission completes
+  const prevSubmittingRef = useRef(isSubmittingPayment);
+  
+  useEffect(() => {
+    // If was submitting and now is not, check if we should close dialog
+    // Only close if it was a successful submission (not an error)
+    if (prevSubmittingRef.current && !isSubmittingPayment && paymentDialogOpen) {
+      // Wait a bit to ensure any success toasts are shown
+      // The dialog will be closed by handleDialogSubmit on success
+      // This is just a fallback in case handleDialogSubmit doesn't close it
+    }
+    prevSubmittingRef.current = isSubmittingPayment;
+  }, [isSubmittingPayment, paymentDialogOpen]);
 
   const getStatusBadge = (status: SessionPaymentStatus['status'], amount?: number, paidAmount?: number) => {
     const variants: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
@@ -87,6 +105,28 @@ export function SessionPaymentList({
   const unpaidCount = sessionPayments.filter((p) => p.status === 'UNPAID').length;
   const partialCount = sessionPayments.filter((p) => p.status === 'PARTIAL').length;
 
+  // Check if a package can be paid (all previous packages must be fully paid)
+  const canPayPackage = useMemo(() => {
+    const canPayMap = new Map<number, boolean>();
+    
+    sessionPayments.forEach((payment) => {
+      if (payment.status === 'PAID') {
+        // Package đã thanh toán đủ, có thể xem chi tiết
+        canPayMap.set(payment.packageNumber, true);
+      } else {
+        // Kiểm tra tất cả gói trước đó có thanh toán đủ không
+        const previousPackages = sessionPayments.filter(
+          (p) => p.packageNumber < payment.packageNumber
+        );
+        
+        const allPreviousPaid = previousPackages.every((p) => p.status === 'PAID');
+        canPayMap.set(payment.packageNumber, allPreviousPaid);
+      }
+    });
+    
+    return canPayMap;
+  }, [sessionPayments]);
+
   // Handle package click
   const handlePackageClick = (payment: SessionPaymentStatus) => {
     if (!studentId) return;
@@ -98,8 +138,25 @@ export function SessionPaymentList({
       return;
     }
 
-    // If payment is unpaid or partial, show payment dialog
+    // If payment is unpaid or partial, check if can pay
     if (payment.status === 'UNPAID' || payment.status === 'PARTIAL') {
+      const canPay = canPayPackage.get(payment.packageNumber);
+      
+      if (!canPay) {
+        // Tìm gói chưa thanh toán đủ đầu tiên
+        const unpaidPackage = sessionPayments
+          .filter((p) => p.packageNumber < payment.packageNumber)
+          .find((p) => p.status !== 'PAID');
+        
+        if (unpaidPackage) {
+          toast.warning(
+            t('mustPayPreviousPackage') || 
+            `Vui lòng thanh toán đầy đủ Gói ${unpaidPackage.packageNumber} trước khi thanh toán Gói ${payment.packageNumber}`
+          );
+        }
+        return;
+      }
+      
       setSelectedPayment(payment);
       setPaymentDialogOpen(true);
       return;
@@ -107,7 +164,7 @@ export function SessionPaymentList({
   };
 
   // Handle payment submit from dialog
-  const handleDialogSubmit = (data: {
+  const handleDialogSubmit = async (data: {
     packageNumber: number;
     startSessionNumber: number;
     endSessionNumber: number;
@@ -117,12 +174,21 @@ export function SessionPaymentList({
     notes: string;
   }) => {
     if (studentId && onPaymentSubmit) {
-      onPaymentSubmit({
-        studentId,
-        ...data,
-      });
-      setPaymentDialogOpen(false);
-      setSelectedPayment(null);
+      try {
+        await onPaymentSubmit({
+          studentId,
+          ...data,
+        });
+        // Only close dialog if payment was successful (no error thrown)
+        setPaymentDialogOpen(false);
+        setSelectedPayment(null);
+        if (onPaymentSuccess) {
+          onPaymentSuccess();
+        }
+      } catch {
+        // Error handling is done in parent, just keep dialog open
+        // Dialog will remain open so user can retry
+      }
     }
   };
 
@@ -174,21 +240,34 @@ export function SessionPaymentList({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {sessionPayments.map((payment) => {
-              const isCurrentPackage = payment.status === 'UNPAID' || payment.status === 'PARTIAL';
+              // Sử dụng isCurrent từ backend thay vì dựa vào status
+              const isCurrentPackage = payment.isCurrent === true;
+              const isUnpaidOrPartial = payment.status === 'UNPAID' || payment.status === 'PARTIAL';
+              const canPay = canPayPackage.get(payment.packageNumber) ?? false;
+              const isDisabled = (isUnpaidOrPartial && !canPay);
+              
               return (
                 <div
                   key={`package-${payment.packageNumber}`}
-                  onClick={() => handlePackageClick(payment)}
-                  className={`p-4 border rounded-lg transition-all cursor-pointer ${
-                    isCurrentPackage
+                  onClick={() => !isDisabled && handlePackageClick(payment)}
+                  className={`p-4 border rounded-lg transition-all ${
+                    isDisabled
+                      ? 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/30 opacity-60 cursor-not-allowed'
+                      : 'cursor-pointer'
+                  } ${
+                    isCurrentPackage || (isUnpaidOrPartial && canPay)
                       ? 'border-indigo-300 dark:border-indigo-700 bg-linear-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 shadow-md hover:shadow-lg'
-                      : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-md'
+                      : payment.status === 'PAID'
+                      ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-md'
+                      : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'
                   }`}
                 >
                   <div className="text-center mb-3">
                     <div
                       className={`text-sm font-semibold ${
-                        isCurrentPackage
+                        isDisabled
+                          ? 'text-slate-500 dark:text-slate-400'
+                          : isCurrentPackage || (isUnpaidOrPartial && canPay)
                           ? 'text-indigo-900 dark:text-indigo-100'
                           : 'text-slate-900 dark:text-slate-100'
                       }`}
@@ -200,8 +279,18 @@ export function SessionPaymentList({
                           ({t('current')})
                         </span>
                       )}
+                      {isDisabled && (
+                        <span className="ml-2 text-xs text-orange-600 dark:text-orange-400 flex items-center justify-center gap-1 mt-1">
+                          <AlertCircle className="size-3" />
+                          {t('mustPayPreviousFirst') || 'Cần thanh toán gói trước'}
+                        </span>
+                      )}
                     </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                    <div className={`text-xs mt-1 ${
+                      isDisabled 
+                        ? 'text-slate-400 dark:text-slate-500' 
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}>
                       {t('sessionLabel')} {payment.startSessionNumber} - {payment.endSessionNumber}
                     </div>
                   </div>
@@ -237,7 +326,9 @@ export function SessionPaymentList({
           onOpenChange={setDetailDialogOpen}
           payment={selectedPayment}
           monthlyFee={monthlyFee}
-          paymentHistory={paymentHistory}
+          paymentHistory={paymentHistory.filter(
+            (p) => p.packageNumber === selectedPayment.packageNumber
+          )}
         />
       )}
     </Card>

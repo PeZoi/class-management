@@ -1,5 +1,6 @@
 'use client';
 
+import { CurrencyInputField } from '@/components/currency-input-field';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,12 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { CurrencyInputField } from '@/components/currency-input-field';
+import { SessionPaymentStatus } from '@/types';
 import { formatCurrency } from '@/utils/helper';
-import { DollarSign, CreditCard, Package } from 'lucide-react';
+import { CreditCard, DollarSign, Loader2, Package } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
-import { SessionPaymentStatus } from '@/types';
 
 interface SessionPaymentDialogProps {
   open: boolean;
@@ -41,10 +41,12 @@ export function SessionPaymentDialog({
   open,
   onOpenChange,
   payment,
-  monthlyFee,
+  monthlyFee, // Reserved for future use
   onSubmit,
   isSubmitting,
 }: SessionPaymentDialogProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _ = monthlyFee; // Reserved for future use
   const tPayment = useTranslations('payment-management');
   const tCommon = useTranslations('common');
 
@@ -78,7 +80,7 @@ export function SessionPaymentDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (payment) {
+    if (payment && !isSubmitting) {
       onSubmit({
         packageNumber: payment.packageNumber,
         startSessionNumber: payment.startSessionNumber,
@@ -88,7 +90,7 @@ export function SessionPaymentDialog({
         paymentDate: formData.paymentDate,
         notes: formData.notes,
       });
-      onOpenChange(false);
+      // Don't close dialog here - let parent handle it after successful submission
     }
   };
 
@@ -99,7 +101,7 @@ export function SessionPaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" onInteractOutside={(e) => isSubmitting && e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             <DollarSign className="size-6 text-green-600" />
@@ -171,6 +173,7 @@ export function SessionPaymentDialog({
                     }
                     placeholder={tPayment('enterAmount') || 'Nhập số tiền'}
                     required
+                    disabled={isSubmitting}
                   />
                   <p className="text-xs text-slate-500">
                     {tPayment('maximum') || 'Tối đa'} {formatCurrency(remainingAmount)}
@@ -193,6 +196,7 @@ export function SessionPaymentDialog({
                       }))
                     }
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -209,6 +213,7 @@ export function SessionPaymentDialog({
                         paymentMethod: value,
                       }))
                     }
+                    disabled={isSubmitting}
                   >
                     <SelectTrigger id="paymentMethod">
                       <SelectValue />
@@ -244,6 +249,7 @@ export function SessionPaymentDialog({
                   }
                   placeholder={tPayment('notesPlaceholderPayment') || 'Nhập ghi chú (nếu có)'}
                   rows={3}
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -293,12 +299,30 @@ export function SessionPaymentDialog({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               {tCommon('cancel') || 'Hủy'}
             </Button>
-            <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={!!isSubmitting}>
-              <DollarSign className="size-4 mr-2" />
-              {isSubmitting ? tCommon('saving') || 'Đang lưu...' : tPayment('confirmPayment') || 'Xác nhận thanh toán'}
+            <Button 
+              type="submit" 
+              className="bg-green-600 hover:bg-green-700" 
+              disabled={isSubmitting || formData.amount <= 0}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  {tCommon('saving') || 'Đang lưu...'}
+                </>
+              ) : (
+                <>
+                  <DollarSign className="size-4 mr-2" />
+                  {tPayment('confirmPayment') || 'Xác nhận thanh toán'}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

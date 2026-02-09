@@ -26,71 +26,43 @@ interface OverdueStudentItem extends StudentType {
   totalRemainingAmount: number;
 }
 
-const getCurrentMonthPaymentStatus = (
-  monthPaymentStatuses?: Array<{
-    month: string;
-    expectedAmount: number;
-    paidAmount: number;
-    remainingAmount: number;
-    status: 'PAID' | 'PARTIAL' | 'UNPAID';
-  }>,
-  monthlyFee?: number,
-): {
-  paymentStatus: 'paid' | 'unpaid' | 'partial';
-  paidAmount: number;
-  expectedAmount: number;
-} => {
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth() + 1;
-
-  if (monthPaymentStatuses && monthPaymentStatuses.length > 0) {
-    for (const paymentStatus of monthPaymentStatuses) {
-      const paymentDate = new Date(paymentStatus.month);
-      const paymentYear = paymentDate.getFullYear();
-      const paymentMonth = paymentDate.getMonth() + 1;
-
-      if (paymentYear === currentYear && paymentMonth === currentMonth) {
-        const statusMap: Record<'PAID' | 'PARTIAL' | 'UNPAID', 'paid' | 'unpaid' | 'partial'> = {
-          PAID: 'paid',
-          PARTIAL: 'partial',
-          UNPAID: 'unpaid',
-        };
-
-        return {
-          paymentStatus: statusMap[paymentStatus.status] || 'unpaid',
-          paidAmount: paymentStatus.paidAmount || 0,
-          expectedAmount: paymentStatus.expectedAmount || monthlyFee || 0,
-        };
-      }
-    }
-  }
-
-  return {
-    paymentStatus: 'unpaid',
-    paidAmount: 0,
-    expectedAmount: monthlyFee || 0,
-  };
-};
-
 export function OverdueStudentsTable({ students, formatCurrency, onPayment }: OverdueStudentsTableProps) {
   const t = useTranslations('dashboard');
   const locale = useLocale();
 
   const mappedStudents: OverdueStudentItem[] = students.map((student) => {
     const monthlyFee = student.class?.monthlyFee || 0;
-    const currentMonthPayment = getCurrentMonthPaymentStatus(student.monthPaymentStatuses, monthlyFee);
-    const unpaidMonths = student.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+
+    // Ưu tiên sử dụng sessionPaymentStatuses (payment theo gói buổi học)
+    let paymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
+    let paidAmount = 0;
+
+    const currentPackage = student.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+    if (currentPackage) {
+      const statusMap: Record<string, 'paid' | 'unpaid' | 'partial'> = {
+        PAID: 'paid',
+        PARTIAL: 'partial',
+        UNPAID: 'unpaid',
+      };
+      paymentStatus = statusMap[currentPackage.status as string] || 'unpaid';
+      paidAmount = currentPackage.paidAmount ?? 0;
+    }
+
+    // Số "tháng nợ" ở dashboard: hiểu là số gói còn nợ
+    const unpaidPackages =
+      student.sessionPaymentStatuses?.filter((pkg) => (pkg.remainingAmount ?? 0) > 0).length ?? 0;
+
+    // Tổng nợ theo gói: cộng tất cả remainingAmount các package
     const totalRemainingAmount =
-      student.monthPaymentStatuses?.reduce((sum, m) => sum + (m.remainingAmount || 0), 0) ?? 0;
+      student.sessionPaymentStatuses?.reduce((sum, pkg) => sum + (pkg.remainingAmount || 0), 0) ?? 0;
 
     return {
       ...student,
-      paymentStatus: currentMonthPayment.paymentStatus,
+      paymentStatus,
       monthlyFee,
-      amountPaid: currentMonthPayment.paidAmount,
-      currentMonthPaidAmount: currentMonthPayment.paidAmount,
-      unpaidMonthsCount: unpaidMonths,
+      amountPaid: paidAmount,
+      currentMonthPaidAmount: paidAmount,
+      unpaidMonthsCount: unpaidPackages,
       totalRemainingAmount,
     };
   });
@@ -244,7 +216,7 @@ export function OverdueStudentsTable({ students, formatCurrency, onPayment }: Ov
     {
       id: 'unpaidMonths',
       accessorFn: (row) => {
-        return row.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+        return row.sessionPaymentStatuses?.filter((pkg) => (pkg.remainingAmount ?? 0) > 0).length ?? 0;
       },
       header: ({ column }) => (
         <div className="flex items-center justify-center gap-2">
@@ -255,12 +227,16 @@ export function OverdueStudentsTable({ students, formatCurrency, onPayment }: Ov
         </div>
       ),
       cell: ({ row }) => {
-        const unpaidMonths = row.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
-        return <div className="text-center text-slate-700 dark:text-slate-300 text-sm font-medium">{unpaidMonths}</div>;
+        const currentPackage = row.original.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+        const packageUnpaid = row.original.sessionPaymentStatuses?.filter((pkg) => pkg?.packageNumber <= (currentPackage?.packageNumber ?? 0) && (pkg.status === 'UNPAID' || pkg.status === 'PARTIAL'));
+        const packageUnpaidCount = packageUnpaid?.length ?? 0;
+        return <div className="text-center text-slate-700 dark:text-slate-300 text-sm font-medium">{packageUnpaidCount}</div>;
       },
       sortingFn: (rowA, rowB) => {
-        const unpaidMonthsA = rowA.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
-        const unpaidMonthsB = rowB.original.monthPaymentStatuses?.filter((m) => m.remainingAmount > 0).length ?? 0;
+        const unpaidMonthsA =
+          rowA.original.sessionPaymentStatuses?.filter((pkg) => (pkg.remainingAmount ?? 0) > 0).length ?? 0;
+        const unpaidMonthsB =
+          rowB.original.sessionPaymentStatuses?.filter((pkg) => (pkg.remainingAmount ?? 0) > 0).length ?? 0;
         return unpaidMonthsA - unpaidMonthsB;
       },
     },
@@ -273,16 +249,42 @@ export function OverdueStudentsTable({ students, formatCurrency, onPayment }: Ov
         </div>
       ),
       cell: ({ row }) => {
+        // Tìm package hiện tại từ sessionPaymentStatuses (có isCurrent = true)
+        const currentPackage = row.original.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+
+        // Lấy số tiền đã đóng và cần đóng của package hiện tại
+        // Format: (số tiền đã đóng của package hiện tại / số tiền cần đóng)
+        const currentPackagePaidAmount =
+          currentPackage?.paidAmount ?? row.original.currentMonthPaidAmount ?? row.original.amountPaid ?? 0;
+        const currentPackageExpectedAmount = currentPackage?.expectedAmount ?? row.original.monthlyFee ?? 0;
+
+        // Tính tổng nợ: tổng remainingAmount của tất cả các package từ trước đến gói hiện tại (<= currentPackageNumber)
+        let totalDebt = 0;
+
+        const currentPackageNumber = currentPackage?.packageNumber;
+
+        if (currentPackageNumber != null) {
+          totalDebt =
+            row.original.sessionPaymentStatuses
+              ?.filter((pkg) => (pkg.packageNumber ?? 0) <= currentPackageNumber)
+              ?.reduce((sum, pkg) => sum + (pkg.remainingAmount || 0), 0) ?? 0;
+        } else {
+          // Nếu không xác định được currentPackage, fallback: tính nợ của tất cả package
+          totalDebt =
+            row.original.sessionPaymentStatuses?.reduce((sum, pkg) => sum + (pkg.remainingAmount || 0), 0) ?? 0;
+        }
+
         return (
           <div className="text-center space-y-1">
             {getPaymentBadge(row.original.paymentStatus)}
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              {formatCurrency(row.original.currentMonthPaidAmount ?? row.original.amountPaid)} /{' '}
-              {formatCurrency(row.original.monthlyFee)}
+              {formatCurrency(currentPackagePaidAmount)} / {formatCurrency(currentPackageExpectedAmount)}
             </div>
-            <div className="text-xs font-bold text-red-600 dark:text-red-400">
-              {t('debtLabel')} {formatCurrency(row.original.totalRemainingAmount)}
-            </div>
+            {totalDebt > 0 && (
+              <div className="text-xs font-bold text-red-600 dark:text-red-400">
+                {t('debtLabel')} {formatCurrency(totalDebt)}
+              </div>
+            )}
           </div>
         );
       },

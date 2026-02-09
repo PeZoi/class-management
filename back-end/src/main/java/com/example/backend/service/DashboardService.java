@@ -3,18 +3,20 @@ package com.example.backend.service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.example.backend.dto.dashboard.DashboardRevenueDataResponse;
 import com.example.backend.dto.dashboard.DashboardStatsResponse;
+import com.example.backend.dto.student.SessionPaymentStatusDTO;
 import com.example.backend.dto.student.StudentResponse;
 import com.example.backend.enums.PaymentDirection;
 import com.example.backend.enums.PaymentType;
@@ -266,32 +268,70 @@ public class DashboardService {
     }
 
     /**
-     * Lấy danh sách học sinh chưa đóng tiền, sắp xếp theo số tháng nợ giảm dần
+     * Lấy danh sách học sinh chưa đóng tiền.
+     * Ưu tiên dùng sessionPaymentStatuses (theo gói buổi học) để tính tổng nợ từ quá khứ tới hiện tại.
+     * Nếu học viên chưa có sessionPaymentStatuses thì fallback về monthPaymentStatuses như cũ.
+     *
      * @return Danh sách học sinh có nợ
      */
     public List<StudentResponse> getStudentsWithUnpaidFees() {
-        // Lấy tất cả học sinh với monthPaymentStatuses
+        // Lấy tất cả học sinh với đầy đủ thông tin payment (monthPaymentStatuses & sessionPaymentStatuses)
         List<StudentResponse> allStudents = studentService.getAll();
-        
-        // Filter những học sinh có nợ (remainingAmount > 0) và sắp xếp theo số tháng nợ
+
+        // Filter những học sinh có nợ (remainingAmount > 0)
         return allStudents.stream()
-                .filter(student -> {
-                    if (student.getMonthPaymentStatuses() == null || student.getMonthPaymentStatuses().isEmpty()) {
-                        return false;
+                .map(student -> {
+                    long totalDebtBySession = 0L;
+
+                    List<SessionPaymentStatusDTO> sessionStatuses = student.getSessionPaymentStatuses();
+
+                    if (sessionStatuses != null && !sessionStatuses.isEmpty()) {
+                        // Tìm package hiện tại (isCurrent = true)
+                        Optional<Integer> currentPackageNumberOpt = sessionStatuses.stream()
+                                .filter(s -> Boolean.TRUE.equals(s.getIsCurrent()))
+                                .map(SessionPaymentStatusDTO::getPackageNumber)
+                                .findFirst();
+
+                        int maxPackageNumber = sessionStatuses.stream()
+                                .map(SessionPaymentStatusDTO::getPackageNumber)
+                                .filter(Objects::nonNull)
+                                .mapToInt(Integer::intValue)
+                                .max()
+                                .orElse(0);
+
+                        int currentPackageNumber = currentPackageNumberOpt.orElse(maxPackageNumber);
+
+                        if (currentPackageNumber > 0) {
+                            // Tổng nợ = tổng remainingAmount của tất cả package từ trước đến gói hiện tại
+                            totalDebtBySession = sessionStatuses.stream()
+                                    .filter(s -> s.getPackageNumber() != null && s.getPackageNumber() <= currentPackageNumber)
+                                    .map(SessionPaymentStatusDTO::getRemainingAmount)
+                                    .filter(Objects::nonNull)
+                                    .mapToLong(Long::longValue)
+                                    .sum();
+                        }
                     }
-                    // Kiểm tra xem có tháng nào có remainingAmount > 0 không
-                    return student.getMonthPaymentStatuses().stream()
-                            .anyMatch(status -> status.getRemainingAmount() != null && status.getRemainingAmount() > 0);
+
+                    // Fallback: nếu chưa có sessionPaymentStatuses, dùng monthPaymentStatuses như logic cũ
+                    long totalDebtByMonth = 0L;
+                    if ((sessionStatuses == null || sessionStatuses.isEmpty())
+                            && student.getMonthPaymentStatuses() != null) {
+                        totalDebtByMonth = student.getMonthPaymentStatuses().stream()
+                                .filter(status -> status.getRemainingAmount() != null && status.getRemainingAmount() > 0)
+                                .mapToLong(status -> status.getRemainingAmount() != null ? status.getRemainingAmount() : 0L)
+                                .sum();
+                    }
+
+                    long finalDebt = totalDebtBySession > 0 ? totalDebtBySession : totalDebtByMonth;
+
+                    return new AbstractMap.SimpleEntry<>(student, finalDebt);
                 })
-                .sorted(Comparator.comparingInt((StudentResponse student) -> {
-                    if (student.getMonthPaymentStatuses() == null) {
-                        return 0;
-                    }
-                    // Đếm số tháng có remainingAmount > 0
-                    return (int) student.getMonthPaymentStatuses().stream()
-                            .filter(status -> status.getRemainingAmount() != null && status.getRemainingAmount() > 0)
-                            .count();
-                }).reversed()) // Sắp xếp giảm dần (nhiều tháng nợ nhất trước)
+                // Chỉ giữ những học viên có nợ > 0
+                .filter(entry -> entry.getValue() > 0)
+                // Sắp xếp giảm dần theo tổng nợ
+                .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()))
+                // Trả về danh sách StudentResponse
+                .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
     }
 }

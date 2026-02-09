@@ -41,6 +41,10 @@ public class PaymentResponse {
     private String note; // Ghi chú về khoản thanh toán
     private Instant createdAt;
     private Instant updatedAt;
+    // Session-based payment fields
+    private Integer packageNumber; // Số thứ tự gói (1, 2, 3...)
+    private Integer sessionStartNumber; // Buổi bắt đầu của gói thanh toán
+    private Integer sessionEndNumber; // Buổi kết thúc của gói thanh toán
 
     @Getter
     @Setter

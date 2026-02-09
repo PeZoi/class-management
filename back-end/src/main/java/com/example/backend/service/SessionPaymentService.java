@@ -80,15 +80,33 @@ public class SessionPaymentService {
 
         // Đếm số buổi đã học
         Long totalAttendedSessions = attendanceRepository.countAttendedSessions(studentId, classId);
-        if (totalAttendedSessions == null || totalAttendedSessions == 0) {
-            return statuses;
+        if (totalAttendedSessions == null) {
+            totalAttendedSessions = 0L;
         }
-
-        // Tính số gói cần hiển thị (dựa trên số buổi đã học)
-        int totalPackages = (int) Math.ceil((double) totalAttendedSessions / SESSIONS_PER_PACKAGE);
 
         // Lấy tất cả packages từ database
         List<SessionPaymentPackage> packages = packageRepository.findByStudentIdAndClazzIdOrderByPackageNumberAsc(studentId, classId);
+
+        // Tìm package number lớn nhất đã tồn tại
+        Integer maxPackageNumber = packages.stream()
+                .mapToInt(SessionPaymentPackage::getPackageNumber)
+                .max()
+                .orElse(0);
+
+        // Tính package đang được sử dụng (dựa trên số buổi đã học)
+        // Nếu chưa học buổi nào → package 1 đang sử dụng
+        // Nếu đã học 5 buổi → package 1 (buổi 1-8) đang sử dụng
+        // Nếu đã học 10 buổi → package 2 (buổi 9-16) đang sử dụng
+        int currentPackageNumber = totalAttendedSessions == 0 
+                ? 1 
+                : (int) Math.ceil((double) totalAttendedSessions / SESSIONS_PER_PACKAGE);
+
+        // Tính số gói cần hiển thị
+        // Luôn hiển thị ít nhất 1 package (package tiếp theo) để có thể đóng trước
+        int totalPackages = Math.max(
+                (int) Math.ceil((double) totalAttendedSessions / SESSIONS_PER_PACKAGE),
+                Math.max(currentPackageNumber, maxPackageNumber + 1) // Luôn hiển thị package tiếp theo
+        );
 
         // Tạo map để dễ tìm package theo packageNumber
         java.util.Map<Integer, SessionPaymentPackage> packageMap = packages.stream()
@@ -98,6 +116,9 @@ public class SessionPaymentService {
         for (int i = 1; i <= totalPackages; i++) {
             Integer startSession = (i - 1) * SESSIONS_PER_PACKAGE + 1;
             Integer endSession = i * SESSIONS_PER_PACKAGE;
+
+            // Xác định package này có đang được sử dụng không
+            boolean isCurrent = (i == currentPackageNumber);
 
             SessionPaymentPackage paymentPackage = packageMap.get(i);
 
@@ -126,19 +147,36 @@ public class SessionPaymentService {
                         .status(status)
                         .createdAtPackage(paymentPackage.getCreatedAtPackage())
                         .completedAt(paymentPackage.getCompletedAt())
+                        .isCurrent(isCurrent)
                         .build();
 
                 statuses.add(statusDTO);
             } else {
-                // Package chưa tồn tại, tạo mới với thông tin mặc định
+                // Package chưa tồn tại, tạo DTO với thông tin mặc định
+                // Cho phép hiển thị để đóng trước
+                Long paidAmount = calculatePaidAmountForPackage(studentId, classId, i);
+                Long expectedAmount = Long.valueOf(monthlyFee);
+                Long remainingAmount = expectedAmount - paidAmount;
+
+                SessionPaymentStatus status;
+                if (paidAmount >= expectedAmount) {
+                    status = SessionPaymentStatus.PAID;
+                    remainingAmount = 0L;
+                } else if (paidAmount > 0) {
+                    status = SessionPaymentStatus.PARTIAL;
+                } else {
+                    status = SessionPaymentStatus.UNPAID;
+                }
+
                 SessionPaymentStatusDTO statusDTO = SessionPaymentStatusDTO.builder()
                         .packageNumber(i)
                         .startSessionNumber(startSession)
                         .endSessionNumber(endSession)
-                        .expectedAmount(Long.valueOf(monthlyFee))
-                        .paidAmount(0L)
-                        .remainingAmount(Long.valueOf(monthlyFee))
-                        .status(SessionPaymentStatus.UNPAID)
+                        .expectedAmount(expectedAmount)
+                        .paidAmount(paidAmount)
+                        .remainingAmount(remainingAmount)
+                        .status(status)
+                        .isCurrent(isCurrent)
                         .build();
 
                 statuses.add(statusDTO);

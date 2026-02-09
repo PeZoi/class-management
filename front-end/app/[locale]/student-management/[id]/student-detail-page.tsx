@@ -23,7 +23,12 @@ import { useStudent, useStudentClassHistory } from '@/hooks/use-students';
 import { useCreateSessionPayment, usePaymentsByStudent } from '@/hooks/use-payments';
 import { useAttendanceByStudent } from '@/hooks/use-attendance';
 import { useQueryClient } from '@tanstack/react-query';
-import { invalidatePaymentsByStudent, invalidateStudent, invalidateStudentClassHistory } from '@/lib/queryHelpers';
+import {
+  invalidatePaymentsByStudent,
+  invalidateStudent,
+  invalidateStudentClassHistory,
+  invalidateStudentsByClass,
+} from '@/lib/queryHelpers';
 
 // Convert API ClassHistoryResponse to ClassHistoryItem
 const convertToClassHistoryItem = (apiHistory: ClassHistoryResponse): ClassHistoryItem => {
@@ -75,6 +80,7 @@ const convertToPaymentHistoryItem = (apiPayment: PaymentResponse, monthNames: st
     status: statusMap[apiPayment.paymentStatus] || 'partial',
     period,
     notes: apiPayment.note,
+    packageNumber: apiPayment.packageNumber,
   };
 };
 
@@ -169,9 +175,20 @@ export default function StudentDetailPage() {
         data: data as CreateSessionPaymentData,
         monthlyFee: studentData.class.monthlyFee,
       });
+
+      // Invalidate caches so all related views refresh
+      invalidateStudent(queryClient, studentId);
+      invalidatePaymentsByStudent(queryClient, studentId);
+      if (studentData.class?.id) {
+        invalidateStudentsByClass(queryClient, studentData.class.id);
+      }
+
+      toast.success(tNotif('paymentRecordedSuccessfully'));
     } catch (error) {
       console.error('Lỗi khi ghi nhận thanh toán', error);
       toast.error(tNotif('errorRecordPayment'));
+      // Don't close dialog on error - let user retry
+      throw error; // Re-throw to prevent dialog from closing
     }
   };
 
@@ -180,8 +197,9 @@ export default function StudentDetailPage() {
     return studentData?.sessionPaymentStatuses || [];
   }, [studentData?.sessionPaymentStatuses]);
 
-  // Get current unpaid package for progress indicator
-  const currentUnpaidPackage = sessionPayments.find((p) => p.status === 'UNPAID' || p.status === 'PARTIAL');
+  // Get current package for progress indicator (ưu tiên package đang sử dụng, nếu không có thì lấy package chưa thanh toán đủ)
+  const currentUnpaidPackage = sessionPayments.find((p) => p.isCurrent === true) 
+    || sessionPayments.find((p) => p.status === 'UNPAID' || p.status === 'PARTIAL');
 
   const isLoading = isLoadingStudent || isLoadingClassHistory || isLoadingPayments || isLoadingAttendance;
 
@@ -214,7 +232,6 @@ export default function StudentDetailPage() {
         />
       </div>
 
-      {/* Session Payment Status - New Session-based Payment */}
       <SessionPaymentList
         sessionPayments={sessionPayments}
         monthlyFee={studentData?.class?.monthlyFee || 0}
@@ -226,16 +243,15 @@ export default function StudentDetailPage() {
 
       <StudentPaymentHistory paymentHistory={paymentHistory} />
 
-      {/* Attendance Sessions - New Component */}
       <StudentAttendanceSessions
         attendances={attendances}
         currentPackageNumber={currentUnpaidPackage?.packageNumber}
         currentPackageStartSession={currentUnpaidPackage?.startSessionNumber}
         currentPackageEndSession={currentUnpaidPackage?.endSessionNumber}
         studentName={studentData.fullName}
+        sessionPayments={sessionPayments}
       />
 
-      {/* Class History - Full Width */}
       <StudentClassHistory classHistory={classHistory} />
     </div>
   );

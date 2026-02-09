@@ -68,6 +68,10 @@ export interface PaymentResponse {
   updatedAt?: string;
   createdBy?: string;
   updatedBy?: string;
+  // Session-based payment fields
+  packageNumber?: number; // Số thứ tự gói (1, 2, 3...)
+  sessionStartNumber?: number; // Buổi bắt đầu của gói thanh toán
+  sessionEndNumber?: number; // Buổi kết thúc của gói thanh toán
 }
 
 // Helper type for creating student fee payment (simplified)
@@ -107,6 +111,7 @@ export interface SessionPaymentStatus {
   status: SessionPaymentStatusEnum;
   createdAtPackage?: string;
   completedAt?: string;
+  isCurrent?: boolean; // Package đang được sử dụng (dựa trên số buổi đã học)
 }
 
 // Helper type for creating teacher salary payment

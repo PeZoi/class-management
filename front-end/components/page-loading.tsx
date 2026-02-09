@@ -11,7 +11,7 @@ export function PageLoading({ message }: PageLoadingProps) {
   const t = useTranslations('common');
 
   return (
-    <div className="relative flex h-screen items-center justify-center overflow-hidden bg-linear-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+    <div className="relative flex h-screen items-center justify-center overflow-hidden bg-linear-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 w-full">
       
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center px-4 text-center">

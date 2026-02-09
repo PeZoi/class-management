@@ -131,6 +131,15 @@ public class StudentService {
                     classDB.getMonthlyFee()
             );
             studentResponse.setMonthPaymentStatuses(monthPaymentStatuses);
+            
+            // Tính session-based payment statuses (mới)
+            List<SessionPaymentStatusDTO> sessionPaymentStatuses = sessionPaymentService.calculateSessionPaymentStatuses(
+                    studentResponse.getId(),
+                    classDB.getId(),
+                    studentClass.getJoinedAt(),
+                    classDB.getMonthlyFee()
+            );
+            studentResponse.setSessionPaymentStatuses(sessionPaymentStatuses);
 
             studentResponseList.add(studentResponse);
         }
@@ -171,6 +180,14 @@ public class StudentService {
                     studentClassDB.getMonthlyFee()
             );
             studentResponse.setMonthPaymentStatuses(monthPaymentStatuses);
+
+            List<SessionPaymentStatusDTO> sessionPaymentStatuses = sessionPaymentService.calculateSessionPaymentStatuses(
+                    studentResponse.getId(),
+                    classId,
+                    studentClass.getJoinedAt(),
+                    studentClassDB.getMonthlyFee()
+            );
+            studentResponse.setSessionPaymentStatuses(sessionPaymentStatuses);
 
             studentResponseList.add(studentResponse);
         }

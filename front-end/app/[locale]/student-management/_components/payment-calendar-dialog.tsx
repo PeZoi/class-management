@@ -1,20 +1,16 @@
 'use client';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { PaymentStatusCalendar, PaymentMonthStatus } from '../[id]/_components/payment-status-calendar';
-import { PaymentHistoryItem } from '../[id]/_components';
-import { MonthPaymentStatus, CreateStudentPaymentData, PaymentResponse } from '@/types';
-import { useTranslations } from 'next-intl';
 import { PageLoading } from '@/components/page-loading';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useCreateSessionPayment, usePaymentsByStudent } from '@/hooks/use-payments';
 import { useStudent } from '@/hooks/use-students';
-import { useCreateStudentPayment, usePaymentsByStudent } from '@/hooks/use-payments';
+import { invalidatePaymentsByStudent, invalidateStudent, invalidateStudentsByClass } from '@/lib/queryHelpers';
+import { CreateSessionPaymentData, PaymentResponse, SessionPaymentStatus } from '@/types';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { toast } from 'react-toastify';
+import { PaymentHistoryItem } from '../[id]/_components';
+import { PaymentStatusCalendar } from '../[id]/_components/payment-status-calendar';
 
 interface PaymentCalendarDialogProps {
   open: boolean;
@@ -22,31 +18,6 @@ interface PaymentCalendarDialogProps {
   student: { id: string; fullName: string } | null;
   onPaymentSuccess?: () => void;
 }
-
-// Convert MonthPaymentStatus from API to PaymentMonthStatus for component
-const convertToPaymentMonthStatus = (apiPayments: MonthPaymentStatus[]): PaymentMonthStatus[] => {
-  return apiPayments.map((payment) => {
-    const date = new Date(payment.month);
-    const month = date.getMonth() + 1; // JavaScript months are 0-indexed
-    const year = date.getFullYear();
-
-    // Convert status from API format (PAID, PARTIAL, UNPAID) to component format (paid, partial, unpaid)
-    const statusMap: Record<string, 'paid' | 'unpaid' | 'partial'> = {
-      PAID: 'paid',
-      PARTIAL: 'partial',
-      UNPAID: 'unpaid',
-    };
-
-    return {
-      month,
-      year,
-      status: statusMap[payment.status] || 'unpaid',
-      amount: payment.expectedAmount,
-      paidAmount: payment.paidAmount,
-      dueDate: payment.month, // Using month as dueDate for reference
-    };
-  });
-};
 
 // Convert PaymentResponse from API to PaymentHistoryItem for component
 const convertToPaymentHistoryItem = (apiPayment: PaymentResponse, monthNames: string[]): PaymentHistoryItem => {
@@ -76,6 +47,7 @@ const convertToPaymentHistoryItem = (apiPayment: PaymentResponse, monthNames: st
     status: statusMap[apiPayment.paymentStatus] || 'partial',
     period,
     notes: apiPayment.note,
+    packageNumber: apiPayment.packageNumber,
   };
 };
 
@@ -87,6 +59,7 @@ export function PaymentCalendarDialog({
 }: PaymentCalendarDialogProps) {
   const t = useTranslations('student-detail');
   const tNotif = useTranslations('notifications');
+  const queryClient = useQueryClient();
   const studentId = student?.id ?? '';
   const monthNames = Array.from({ length: 12 }, (_, i) => {
     const monthKey = `month${i + 1}` as const;
@@ -95,13 +68,10 @@ export function PaymentCalendarDialog({
 
   const { data: studentData, isLoading: isLoadingStudent } = useStudent(studentId);
   const { data: payments = [], isLoading: isLoadingPayments } = usePaymentsByStudent(studentId);
-  const createStudentPayment = useCreateStudentPayment();
+  const createSessionPayment = useCreateSessionPayment();
 
-  // Convert API monthPaymentStatuses to component format
-  const monthlyPayments: PaymentMonthStatus[] =
-    studentData?.monthPaymentStatuses && studentData.monthPaymentStatuses.length > 0
-      ? convertToPaymentMonthStatus(studentData.monthPaymentStatuses)
-      : [];
+  // Session-based payment statuses (package-based)
+  const sessionPayments: SessionPaymentStatus[] = studentData?.sessionPaymentStatuses || [];
 
   const paymentHistory: PaymentHistoryItem[] =
     payments && payments.length > 0
@@ -110,20 +80,26 @@ export function PaymentCalendarDialog({
           .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
       : [];
 
-  // Handle payment submit from calendar
-  const handlePaymentSubmit = async (data: CreateStudentPaymentData) => {
+  // Handle payment submit from calendar (session/package-based)
+  const handlePaymentSubmit = async (data: CreateSessionPaymentData) => {
     try {
       if (!studentData?.class?.monthlyFee) {
         toast.error(tNotif('errorGetFeeInfo'));
         return;
       }
 
-      await createStudentPayment.mutateAsync({
+      await createSessionPayment.mutateAsync({
         data,
         monthlyFee: studentData.class.monthlyFee,
       });
 
-      // Call success callback if provided
+      // Invalidate related caches so lists refresh
+      invalidateStudent(queryClient, studentId);
+      invalidatePaymentsByStudent(queryClient, studentId);
+      if (studentData.class?.id) {
+        invalidateStudentsByClass(queryClient, studentData.class.id);
+      }
+
       if (onPaymentSuccess) {
         onPaymentSuccess();
       }
@@ -149,18 +125,18 @@ export function PaymentCalendarDialog({
 
         <div className="px-4 sm:px-6 pb-4 sm:pb-6">
           {isLoadingStudent || isLoadingPayments ? (
-            <div className="py-8">
+            <div className="py-8 overflow-hidden max-h-96 flex items-center justify-center">
               <PageLoading />
             </div>
           ) : studentData ? (
             <div className="-mx-4 sm:-mx-6">
               <PaymentStatusCalendar
-                monthlyPayments={monthlyPayments}
+                sessionPayments={sessionPayments}
                 monthlyFee={studentData?.class?.monthlyFee || 0}
                 studentId={studentData?.id}
                 paymentHistory={paymentHistory}
                 onPaymentSubmit={handlePaymentSubmit}
-                isSubmittingPayment={createStudentPayment.isPending}
+                isSubmittingPayment={createSessionPayment.isPending}
               />
             </div>
           ) : (

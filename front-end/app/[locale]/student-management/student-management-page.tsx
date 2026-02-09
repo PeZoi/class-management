@@ -78,8 +78,26 @@ const mapStudentTypeToStudentItem = (student: StudentType, index: number): Stude
   // Lấy monthly fee từ class hoặc fallback
   const monthlyFee = student.class?.monthlyFee || 4000000 + (index % 2) * 500000;
 
-  // Lấy payment status của tháng hiện tại từ monthPaymentStatuses
-  const currentMonthPayment = getCurrentMonthPaymentStatus(student.monthPaymentStatuses, monthlyFee);
+  // Ưu tiên sử dụng sessionPaymentStatuses (cách mới)
+  let paymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
+  let paidAmount = 0;
+
+  const currentPackage = student.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+  if (currentPackage) {
+    // Convert status từ API format (PAID, PARTIAL, UNPAID) sang component format
+    const statusMap: Record<'PAID' | 'PARTIAL' | 'UNPAID', 'paid' | 'unpaid' | 'partial'> = {
+      PAID: 'paid',
+      PARTIAL: 'partial',
+      UNPAID: 'unpaid',
+    };
+    paymentStatus = statusMap[currentPackage.status] || 'unpaid';
+    paidAmount = currentPackage.paidAmount || 0;
+  } else {
+    // Fallback về monthPaymentStatuses (cách cũ)
+    const currentMonthPayment = getCurrentMonthPaymentStatus(student.monthPaymentStatuses, monthlyFee);
+    paymentStatus = currentMonthPayment.paymentStatus;
+    paidAmount = currentMonthPayment.paidAmount;
+  }
 
   // Set status statically (mostly active)
   const status: 'active' | 'pending' | 'completed' = index % 10 === 0 ? 'pending' : index % 20 === 0 ? 'completed' : 'active';
@@ -88,10 +106,10 @@ const mapStudentTypeToStudentItem = (student: StudentType, index: number): Stude
     ...student,
     idCard: '', // Not available in API, set empty
     status,
-    paymentStatus: currentMonthPayment.paymentStatus,
+    paymentStatus,
     monthlyFee,
-    amountPaid: currentMonthPayment.paidAmount,
-    currentMonthPaidAmount: currentMonthPayment.paidAmount,
+    amountPaid: paidAmount,
+    currentMonthPaidAmount: paidAmount,
   };
 };
 
