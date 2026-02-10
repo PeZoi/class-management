@@ -135,6 +135,10 @@ export default function PaymentManagementPage() {
         paymentMethod: paymentMethodMap[p.paymentMethod] ?? 'cash',
         status,
         note: p.note ?? undefined,
+        // Teacher salary details (only for expense type)
+        feeSnapshot: p.feeSnapshot ? Number(p.feeSnapshot) : undefined,
+        bonus: p.bonus ? Number(p.bonus) : undefined,
+        deduction: p.deduction ? Number(p.deduction) : undefined,
       };
     });
   }, [paymentsQuery.data, locale]);

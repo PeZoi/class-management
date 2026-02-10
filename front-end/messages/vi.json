@@ -292,7 +292,9 @@
     "period_6months": "6 Tháng Gần Đây",
     "period_12months": "12 Tháng Gần Đây",
     "viewDetail": "Xem chi tiết",
-    "noSchedule": "Chưa có lịch học"
+    "noSchedule": "Chưa có lịch học",
+    "totalUnpaidPackages": "Tổng Số Gói Nợ",
+    "totalDebtAmount": "Tổng Số Tiền Nợ"
   },
   "classroom-detail": {
     "back": "Quay lại Danh sách Lớp",
@@ -373,7 +375,7 @@
     "noClass": "Chưa có lớp học",
     "studentsListDescription": "Danh sách học sinh đang thuộc lớp này",
     "noStudentsInClass": "Chưa có học sinh nào trong lớp",
-    "unpaidMonths": "Số Tháng Còn Nợ",
+    "unpaidMonths": "Số Gói Nợ",
     "actions": "Hành Động",
     "viewDetail": "Xem Chi Tiết",
     "shift": "Ca học",
@@ -828,6 +830,11 @@
     "studentClassInfo": "Thông Tin Học Viên & Lớp",
     "paymentInfo": "Thông Tin Thanh Toán",
     "notes": "Ghi Chú",
+    "salaryBreakdown": "Chi Tiết Lương",
+    "baseSalary": "Lương Cơ Bản",
+    "bonus": "Thưởng",
+    "deduction": "Khấu Trừ",
+    "total": "Tổng",
     "required": "*",
     "invoiceIdPlaceholder": "VD: INV001234",
     "studentNamePlaceholder": "Nhập tên học viên",

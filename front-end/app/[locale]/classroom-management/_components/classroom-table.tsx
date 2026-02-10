@@ -18,11 +18,11 @@ import { ColumnDef } from '@tanstack/react-table';
 import {
   BookOpen,
   Calendar,
-  CreditCard,
   DollarSign,
   Edit,
   Eye,
   MoreHorizontal,
+  Package,
   Plus,
   Trash2,
   User,
@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
+import { useMemo } from 'react';
+import { useClassesDebt } from '@/hooks/use-class-debt';
 
 interface ClassroomTableProps {
   classes: ClassType[];
@@ -61,6 +63,10 @@ export function ClassroomTable({
 
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
+
+  // Fetch debt information for all classes
+  const classIds = useMemo(() => classes.map((c) => c.id), [classes]);
+  const { data: classesDebt = {}, isLoading: isLoadingDebt } = useClassesDebt(classIds);
 
   const columns: ColumnDef<ClassType>[] = [
     {
@@ -192,47 +198,82 @@ export function ClassroomTable({
       },
     },
     {
-      id: 'paymentStatus',
-      header: () => (
+      id: 'totalUnpaidPackages',
+      header: ({ column }) => (
         <div className="flex items-center justify-center gap-2">
-          <CreditCard className="size-4" />
-          {t('paymentStatus')}
+          <SortableHeader column={column} className="justify-center">
+            <Package className="size-4" />
+            {t('totalUnpaidPackages')}
+          </SortableHeader>
         </div>
       ),
       cell: ({ row }) => {
-        const classItem = row.original;
-        const total = classItem.total || 0;
-        const collected = classItem.collected || 0;
-        const percentage = total > 0 ? (collected / total) * 100 : 0;
-        const isFullyCollected = total > 0 && collected >= total;
-        const isHighCollection = total > 0 && percentage >= 80;
+        const classId = row.original.id;
+        const debtInfo = classesDebt[classId];
+        const totalUnpaidPackages = debtInfo?.totalUnpaidPackages ?? 0;
+        
+        if (isLoadingDebt) {
+          return (
+            <div className="text-center text-slate-400 dark:text-slate-500 text-sm">
+              ...
+            </div>
+          );
+        }
 
         return (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-600 dark:text-slate-400">
-                {percentage.toFixed(1)}% ({isFullyCollected ? t('fullyCollected') : t('notFullyCollected')})
-              </span>
-            </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${Math.min(percentage, 100)}%`,
-                  background: isFullyCollected
-                    ? 'linear-gradient(to right, #10b981, #059669)'
-                    : isHighCollection
-                      ? 'linear-gradient(to right, #3b82f6, #2563eb)'
-                      : 'linear-gradient(to right, #f59e0b, #d97706)',
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(collected)}</span>
-              <span className="text-slate-500 dark:text-slate-400">/ {formatCurrency(total)}</span>
-            </div>
+          <div className="text-center">
+            <Badge variant="outline" className="font-semibold flex items-center justify-center gap-1.5 w-fit mx-auto">
+              <Package className="size-3.5" />
+              {totalUnpaidPackages}
+            </Badge>
           </div>
         );
+      },
+      sortingFn: (rowA, rowB) => {
+        const classIdA = rowA.original.id;
+        const classIdB = rowB.original.id;
+        const debtA = classesDebt[classIdA]?.totalUnpaidPackages ?? 0;
+        const debtB = classesDebt[classIdB]?.totalUnpaidPackages ?? 0;
+        return debtA - debtB;
+      },
+    },
+    {
+      id: 'totalDebtAmount',
+      header: ({ column }) => (
+        <div className="flex items-center justify-end gap-2">
+          <SortableHeader column={column}>
+            <DollarSign className="size-4" />
+            {t('totalDebtAmount')}
+          </SortableHeader>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const classId = row.original.id;
+        const debtInfo = classesDebt[classId];
+        const totalDebtAmount = debtInfo?.totalDebtAmount ?? 0;
+        
+        if (isLoadingDebt) {
+          return (
+            <div className="text-right text-slate-400 dark:text-slate-500 text-sm">
+              ...
+            </div>
+          );
+        }
+
+        return (
+          <div className="text-right">
+            <span className="font-bold text-red-600 dark:text-red-400">
+              {formatCurrency(totalDebtAmount)}
+            </span>
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const classIdA = rowA.original.id;
+        const classIdB = rowB.original.id;
+        const debtA = classesDebt[classIdA]?.totalDebtAmount ?? 0;
+        const debtB = classesDebt[classIdB]?.totalDebtAmount ?? 0;
+        return debtA - debtB;
       },
     },
     {
@@ -257,6 +298,7 @@ export function ClassroomTable({
         return rowA.original.revenue - rowB.original.revenue;
       },
     },
+    
   ];
 
   if (showActions) {

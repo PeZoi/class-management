@@ -28,6 +28,8 @@ export const queryKeys = {
     byClass: (classId: string) => ['students', 'class', classId] as const,
     byClassShift: (classShiftId: string) => ['students', 'class-shift', classShiftId] as const,
     classHistory: (studentId: string) => ['students', 'class-history', studentId] as const,
+    debtByClass: (classId: string) => ['students', 'debt', 'class', classId] as const,
+    debtByClasses: (classIds: string[]) => ['students', 'debt', 'classes', classIds.sort().join(',')] as const,
   },
 
   // Class queries

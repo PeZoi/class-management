@@ -148,5 +148,9 @@ export interface PaymentItem {
   paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
   status: 'paid' | 'partial'; // paid: đã đủ, partial: chưa đủ
   note?: string;
+  // Teacher salary details (only for expense type)
+  feeSnapshot?: number; // Lương cơ bản
+  bonus?: number; // Thưởng
+  deduction?: number; // Khấu trừ
 }
 

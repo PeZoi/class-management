@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
@@ -305,13 +306,72 @@ export function PaymentTable({
           </div>
         </SortableHeader>
       ),
-      cell: ({ row }) => (
-        <div className="text-right">
-          <div className="font-medium text-slate-900 dark:text-slate-100">
-            {formatCurrency(row.original.paidAmount)}
+      cell: ({ row }) => {
+        const payment = row.original;
+        const isExpense = payment.type === 'expense';
+        const hasSalaryDetails = isExpense && (payment.feeSnapshot !== undefined || payment.bonus !== undefined || payment.deduction !== undefined);
+
+        const amountCell = (
+          <div className="text-right">
+            <div className="font-medium text-slate-900 dark:text-slate-100">
+              {formatCurrency(payment.paidAmount)}
+            </div>
           </div>
-        </div>
-      ),
+        );
+
+        if (hasSalaryDetails) {
+          const baseSalary = payment.feeSnapshot ?? 0;
+          const bonus = payment.bonus ?? 0;
+          const deduction = payment.deduction ?? 0;
+          const total = baseSalary + bonus - deduction;
+
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-right cursor-help">
+                  <div className="font-medium text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                    {formatCurrency(payment.paidAmount)}
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="left" 
+                className="max-w-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg p-3"
+              >
+                <div className="space-y-2">
+                  <div className="font-semibold text-sm mb-2 border-b border-slate-300 dark:border-slate-600 pb-1.5 text-slate-900 dark:text-slate-100">
+                    {t('salaryBreakdown')}
+                  </div>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-slate-700 dark:text-slate-300 font-medium">{t('baseSalary')}:</span>
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(baseSalary)}</span>
+                    </div>
+                    {bonus > 0 && (
+                      <div className="flex justify-between items-center gap-4">
+                        <span className="text-slate-700 dark:text-slate-300 font-medium">{t('bonus')}:</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">+{formatCurrency(bonus)}</span>
+                      </div>
+                    )}
+                    {deduction > 0 && (
+                      <div className="flex justify-between items-center gap-4">
+                        <span className="text-slate-700 dark:text-slate-300 font-medium">{t('deduction')}:</span>
+                        <span className="font-semibold text-rose-600 dark:text-rose-400">-{formatCurrency(deduction)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center gap-4 pt-2 border-t border-slate-300 dark:border-slate-600 mt-1.5">
+                      <span className="font-bold text-slate-900 dark:text-slate-100">{t('total')}:</span>
+                      <span className="font-bold text-lg text-blue-600 dark:text-blue-400">{formatCurrency(total)}</span>
+                    </div>
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+
+        return amountCell;
+      },
       sortingFn: (rowA, rowB) => {
         return rowA.original.paidAmount - rowB.original.paidAmount;
       },

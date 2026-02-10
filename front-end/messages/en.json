@@ -292,7 +292,9 @@
     "period_6months": "Last 6 Months",
     "period_12months": "Last 12 Months",
     "viewDetail": "View detail",
-    "noSchedule": "No schedule"
+    "noSchedule": "No schedule",
+    "totalUnpaidPackages": "Total Unpaid Packages",
+    "totalDebtAmount": "Total Debt Amount"
   },
   "classroom-detail": {
     "back": "Back to Classes",
@@ -373,7 +375,7 @@
     "noClass": "No class assigned",
     "studentsListDescription": "List of students currently in this class",
     "noStudentsInClass": "No students in this class yet",
-    "unpaidMonths": "Unpaid Months",
+    "unpaidMonths": "Unpaid Packages",
     "actions": "Actions",
     "viewDetail": "View Detail",
     "shift": "Shift",
@@ -821,6 +823,11 @@
     "teacherInfo": "Teacher Information",
     "paymentInfo": "Payment Information",
     "notes": "Notes",
+    "salaryBreakdown": "Salary Breakdown",
+    "baseSalary": "Base Salary",
+    "bonus": "Bonus",
+    "deduction": "Deduction",
+    "total": "Total",
     "required": "*",
     "invoiceIdPlaceholder": "e.g. INV001234",
     "studentNamePlaceholder": "Enter student name",
