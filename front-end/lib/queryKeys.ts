@@ -16,6 +16,9 @@ export const queryKeys = {
     stats: () => ['dashboard', 'stats'] as const,
     revenueData: (period: TimePeriod) => ['dashboard', 'revenue-data', period] as const,
     studentsWithUnpaidFees: () => ['dashboard', 'students-with-unpaid-fees'] as const,
+    revenueByClass: (period: TimePeriod) => ['dashboard', 'revenue-statistics', 'by-class', period] as const,
+    revenueByPaymentMethod: (period: TimePeriod) => ['dashboard', 'revenue-statistics', 'by-payment-method', period] as const,
+    revenueByStatus: (period: TimePeriod) => ['dashboard', 'revenue-statistics', 'by-status', period] as const,
   },
 
   // Student queries

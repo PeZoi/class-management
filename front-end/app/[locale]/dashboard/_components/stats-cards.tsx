@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { ArrowUpRight, DollarSign, Users, Wallet } from 'lucide-react';
+import { ArrowUpRight, DollarSign, Users, Wallet, ExternalLink } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
+import { useLocale } from 'next-intl';
 
 interface StatsCardsProps {
   statsData: {
@@ -20,13 +22,16 @@ interface StatsCardsProps {
 
 export function StatsCards({ statsData, formatCurrency, className }: StatsCardsProps) {
   const t = useTranslations('dashboard');
+  const locale = useLocale();
 
   return (
     <div className={cn('grid gap-6 md:grid-cols-2 lg:grid-cols-4', className)}>
       {/* Total Revenue */}
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-blue-500">
+      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500 group">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('totalRevenue')}</CardTitle>
+          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400 dark:group-hover:text-blue-400 transition-colors">
+            {t('totalRevenue')}
+          </CardTitle>
           <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
             <DollarSign className="size-5 text-blue-600 dark:text-blue-400" />
           </div>
@@ -35,10 +40,19 @@ export function StatsCards({ statsData, formatCurrency, className }: StatsCardsP
           <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
             {formatCurrency(statsData.totalRevenue)}
           </div>
-          <div className="flex items-center gap-1 mt-2">
-            <ArrowUpRight className="size-4 text-green-600" />
-            <span className="text-sm font-medium text-green-600">{statsData.revenueGrowth}%</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">{t('vsLastMonth')}</span>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <ArrowUpRight className="size-4 text-green-600" />
+              <span className="text-sm font-medium text-green-600">{statsData.revenueGrowth}%</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">{t('vsLastMonth')}</span>
+            </div>
+            <Link
+              href={`/${locale}/revenue-statistics`}
+              className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            >
+              <span>{t('viewDetails')}</span>
+              <ExternalLink className="size-3" />
+            </Link>
           </div>
         </CardContent>
       </Card>

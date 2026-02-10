@@ -81,4 +81,8 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     // Lấy tất cả payments của một student theo session range
     @Query("SELECT p FROM Payment p WHERE p.student.id = :studentId AND p.clazz.id = :classId AND p.sessionStartNumber = :startSession AND p.sessionEndNumber = :endSession ORDER BY p.createdAt ASC")
     List<Payment> findAllByStudentIdAndClassIdAndSessionRange(@Param("studentId") String studentId, @Param("classId") String classId, @Param("startSession") Integer startSession, @Param("endSession") Integer endSession);
+
+    // Lấy payments với class được fetch sẵn (để tránh lazy loading exception)
+    @Query("SELECT p FROM Payment p LEFT JOIN FETCH p.clazz WHERE p.direction = :direction AND p.createdAt >= :startDate AND p.createdAt < :endDate")
+    List<Payment> findAllByDirectionAndCreatedAtBetweenWithClass(@Param("direction") PaymentDirection direction, @Param("startDate") Instant startDate, @Param("endDate") Instant endDate);
 }

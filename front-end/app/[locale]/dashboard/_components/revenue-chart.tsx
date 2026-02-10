@@ -86,11 +86,11 @@ export function RevenueChart({
         <ChartContainer
           config={{
             revenue: {
-              label: 'Doanh Thu',
+              label: t('revenue'),
               color: 'hsl(var(--chart-1))',
             },
             expense: {
-              label: 'Chi Trả',
+              label: t('expense'),
               color: 'hsl(var(--chart-2))',
             },
           }}
@@ -122,7 +122,7 @@ export function RevenueChart({
                 wrapperStyle={{ paddingTop: '20px' }}
                 iconType="rect"
                 formatter={(value) => {
-                  return value === 'revenue' ? 'Doanh Thu' : 'Chi Trả';
+                  return value === 'revenue' ? t('revenue') : t('expense');
                 }}
               />
               <ChartTooltip
@@ -134,7 +134,7 @@ export function RevenueChart({
                       return item?.label || label;
                     }}
                     formatter={(value, name) => {
-                      const label = name === 'revenue' ? 'Doanh thu' : 'Chi trả';
+                      const label = name === 'revenue' ? t('revenue') : t('expense');
                       return (
                         <div className="flex items-center gap-2">
                           <span className="text-slate-300 text-xs">{label}:</span>

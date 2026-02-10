@@ -16,9 +16,15 @@ import org.springframework.stereotype.Service;
 
 import com.example.backend.dto.dashboard.DashboardRevenueDataResponse;
 import com.example.backend.dto.dashboard.DashboardStatsResponse;
+import com.example.backend.dto.dashboard.RevenueByClassResponse;
+import com.example.backend.dto.dashboard.RevenueByPaymentMethodResponse;
+import com.example.backend.dto.dashboard.RevenueByStatusResponse;
 import com.example.backend.dto.student.SessionPaymentStatusDTO;
 import com.example.backend.dto.student.StudentResponse;
+import com.example.backend.entity.Payment;
 import com.example.backend.enums.PaymentDirection;
+import com.example.backend.enums.PaymentMethod;
+import com.example.backend.enums.PaymentStatus;
 import com.example.backend.enums.PaymentType;
 import com.example.backend.enums.Status;
 import com.example.backend.repository.ClassRepository;
@@ -333,6 +339,197 @@ public class DashboardService {
                 // Trả về danh sách StudentResponse
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy doanh thu theo lớp học (theo ngày thanh toán - createdDate)
+     * Vì hệ thống đóng tiền theo package, nên tính theo ngày thanh toán là hợp lý nhất
+     */
+    public List<RevenueByClassResponse> getRevenueByClass(String period) {
+        LocalDate now = LocalDate.now();
+        int monthsToInclude;
+        
+        switch (period) {
+            case "3months":
+                monthsToInclude = 3;
+                break;
+            case "6months":
+                monthsToInclude = 6;
+                break;
+            case "12months":
+                monthsToInclude = 12;
+                break;
+            default:
+                monthsToInclude = 6;
+        }
+        
+        // Tính thời gian bắt đầu (từ tháng hiện tại ngược lại)
+        LocalDate startDate = now.minusMonths(monthsToInclude - 1).withDayOfMonth(1);
+        Instant startInstant = startDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant endInstant = now.plusMonths(1).withDayOfMonth(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        
+        // Sử dụng custom query với JOIN FETCH để load Class entity cùng lúc
+        List<Payment> payments = paymentRepository.findAllByDirectionAndCreatedAtBetweenWithClass(
+                PaymentDirection.INCOME, startInstant, endInstant);
+        
+        // Nhóm payments theo classId và tính tổng revenue
+        Map<String, RevenueByClassResponse> revenueMap = new HashMap<>();
+        
+        payments.stream()
+                .filter(payment -> payment.getClazz() != null)
+                .forEach(payment -> {
+                    String classId = payment.getClazz().getId();
+                    String className = payment.getClazz().getName();
+                    Long paid = payment.getPaid() != null ? payment.getPaid() : 0L;
+                    
+                    RevenueByClassResponse existing = revenueMap.get(classId);
+                    if (existing == null) {
+                        revenueMap.put(classId, RevenueByClassResponse.builder()
+                                .classId(classId)
+                                .className(className)
+                                .revenue(paid)
+                                .build());
+                    } else {
+                        existing.setRevenue(existing.getRevenue() + paid);
+                    }
+                });
+        
+        // Sắp xếp giảm dần theo revenue và trả về
+        return revenueMap.values().stream()
+                .sorted((a, b) -> Long.compare(b.getRevenue(), a.getRevenue()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy doanh thu theo phương thức thanh toán (theo ngày thanh toán)
+     */
+    public List<RevenueByPaymentMethodResponse> getRevenueByPaymentMethod(String period) {
+        LocalDate now = LocalDate.now();
+        int monthsToInclude;
+        
+        switch (period) {
+            case "3months":
+                monthsToInclude = 3;
+                break;
+            case "6months":
+                monthsToInclude = 6;
+                break;
+            case "12months":
+                monthsToInclude = 12;
+                break;
+            default:
+                monthsToInclude = 6;
+        }
+        
+        LocalDate startDate = now.minusMonths(monthsToInclude - 1).withDayOfMonth(1);
+        Instant startInstant = startDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant endInstant = now.plusMonths(1).withDayOfMonth(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        
+        Map<PaymentMethod, RevenueByPaymentMethodResponse> revenueMap = new HashMap<>();
+        
+        paymentRepository.findAll().stream()
+                .filter(payment -> payment.getDirection() == PaymentDirection.INCOME)
+                .filter(payment -> payment.getCreatedAt() != null)
+                .filter(payment -> payment.getCreatedAt().isAfter(startInstant) && payment.getCreatedAt().isBefore(endInstant))
+                .forEach(payment -> {
+                    PaymentMethod method = payment.getPaymentMethod();
+                    Long paid = payment.getPaid() != null ? payment.getPaid() : 0L;
+                    
+                    RevenueByPaymentMethodResponse existing = revenueMap.get(method);
+                    if (existing == null) {
+                        String methodLabel = getPaymentMethodLabel(method);
+                        revenueMap.put(method, RevenueByPaymentMethodResponse.builder()
+                                .paymentMethod(method.name())
+                                .paymentMethodLabel(methodLabel)
+                                .revenue(paid)
+                                .count(1L)
+                                .build());
+                    } else {
+                        existing.setRevenue(existing.getRevenue() + paid);
+                        existing.setCount(existing.getCount() + 1);
+                    }
+                });
+        
+        return revenueMap.values().stream()
+                .sorted((a, b) -> Long.compare(b.getRevenue(), a.getRevenue()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy doanh thu theo trạng thái thanh toán (theo ngày thanh toán)
+     */
+    public List<RevenueByStatusResponse> getRevenueByStatus(String period) {
+        LocalDate now = LocalDate.now();
+        int monthsToInclude;
+        
+        switch (period) {
+            case "3months":
+                monthsToInclude = 3;
+                break;
+            case "6months":
+                monthsToInclude = 6;
+                break;
+            case "12months":
+                monthsToInclude = 12;
+                break;
+            default:
+                monthsToInclude = 6;
+        }
+        
+        LocalDate startDate = now.minusMonths(monthsToInclude - 1).withDayOfMonth(1);
+        Instant startInstant = startDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant endInstant = now.plusMonths(1).withDayOfMonth(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        
+        Map<PaymentStatus, RevenueByStatusResponse> revenueMap = new HashMap<>();
+        
+        paymentRepository.findAll().stream()
+                .filter(payment -> payment.getDirection() == PaymentDirection.INCOME)
+                .filter(payment -> payment.getCreatedAt() != null)
+                .filter(payment -> payment.getCreatedAt().isAfter(startInstant) && payment.getCreatedAt().isBefore(endInstant))
+                .forEach(payment -> {
+                    PaymentStatus status = payment.getPaymentStatus();
+                    Long paid = payment.getPaid() != null ? payment.getPaid() : 0L;
+                    
+                    RevenueByStatusResponse existing = revenueMap.get(status);
+                    if (existing == null) {
+                        String statusLabel = getPaymentStatusLabel(status);
+                        revenueMap.put(status, RevenueByStatusResponse.builder()
+                                .status(status.name())
+                                .statusLabel(statusLabel)
+                                .revenue(paid)
+                                .count(1L)
+                                .build());
+                    } else {
+                        existing.setRevenue(existing.getRevenue() + paid);
+                        existing.setCount(existing.getCount() + 1);
+                    }
+                });
+        
+        return revenueMap.values().stream()
+                .sorted((a, b) -> Long.compare(b.getRevenue(), a.getRevenue()))
+                .collect(Collectors.toList());
+    }
+
+    private String getPaymentMethodLabel(PaymentMethod method) {
+        switch (method) {
+            case CASH:
+                return "Tiền mặt";
+            case BANK_TRANSFER:
+                return "Chuyển khoản";
+            default:
+                return method.name();
+        }
+    }
+
+    private String getPaymentStatusLabel(PaymentStatus status) {
+        switch (status) {
+            case COMPLETED:
+                return "Đã thanh toán đủ";
+            case INCOMPLETE:
+                return "Chưa thanh toán đủ";
+            default:
+                return status.name();
+        }
     }
 }
 
