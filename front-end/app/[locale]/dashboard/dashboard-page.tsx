@@ -15,8 +15,7 @@ import { useTop3ClassesByRevenue } from '@/hooks/use-classes';
 import { PageLoading } from '@/components/page-loading';
 import { toast } from 'react-toastify';
 import { invalidateDashboard, invalidateTop3ClassesByRevenue } from '@/lib/queryHelpers';
-
-type TimePeriod = '3months' | '6months' | '12months';
+import { TimePeriod } from '@/types/common-type';
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard');

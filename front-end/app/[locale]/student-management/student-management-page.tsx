@@ -8,19 +8,11 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PaymentCalendarDialog } from './_components/payment-calendar-dialog';
 import { StudentDialog } from './_components/student-dialog';
-import { FilterState, StudentFilter } from './_components/student-filter';
+import { StudentFilter } from './_components/student-filter';
 import { StudentTable } from './_components/student-table';
+import { FilterState, StudentItem } from '@/types/student-type';
 
 const NO_CLASS_FILTER_VALUE = '__no_class__';
-
-export interface StudentItem extends StudentType {
-  idCard?: string; // ID card number (optional, not in API)
-  status: 'active' | 'pending' | 'completed';
-  paymentStatus: 'paid' | 'unpaid' | 'partial';
-  monthlyFee: number;
-  amountPaid: number;
-  currentMonthPaidAmount?: number; // Số tiền đã đóng tháng hiện tại
-}
 
 // Helper function to get current month payment status
 const getCurrentMonthPaymentStatus = (

@@ -10,20 +10,12 @@ import { ColumnDef } from '@tanstack/react-table';
 import { BookOpen, Calendar, CheckCircle, Clock, CreditCard, DollarSign, Mail, Phone, User, Users } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { OverdueStudentItem } from '@/types/student-type';
 
 interface OverdueStudentsTableProps {
   students: StudentType[];
   formatCurrency: (amount: number) => string;
   onPayment?: (student: { id: string; fullName: string }) => void;
-}
-
-interface OverdueStudentItem extends StudentType {
-  paymentStatus: 'paid' | 'unpaid' | 'partial';
-  monthlyFee: number;
-  amountPaid: number;
-  currentMonthPaidAmount?: number;
-  unpaidMonthsCount: number;
-  totalRemainingAmount: number;
 }
 
 export function OverdueStudentsTable({ students, formatCurrency, onPayment }: OverdueStudentsTableProps) {

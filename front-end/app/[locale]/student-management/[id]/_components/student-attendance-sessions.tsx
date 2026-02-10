@@ -16,6 +16,7 @@ import { useTranslations } from 'next-intl';
 import { useState, useMemo } from 'react';
 import { Attendance } from '@/types';
 import { SessionPaymentStatus } from '@/types';
+import { AttendanceSession } from '@/types/attendance-type';
 
 interface StudentAttendanceSessionsProps {
   attendances: Attendance[];
@@ -24,14 +25,6 @@ interface StudentAttendanceSessionsProps {
   currentPackageEndSession?: number;
   studentName?: string;
   sessionPayments?: SessionPaymentStatus[]; // Danh sách packages để filter
-}
-
-interface AttendanceSession {
-  id: string;
-  date: string;
-  sessionNumber: number;
-  status: 'present' | 'absent' | 'late' | 'excused' | 'no_data';
-  notes?: string;
 }
 
 export function StudentAttendanceSessions({

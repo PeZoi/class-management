@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { PaymentTable } from './_components/payment-table';
-import { PaymentFilter, PaymentFilterState } from './_components/payment-filter';
+import { PaymentFilter } from './_components/payment-filter';
 import { PersonDetailDrawer } from './_components/person-detail-drawer';
-import { PaymentResponse, PaymentItem } from '@/types';
+import { PaymentResponse, PaymentItem, PaymentFilterState } from '@/types';
 import { PageLoading } from '@/components/page-loading';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePayments } from '@/hooks/use-payments';

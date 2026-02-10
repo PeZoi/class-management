@@ -8,15 +8,7 @@ import { formatDate } from '@/utils/helper';
 import { Calendar, CheckCircle2, Clock, User, XCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
-
-export interface AttendanceSession {
-  id: string;
-  date: string;
-  sessionNumber: number;
-  status: 'present' | 'absent' | 'late' | 'excused';
-  checkInTime?: string;
-  notes?: string;
-}
+import { AttendanceSession } from '@/types/attendance-type';
 
 interface StudentAttendanceProps {
   attendanceSessions: AttendanceSession[];

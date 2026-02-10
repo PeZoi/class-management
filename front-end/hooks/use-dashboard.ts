@@ -1,10 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
-import { dashboardService, RevenueByClassResponse, RevenueByPaymentMethodResponse, RevenueByStatusResponse } from '@/services/dashboard-service';
-import { DashboardStatsResponse, DashboardRevenueDataResponse } from '@/types/dashboard-type';
+import { dashboardService } from '@/services/dashboard-service';
+import { 
+  DashboardStatsResponse, 
+  DashboardRevenueDataResponse,
+  RevenueByClassResponse,
+  RevenueByPaymentMethodResponse,
+  RevenueByStatusResponse
+} from '@/types/dashboard-type';
 import { StudentType } from '@/types';
 import { queryKeys } from '@/lib/queryKeys';
-
-type TimePeriod = '3months' | '6months' | '12months';
+import { TimePeriod } from '@/types/common-type';
 
 /**
  * Hook để lấy dashboard stats

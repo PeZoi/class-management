@@ -6,16 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { CheckCircle, CreditCard, Search, SortAsc, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-
-export interface PaymentFilterState {
-  searchQuery: string;
-  type: 'all' | 'income' | 'expense';
-  status: 'all' | 'paid' | 'partial';
-  className: string;
-  paymentMethod: 'all' | 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
-  sortBy: 'createdDate' | 'amount' | 'studentName';
-  sortOrder: 'asc' | 'desc';
-}
+import { PaymentFilterState } from '@/types/payment-type';
 
 interface PaymentFilterProps {
   filters: PaymentFilterState;

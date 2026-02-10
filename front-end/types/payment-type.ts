@@ -154,3 +154,54 @@ export interface PaymentItem {
   deduction?: number; // Khấu trừ
 }
 
+// Payment history item for student payment history display
+export interface PaymentHistoryItem {
+  id: string;
+  invoiceId: string;
+  paymentDate: string;
+  amount: number;
+  paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
+  status: 'paid' | 'partial';
+  period: string; // VD: "Tháng 12/2024"
+  notes?: string;
+  packageNumber?: number; // Số thứ tự gói (1, 2, 3...) - cho session-based payment
+}
+
+// Payment filter state for payment management page
+export interface PaymentFilterState {
+  searchQuery: string;
+  type: 'all' | 'income' | 'expense';
+  status: 'all' | 'paid' | 'partial';
+  className: string;
+  paymentMethod: 'all' | 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
+  sortBy: 'createdDate' | 'amount' | 'studentName';
+  sortOrder: 'asc' | 'desc';
+}
+
+// Person detail for payment management drawer (student or teacher)
+export interface PersonDetail {
+  name: string;
+  type: 'student' | 'teacher';
+  id?: string;
+  phone?: string;
+  email?: string;
+  gender?: string;
+  birthDate?: string;
+  startDate?: string;
+  className?: string;
+  // For students
+  parentName?: string;
+  parentPhone?: string;
+  // For teachers
+  subject?: string;
+  experience?: string;
+}
+
+// Payment data for payment action dialog (UI form data)
+export interface PaymentData {
+  amount: number;
+  paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
+  paymentDate: string;
+  notes: string;
+}
+

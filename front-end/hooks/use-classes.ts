@@ -12,8 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo } from 'react';
 import { toast } from 'react-toastify';
-
-type TimePeriod = '3months' | '6months' | '12months';
+import { TimePeriod } from '@/types/common-type';
 
 /**
  * Hook để lấy tất cả classes

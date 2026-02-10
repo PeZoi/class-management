@@ -38,3 +38,9 @@ export interface ClassSingleRevenueDataResponse {
   label: string; // "Tháng 1", "Tháng 2", etc.
   revenue: number; // Revenue cho class này trong tháng này
 }
+
+export interface ClassShiftRequest {
+  id?: string;
+  name: string;
+  classId: string;
+}

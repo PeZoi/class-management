@@ -27,8 +27,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { Button } from '@/components/ui/button';
 import { ClipboardCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-
-type TimePeriod = '3months' | '6months' | '12months';
+import { TimePeriod } from '@/types/common-type';
 
 export default function ClassroomDetailPage() {
   const params = useParams();

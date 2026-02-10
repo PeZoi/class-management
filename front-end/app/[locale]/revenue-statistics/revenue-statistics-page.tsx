@@ -17,8 +17,7 @@ import {
 import { RevenueChart } from '@/app/[locale]/dashboard/_components/revenue-chart';
 import { PageLoading } from '@/components/page-loading';
 import { toast } from 'react-toastify';
-
-type TimePeriod = '3months' | '6months' | '12months';
+import { TimePeriod } from '@/types/common-type';
 
 export default function RevenueStatisticsPage() {
   const t = useTranslations('revenue-statistics');

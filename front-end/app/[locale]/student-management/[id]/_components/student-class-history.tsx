@@ -9,16 +9,7 @@ import { formatDate } from '@/utils/helper';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { ColumnDef } from '@tanstack/react-table';
-
-export interface ClassHistoryItem {
-  id: string | number;
-  className: string;
-  classId: string;
-  joinedAt: string;
-  leftAt?: string;
-  status: 'studying' | 'completed' | 'transferred' | 'changing' | 'dropped';
-  reason?: string;
-}
+import { ClassHistoryItem } from '@/types/student-type';
 
 interface StudentClassHistoryProps {
   classHistory: ClassHistoryItem[];

@@ -7,7 +7,7 @@
  * - Có helper functions để invalidate queries
  */
 
-type TimePeriod = '3months' | '6months' | '12months';
+import { TimePeriod } from '@/types/common-type';
 
 export const queryKeys = {
   // Dashboard queries

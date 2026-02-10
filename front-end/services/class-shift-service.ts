@@ -1,12 +1,6 @@
 import http from '@/lib/http';
 import { ResponseType } from '@/types/response-type';
-import { ClassShiftType } from '@/types/class-type';
-
-export interface ClassShiftRequest {
-  id?: string;
-  name: string;
-  classId: string;
-}
+import { ClassShiftType, ClassShiftRequest } from '@/types/class-type';
 
 export const classShiftService = {
   getByClassId: (classId: string) =>

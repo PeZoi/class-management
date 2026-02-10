@@ -29,18 +29,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-
-export interface PaymentHistoryItem {
-  id: string;
-  invoiceId: string;
-  paymentDate: string;
-  amount: number;
-  paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
-  status: 'paid' | 'partial';
-  period: string; // VD: "Tháng 12/2024"
-  notes?: string;
-  packageNumber?: number; // Số thứ tự gói (1, 2, 3...) - cho session-based payment
-}
+import { PaymentHistoryItem } from '@/types/payment-type';
 
 interface StudentPaymentHistoryProps {
   paymentHistory: PaymentHistoryItem[];

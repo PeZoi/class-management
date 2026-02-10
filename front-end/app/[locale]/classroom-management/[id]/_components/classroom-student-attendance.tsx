@@ -29,20 +29,7 @@ import { useTranslations } from 'next-intl';
 import { useState, useMemo } from 'react';
 import { useAttendanceByClass, useCreateAttendance, useUpdateAttendance } from '@/hooks/use-attendance';
 import { toast } from 'react-toastify';
-
-export interface AttendanceSession {
-  id: string;
-  date: string;
-  sessionNumber: number; // 1..N within selected month
-  status: 'present' | 'absent' | 'late' | 'excused' | 'no_data';
-  notes?: string;
-}
-
-export interface StudentAttendanceRecord {
-  studentId: string;
-  studentName: string;
-  sessions: AttendanceSession[];
-}
+import { AttendanceSession, StudentAttendanceRecord } from '@/types/attendance-type';
 
 interface ClassroomStudentAttendanceProps {
   students: StudentType[];

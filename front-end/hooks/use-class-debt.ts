@@ -2,11 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { studentService } from '@/services/student-service';
 import { StudentType } from '@/types';
-
-interface ClassDebtInfo {
-  totalUnpaidPackages: number;
-  totalDebtAmount: number;
-}
+import { ClassDebtInfo } from '@/types/student-type';
 
 /**
  * Hook để tính tổng số gói nợ và tổng số tiền nợ cho một class

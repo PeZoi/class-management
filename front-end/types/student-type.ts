@@ -70,3 +70,50 @@ export interface RemoveStudentsFromClassRequest {
   classId?: string;
   studentIds: string[];
 }
+
+// Class history item for student class history display
+export interface ClassHistoryItem {
+  id: string | number;
+  className: string;
+  classId: string;
+  joinedAt: string;
+  leftAt?: string;
+  status: 'studying' | 'completed' | 'transferred' | 'changing' | 'dropped';
+  reason?: string;
+}
+
+// Filter state for student management page
+export interface FilterState {
+  searchQuery: string;
+  paymentStatus: 'all' | 'paid' | 'unpaid' | 'partial';
+  className: string;
+  gender: 'all' | 'male' | 'female' | 'other';
+  sortBy: 'name' | 'joinedDate' | 'monthlyFee';
+  sortOrder: 'asc' | 'desc';
+}
+
+// Student item for student management page (extends StudentType with UI-specific fields)
+export interface StudentItem extends StudentType {
+  idCard?: string; // ID card number (optional, not in API)
+  status: 'active' | 'pending' | 'completed';
+  paymentStatus: 'paid' | 'unpaid' | 'partial';
+  monthlyFee: number;
+  amountPaid: number;
+  currentMonthPaidAmount?: number; // Số tiền đã đóng tháng hiện tại
+}
+
+// Class debt information
+export interface ClassDebtInfo {
+  totalUnpaidPackages: number;
+  totalDebtAmount: number;
+}
+
+// Overdue student item for dashboard display (extends StudentType with payment info)
+export interface OverdueStudentItem extends StudentType {
+  paymentStatus: 'paid' | 'unpaid' | 'partial';
+  monthlyFee: number;
+  amountPaid: number;
+  currentMonthPaidAmount?: number;
+  unpaidMonthsCount: number;
+  totalRemainingAmount: number;
+}

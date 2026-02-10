@@ -15,8 +15,7 @@ import { toast } from 'react-toastify';
 import { ClassroomDialog } from './_components/classroom-dialog';
 import { ClassroomRevenueChart } from './_components/classroom-revenue-chart';
 import { ClassroomTable } from './_components/classroom-table';
-
-type TimePeriod = '3months' | '6months' | '12months';
+import { TimePeriod } from '@/types/common-type';
 
 // Màu sắc cho từng lớp học (sẽ map động từ classes)
 const colorPalette = [

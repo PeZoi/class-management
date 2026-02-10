@@ -6,3 +6,5 @@ export * from './student-type';
 export * from './payment-type';
 export * from './profile-type';
 export * from './attendance-type';
+export * from './dashboard-type';
+export * from './common-type';

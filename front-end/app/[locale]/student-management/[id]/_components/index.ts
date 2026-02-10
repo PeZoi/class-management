@@ -10,5 +10,5 @@ export { SessionPaymentList } from './session-payment-list';
 export { StudentAttendanceSessions } from './student-attendance-sessions';
 export type { ClassHistoryItem } from './student-class-history';
 export type { PaymentHistoryItem } from './student-payment-history';
-export type { AttendanceSession } from './student-attendance';
+export type { AttendanceSession } from '@/types/attendance-type';
 export type { PaymentMonthStatus } from './payment-status-calendar';

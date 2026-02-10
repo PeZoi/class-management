@@ -4,16 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { formatDateLong } from '@/utils/helper';
 import { Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-
-interface AttendanceRecord {
-  id: string;
-  date: string;
-  className: string;
-  checkInTime?: string;
-  checkOutTime?: string;
-  status: 'present' | 'absent' | 'late' | 'early_leave';
-  notes?: string;
-}
+import { AttendanceRecord } from '@/types/attendance-type';
 
 interface TeacherAttendanceProps {
   attendanceRecords: AttendanceRecord[];

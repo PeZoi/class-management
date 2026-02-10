@@ -7,9 +7,8 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Legend } from 'recharts';
-import { RevenueByStatusResponse } from '@/services/dashboard-service';
-
-type TimePeriod = '3months' | '6months' | '12months';
+import { RevenueByStatusResponse } from '@/types/dashboard-type';
+import { TimePeriod } from '@/types/common-type';
 
 interface RevenueByStatusChartProps {
   selectedPeriod: TimePeriod;

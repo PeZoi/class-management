@@ -5,8 +5,7 @@ import { formatCurrency } from '@/utils/helper';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts';
-
-type TimePeriod = '3months' | '6months' | '12months';
+import { TimePeriod } from '@/types/common-type';
 
 interface ClassroomDetailRevenueChartProps {
   selectedPeriod: TimePeriod;

@@ -15,23 +15,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-
-interface OverduePayment {
-  id: number;
-  studentName: string;
-  studentPhone?: string;
-  studentEmail?: string;
-  studentGender?: string;
-  studentBirthDate?: string;
-  startDate?: string;
-  className: string;
-  amountDue: number;
-  dueDate: string;
-  daysOverdue: number;
-  contacted: boolean;
-  parentName?: string;
-  parentPhone?: string;
-}
+import { OverduePayment } from '@/types/dashboard-type';
 
 interface StudentDetailDrawerProps {
   isOpen: boolean;

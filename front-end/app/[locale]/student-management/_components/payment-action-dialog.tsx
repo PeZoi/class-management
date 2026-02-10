@@ -19,13 +19,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
 import { StudentItem } from '../student-management-page';
-
-interface PaymentData {
-  amount: number;
-  paymentMethod: 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
-  paymentDate: string;
-  notes: string;
-}
+import { PaymentData } from '@/types/payment-type';
 
 interface PaymentActionDialogProps {
   open: boolean;

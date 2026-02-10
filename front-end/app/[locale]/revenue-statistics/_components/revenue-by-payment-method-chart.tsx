@@ -7,9 +7,8 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Pie, PieChart, ResponsiveContainer, Cell, Legend } from 'recharts';
-import { RevenueByPaymentMethodResponse } from '@/services/dashboard-service';
-
-type TimePeriod = '3months' | '6months' | '12months';
+import { RevenueByPaymentMethodResponse } from '@/types/dashboard-type';
+import { TimePeriod } from '@/types/common-type';
 
 interface RevenueByPaymentMethodChartProps {
   selectedPeriod: TimePeriod;

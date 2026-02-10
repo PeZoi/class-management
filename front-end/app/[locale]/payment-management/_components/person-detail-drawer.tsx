@@ -14,27 +14,12 @@ import {
   Users,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { PersonDetail } from '@/types/payment-type';
 
 interface PersonDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  person: {
-    name: string;
-    type: 'student' | 'teacher';
-    id?: string;
-    phone?: string;
-    email?: string;
-    gender?: string;
-    birthDate?: string;
-    startDate?: string;
-    className?: string;
-    // For students
-    parentName?: string;
-    parentPhone?: string;
-    // For teachers
-    subject?: string;
-    experience?: string;
-  } | null;
+  person: PersonDetail | null;
 }
 
 export function PersonDetailDrawer({

@@ -10,15 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Search, X, SortAsc } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-
-export interface FilterState {
-  searchQuery: string;
-  paymentStatus: 'all' | 'paid' | 'unpaid' | 'partial';
-  className: string;
-  gender: 'all' | 'male' | 'female' | 'other';
-  sortBy: 'name' | 'joinedDate' | 'monthlyFee';
-  sortOrder: 'asc' | 'desc';
-}
+import { FilterState } from '@/types/student-type';
 
 interface StudentFilterProps {
   filters: FilterState;

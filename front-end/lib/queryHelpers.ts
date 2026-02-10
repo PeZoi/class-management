@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { queryKeys } from './queryKeys';
+import { TimePeriod } from '@/types/common-type';
 
 /**
  * Helper functions để invalidate queries dễ dàng hơn
@@ -34,7 +35,7 @@ export function invalidateDashboardStats(queryClient: QueryClient) {
  */
 export function invalidateDashboardRevenueData(
   queryClient: QueryClient,
-  period?: '3months' | '6months' | '12months'
+  period?: TimePeriod
 ) {
   if (period) {
     return queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.revenueData(period) });
@@ -133,7 +134,7 @@ export function invalidateClassesByTeacher(queryClient: QueryClient, teacherId: 
 export function invalidateClassRevenueData(
   queryClient: QueryClient,
   classId?: string,
-  period?: '3months' | '6months' | '12months'
+  period?: TimePeriod
 ) {
   if (classId && period) {
     return queryClient.invalidateQueries({

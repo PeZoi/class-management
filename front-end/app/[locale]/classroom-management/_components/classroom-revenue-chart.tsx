@@ -7,8 +7,7 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { CartesianGrid, Line, LineChart, XAxis, YAxis, Legend, ResponsiveContainer } from 'recharts';
-
-type TimePeriod = '3months' | '6months' | '12months';
+import { TimePeriod } from '@/types/common-type';
 
 interface ClassroomRevenueChartProps {
   selectedPeriod: TimePeriod;
