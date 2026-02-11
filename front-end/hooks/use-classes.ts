@@ -65,6 +65,22 @@ export function useClassesByTeacher(teacherId: string) {
 }
 
 /**
+ * Hook để lấy classes của teacher hiện tại
+ */
+export function useMyClasses() {
+  return useQuery<ClassType[]>({
+    queryKey: queryKeys.classes.myClasses(),
+    queryFn: async () => {
+      const response = await classService.getMyClasses();
+      if (response.status === 200 && response.data) {
+        return response.data;
+      }
+      throw new Error('Failed to fetch my classes');
+    },
+  });
+}
+
+/**
  * Hook để lấy revenue data theo period (tất cả classes)
  */
 export function useClassRevenueData(period: TimePeriod) {

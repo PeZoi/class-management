@@ -117,6 +117,7 @@ public class AttendanceService {
     @Transactional(readOnly = true)
     public Boolean hasCompleted8Sessions(String studentId, String classId) {
         Integer attendedCount = countAttendedSessions(studentId, classId);
+        // Kiểm tra xem đã điểm danh đủ 8 buổi và là bội số của 8
         return attendedCount >= 8 && (attendedCount % 8 == 0);
     }
 

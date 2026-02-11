@@ -33,7 +33,7 @@ public class SessionPaymentService {
     private static final int SESSIONS_PER_PACKAGE = 8;
 
     /**
-     * Tự động tạo gói thanh toán mới khi học viên học đủ 8 buổi
+     * Tự động tạo gói thanh toán mới khi học viên được điểm danh đủ 8 buổi
      */
     @Transactional
     public SessionPaymentPackage createNewPackage(String studentId, String classId, Integer startSessionNumber) {
@@ -78,7 +78,7 @@ public class SessionPaymentService {
             return statuses;
         }
 
-        // Đếm số buổi đã học
+        // Đếm tổng số buổi đã điểm danh (bao gồm cả PRESENT, LATE, ABSENT, EXCUSED)
         Long totalAttendedSessions = attendanceRepository.countAttendedSessions(studentId, classId);
         if (totalAttendedSessions == null) {
             totalAttendedSessions = 0L;
@@ -93,10 +93,10 @@ public class SessionPaymentService {
                 .max()
                 .orElse(0);
 
-        // Tính package đang được sử dụng (dựa trên số buổi đã học)
-        // Nếu chưa học buổi nào → package 1 đang sử dụng
-        // Nếu đã học 5 buổi → package 1 (buổi 1-8) đang sử dụng
-        // Nếu đã học 10 buổi → package 2 (buổi 9-16) đang sử dụng
+        // Tính package đang được sử dụng (dựa trên số buổi đã điểm danh)
+        // Nếu chưa điểm danh buổi nào → package 1 đang sử dụng
+        // Nếu đã điểm danh 5 buổi → package 1 (buổi 1-8) đang sử dụng
+        // Nếu đã điểm danh 10 buổi → package 2 (buổi 9-16) đang sử dụng
         int currentPackageNumber = totalAttendedSessions == 0 
                 ? 1 
                 : (int) Math.ceil((double) totalAttendedSessions / SESSIONS_PER_PACKAGE);

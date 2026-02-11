@@ -8,6 +8,7 @@ import com.example.backend.service.ClassService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,13 +31,21 @@ public class ClassController {
         return new ResponseEntity<>(classResponses, HttpStatus.OK);
     }
 
+    @GetMapping("/get-my-classes")
+    public ResponseEntity<List<ClassResponse>> getMyClasses() {
+        List<ClassResponse> classResponses = classService.getClassesByCurrentTeacher();
+        return new ResponseEntity<>(classResponses, HttpStatus.OK);
+    }
+
     @PostMapping("/create")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<ClassResponse> create(@RequestBody ClassRequest classRequest) {
         ClassResponse classResponse = classService.create(classRequest);
         return new ResponseEntity<>(classResponse, HttpStatus.CREATED);
     }
 
     @PutMapping("/update/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<ClassResponse> update(@PathVariable(value = "id") String classId, @RequestBody ClassRequest classRequest) {
         ClassResponse classResponse = classService.update(classId, classRequest);
         return new ResponseEntity<>(classResponse, HttpStatus.OK);
@@ -50,7 +59,7 @@ public class ClassController {
 
     @GetMapping("/get/{classId}")
     public ResponseEntity<ClassResponse> getClassById(@PathVariable(value = "classId") String classId) {
-        ClassResponse classResponse = classService.getClassById(classId);
+        ClassResponse classResponse = classService.getClassById(classId, true);
         return new ResponseEntity<>(classResponse, HttpStatus.OK);
     }
 

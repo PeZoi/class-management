@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar, CheckCircle, XCircle, DollarSign } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/utils/helper';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { TeacherMonthlySalaryDialog } from './teacher-monthly-salary-dialog';
 import { TeacherSalaryDetailDialog } from './teacher-salary-detail-dialog';
 import { PaymentResponse, SalaryMonthStatus } from '@/types';
@@ -57,6 +57,19 @@ export function TeacherSalaryPaymentCalendar({
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedSalary, setSelectedSalary] = useState<SalaryMonthStatus | null>(null);
+  
+  // Track previous submitting state to detect when submission completes
+  const prevSubmittingRef = useRef(isSubmittingPayment);
+  
+  // Close dialog when submission completes successfully
+  useEffect(() => {
+    if (prevSubmittingRef.current && !isSubmittingPayment && paymentDialogOpen) {
+      // Submission just completed (was submitting, now not submitting)
+      setPaymentDialogOpen(false);
+      setSelectedSalary(null);
+    }
+    prevSubmittingRef.current = isSubmittingPayment;
+  }, [isSubmittingPayment, paymentDialogOpen]);
 
   const getStatusBadge = (status: string, totalAmount?: number, paidAmount?: number) => {
     const variants: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
@@ -172,8 +185,7 @@ export function TeacherSalaryPaymentCalendar({
         teacherId,
         ...data,
       });
-      setPaymentDialogOpen(false);
-      setSelectedSalary(null);
+      // Don't close dialog here - let parent component handle it after successful mutation
     }
   };
 

@@ -16,40 +16,54 @@ import { Album, CreditCard, GraduationCap, LayoutDashboard, User } from 'lucide-
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuthStore } from '@/store';
 
 export function AppSidebar() {
   const t = useTranslations('common');
   const locale = useLocale();
   const pathname = usePathname();
+  const { user } = useAuthStore();
 
-  // Menu items.
-  const items = [
+
+  // Menu items - filter based on role
+  const allItems = [
     {
       title: t('dashboard'),
       url: `/${locale}`,
       icon: LayoutDashboard,
+      roles: ['ROLE_ADMIN'],
     },
     {
       title: t('Class Management'),
       url: `/${locale}/classroom-management`,
       icon: Album,
+      roles: ['ROLE_ADMIN', 'ROLE_TEACHER'],
     },
     {
       title: t('Student Management'),
       url: `/${locale}/student-management`,
       icon: GraduationCap,
+      roles: ['ROLE_ADMIN'],
     },
     {
       title: t('Teacher Management'),
       url: `/${locale}/teacher-management`,
       icon: User,
+      roles: ['ROLE_ADMIN'],
     },
     {
       title: t('Payment Management'),
       url: `/${locale}/payment-management`,
       icon: CreditCard,
+      roles: ['ROLE_ADMIN'],
     },
   ];
+
+  // Filter menu items based on user role
+  const items = allItems.filter((item) => {
+    if (!user?.role) return false;
+    return item.roles.includes(user.role);
+  });
 
   // Check if a menu item is active
   const isActive = (url: string) => {

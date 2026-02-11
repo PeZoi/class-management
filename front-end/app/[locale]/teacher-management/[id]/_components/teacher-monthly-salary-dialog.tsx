@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { CurrencyInputField } from '@/components/currency-input-field';
 import { formatCurrency } from '@/utils/helper';
-import { DollarSign, CreditCard } from 'lucide-react';
+import { DollarSign, CreditCard, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { SalaryMonthStatus } from '@/types';
@@ -113,7 +113,7 @@ export function TeacherMonthlySalaryDialog({
         paymentDate: formData.paymentDate,
         notes: formData.notes,
       });
-      onOpenChange(false);
+      // Don't close dialog here - parent will close it after successful mutation
     }
   };
 
@@ -128,13 +128,13 @@ export function TeacherMonthlySalaryDialog({
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             <DollarSign className="size-5 text-blue-600" />
-            Trả Lương Cho Giáo Viên
+            {t('paySalary') || 'Trả Lương Cho Giáo Viên'}
           </DialogTitle>
           <DialogDescription className="text-sm">
-            {`Tháng ${monthNames[salary.month - 1]} ${salary.year}`}
+            {`${tCommon('month') || 'Tháng'} ${monthNames[salary.month - 1]} ${salary.year}`}
             {remainingAmount > 0 && (
               <span className="ml-2 text-orange-600 dark:text-orange-400">
-                • Còn lại: {formatCurrency(remainingAmount)}
+                • {t('remaining') || 'Còn lại'}: {formatCurrency(remainingAmount)}
               </span>
             )}
           </DialogDescription>
@@ -157,8 +157,9 @@ export function TeacherMonthlySalaryDialog({
                       baseSalary: value,
                     }))
                   }
-                  placeholder="Nhập lương cơ bản"
+                  placeholder={t('enterBaseSalary') || 'Nhập lương cơ bản'}
                   required
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -175,7 +176,8 @@ export function TeacherMonthlySalaryDialog({
                       bonus: Math.max(0, value),
                     }))
                   }
-                  placeholder="Nhập số tiền thưởng"
+                  placeholder={t('enterBonus') || 'Nhập số tiền thưởng'}
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -192,13 +194,14 @@ export function TeacherMonthlySalaryDialog({
                       deduction: Math.max(0, value),
                     }))
                   }
-                  placeholder="Nhập số tiền khấu trừ"
+                  placeholder={t('enterDeduction') || 'Nhập số tiền khấu trừ'}
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="paymentDate" className="text-sm">
-                  Ngày Thanh Toán <span className="text-red-500">*</span>
+                  {tPayment('paymentDate') || 'Ngày Thanh Toán'} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="paymentDate"
@@ -211,12 +214,13 @@ export function TeacherMonthlySalaryDialog({
                     }))
                   }
                   required
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div className="space-y-1.5 col-span-2">
                 <Label htmlFor="paymentMethod" className="text-sm">
-                  Phương Thức Thanh Toán <span className="text-red-500">*</span>
+                  {tPayment('paymentMethod') || 'Phương Thức Thanh Toán'} <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.paymentMethod}
@@ -226,6 +230,7 @@ export function TeacherMonthlySalaryDialog({
                       paymentMethod: value,
                     }))
                   }
+                  disabled={isSubmitting}
                 >
                   <SelectTrigger id="paymentMethod">
                     <SelectValue />
@@ -248,7 +253,7 @@ export function TeacherMonthlySalaryDialog({
               </div>
 
               <div className="space-y-1.5 col-span-2">
-                <Label htmlFor="notes" className="text-sm">Ghi Chú</Label>
+                <Label htmlFor="notes" className="text-sm">{tPayment('notes') || 'Ghi Chú'}</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
@@ -258,8 +263,9 @@ export function TeacherMonthlySalaryDialog({
                       notes: e.target.value,
                     }))
                   }
-                  placeholder="Ghi chú thêm về khoản thanh toán này..."
+                  placeholder={tPayment('notesPlaceholder') || 'Ghi chú thêm về khoản thanh toán này...'}
                   rows={2}
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -297,7 +303,7 @@ export function TeacherMonthlySalaryDialog({
                 </div>
                 {remainingAmount > 0 && (
                   <div className="flex justify-between items-center text-xs pt-1 border-t border-blue-200 dark:border-blue-800">
-                    <span className="text-slate-600 dark:text-slate-400">Còn lại sau thanh toán:</span>
+                    <span className="text-slate-600 dark:text-slate-400">{t('remainingAfterPayment') || 'Còn lại sau thanh toán'}:</span>
                     <span
                       className={`font-semibold ${
                         isFullPayment
@@ -312,7 +318,7 @@ export function TeacherMonthlySalaryDialog({
                 {isFullPayment && (
                   <div className="text-center pt-1">
                     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-medium">
-                      ✓ Thanh toán đầy đủ
+                      ✓ {tPayment('fullPayment') || 'Thanh toán đầy đủ'}
                     </span>
                   </div>
                 )}
@@ -321,12 +327,21 @@ export function TeacherMonthlySalaryDialog({
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Hủy
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+              {tCommon('cancel') || 'Hủy'}
             </Button>
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={!!isSubmitting}>
-              <DollarSign className="size-4 mr-2" />
-              {isSubmitting ? tCommon('saving') : 'Xác Nhận Trả Lương'}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  {tCommon('saving')}
+                </>
+              ) : (
+                <>
+                  <DollarSign className="size-4 mr-2" />
+                  {t('confirmPaySalary') || 'Xác Nhận Trả Lương'}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

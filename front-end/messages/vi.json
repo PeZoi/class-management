@@ -5,6 +5,7 @@
     "search": "Tìm kiếm",
     "inbox": "Hộp thư",
     "calendar": "Lịch",
+    "month": "Tháng",
     "title_application": "Quản Lý Lớp Học",
     "dashboard": "Trang tổng quan",
     "Class Management": "Quản lý lớp học",
@@ -534,7 +535,14 @@
     "month9": "Tháng 9",
     "month10": "Tháng 10",
     "month11": "Tháng 11",
-    "month12": "Tháng 12"
+    "month12": "Tháng 12",
+    "paySalary": "Trả Lương Cho Giáo Viên",
+    "remaining": "Còn lại",
+    "enterBaseSalary": "Nhập lương cơ bản",
+    "enterBonus": "Nhập số tiền thưởng",
+    "enterDeduction": "Nhập số tiền khấu trừ",
+    "remainingAfterPayment": "Còn lại sau thanh toán",
+    "confirmPaySalary": "Xác Nhận Trả Lương"
   },
   "student-management": {
     "title": "Quản Lý Học Viên",
@@ -723,7 +731,8 @@
     "filterByPackage": "Theo gói",
     "selectPackage": "Chọn gói",
     "mustPayPreviousPackage": "Vui lòng thanh toán đầy đủ gói trước đó trước khi thanh toán gói này",
-    "mustPayPreviousFirst": "Cần thanh toán gói trước"
+    "mustPayPreviousFirst": "Cần thanh toán gói trước",
+    "teacherCannotPay": "Đóng tiền thông qua quản trị viên"
   },
   "profile": {
     "title": "Hồ Sơ Cá Nhân",
@@ -833,7 +842,8 @@
     "dates": "Ngày Tháng",
     "createdDate": "Ngày Tạo",
     "dueDate": "Ngày Hạn",
-    "paymentMethod": "Phương Thức",
+    "paymentDate": "Ngày Thanh Toán",
+    "paymentMethod": "Phương Thức Thanh Toán",
     "status": "Trạng Thái",
     "actions": "Hành Động",
     "edit": "Sửa",
@@ -981,7 +991,13 @@
     "totalPaidSummary": "Tổng đã thanh toán:",
     "remainingAfterPayment": "Còn lại sau thanh toán:",
     "fullPayment": "Thanh toán đầy đủ",
-    "confirmPayment": "Xác Nhận Thanh Toán"
+    "confirmPayment": "Xác Nhận Thanh Toán",
+    "paymentForPackage": "Thanh toán cho Gói {packageNumber} (Buổi {startSession} - {endSession})",
+    "packagePaymentLabel": "Gói thanh toán:",
+    "packageLabel": "Gói {number}",
+    "sessionRangeLabel": "Phạm vi buổi học:",
+    "sessionRange": "Buổi {start} - {end}",
+    "paymentInfo": "Thông Tin Thanh Toán"
   },
   "notFound": {
     "title": "Trang Không Tìm Thấy",
@@ -993,6 +1009,12 @@
     "classManagement": "Quản Lý Lớp",
     "studentManagement": "Quản Lý Học Viên",
     "teacherManagement": "Quản Lý Giáo Viên"
+  },
+  "forbidden": {
+    "title": "Không Có Quyền Truy Cập",
+    "description": "Bạn không có quyền truy cập tài nguyên này.",
+    "message": "Nếu bạn cho rằng đây là lỗi, vui lòng liên hệ quản trị viên.",
+    "goBack": "Quay Lại Danh Sách Lớp"
   },
   "notifications": {
     "errorLoadShifts": "Không thể tải danh sách ca học",

@@ -26,7 +26,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Lưu vào cookie để server component có thể đọc
     const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
     document.cookie = `accessToken=${accessToken}; expires=${expires}; path=/`;
-    window.location.href = '/dashboard';
+    
+    // Redirect dựa trên role
+    if (user.role === 'ROLE_TEACHER') {
+      window.location.href = '/classroom-management';
+    } else {
+      window.location.href = '/dashboard';
+    }
   },
   loadDataFromLocalStorage: () => {
     const user = localStorage.getItem('user');

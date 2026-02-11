@@ -155,8 +155,9 @@ export function RevenueByPaymentMethodChart({
                 <Legend
                   wrapperStyle={{ paddingTop: '20px' }}
                   formatter={(value, entry) => {
-                    const payload = entry.payload as RevenueByPaymentMethodResponse;
-                    return getMethodLabel(payload.paymentMethod);
+                    // In Legend formatter, entry.payload contains the actual data
+                    const payload = entry.payload as unknown as RevenueByPaymentMethodResponse;
+                    return getMethodLabel(payload?.paymentMethod);
                   }}
                 />
               </PieChart>

@@ -17,8 +17,8 @@ public interface AttendanceRepository extends JpaRepository<Attendance, String> 
     // Lấy attendance của một học viên trong một lớp theo session number
     Optional<Attendance> findByStudentIdAndClazzIdAndSessionNumber(String studentId, String classId, Integer sessionNumber);
 
-    // Đếm số buổi đã học (PRESENT hoặc LATE)
-    @Query("SELECT COUNT(a) FROM Attendance a WHERE a.student.id = :studentId AND a.clazz.id = :classId AND (a.status = 'PRESENT' OR a.status = 'LATE')")
+    // Đếm tổng số buổi đã điểm danh (bao gồm cả PRESENT, LATE, ABSENT, EXCUSED)
+    @Query("SELECT COUNT(a) FROM Attendance a WHERE a.student.id = :studentId AND a.clazz.id = :classId")
     Long countAttendedSessions(@Param("studentId") String studentId, @Param("classId") String classId);
 
     // Lấy session number lớn nhất của học viên trong lớp

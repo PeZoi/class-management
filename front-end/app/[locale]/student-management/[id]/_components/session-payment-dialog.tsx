@@ -101,62 +101,27 @@ export function SessionPaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl" onInteractOutside={(e) => isSubmitting && e.preventDefault()}>
+      <DialogContent className="max-w-3xl!" onInteractOutside={(e) => isSubmitting && e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             <DollarSign className="size-6 text-green-600" />
             {tPayment('makePaymentTitle') || 'Thanh Toán Học Phí'}
           </DialogTitle>
           <DialogDescription>
-            {`Thanh toán cho Gói ${payment.packageNumber} (Buổi ${payment.startSessionNumber} - ${payment.endSessionNumber})`}
+            {tPayment('paymentForPackage', {
+              packageNumber: payment.packageNumber,
+              startSession: payment.startSessionNumber,
+              endSession: payment.endSessionNumber,
+            }) || `Thanh toán cho Gói ${payment.packageNumber} (Buổi ${payment.startSessionNumber} - ${payment.endSessionNumber})`}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
-          <div className="space-y-6 py-4">
-            {/* Payment Info */}
-            <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {tPayment('paymentInfo') || 'Thông Tin Thanh Toán'}
-              </h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-slate-500">Gói thanh toán:</span>
-                  <div className="font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <Package className="size-4" />
-                    Gói {payment.packageNumber}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-slate-500">Phạm vi buổi học:</span>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">
-                    Buổi {payment.startSessionNumber} - {payment.endSessionNumber}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-slate-500">{tPayment('totalTuitionLabel') || 'Tổng học phí'}:</span>
-                  <div className="font-medium text-slate-900 dark:text-slate-100">
-                    {formatCurrency(payment.expectedAmount)}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-slate-500">{tPayment('paidLabel') || 'Đã đóng'}:</span>
-                  <div className="font-medium text-green-600 dark:text-green-400">
-                    {formatCurrency(payment.paidAmount || 0)}
-                  </div>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-slate-500">{tPayment('remainingLabel') || 'Còn lại'}:</span>
-                  <div className="font-bold text-lg text-orange-600 dark:text-orange-400">
-                    {formatCurrency(remainingAmount)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Form */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+          <div className="py-4">
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column - Payment Form Fields */}
+              <div className="flex flex-col gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="amount">
                     {tPayment('paymentAmountLabel') || 'Số tiền thanh toán'}{' '}
@@ -200,7 +165,7 @@ export function SessionPaymentDialog({
                   />
                 </div>
 
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2">
                   <Label htmlFor="paymentMethod">
                     {tPayment('paymentMethodLabel') || 'Phương thức thanh toán'}{' '}
                     <span className="text-red-500">{tPayment('required') || '*'}</span>
@@ -234,66 +199,114 @@ export function SessionPaymentDialog({
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="flex-1 flex flex-col space-y-2">
+                  <Label htmlFor="notes">{tPayment('notesLabel') || 'Ghi chú'}</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        notes: e.target.value,
+                      }))
+                    }
+                    placeholder={tPayment('notesPlaceholderPayment') || 'Nhập ghi chú (nếu có)'}
+                    disabled={isSubmitting}
+                    className="resize-none flex-1 min-h-[120px]"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="notes">{tPayment('notesLabel') || 'Ghi chú'}</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      notes: e.target.value,
-                    }))
-                  }
-                  placeholder={tPayment('notesPlaceholderPayment') || 'Nhập ghi chú (nếu có)'}
-                  rows={3}
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-
-            {/* Payment Summary */}
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800 p-4">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    {tPayment('paymentAmountSummary') || 'Số tiền thanh toán'}
-                  </span>
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">
-                    {formatCurrency(formData.amount)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    {tPayment('totalPaidSummary') || 'Tổng đã đóng'}
-                  </span>
-                  <span className="font-semibold text-green-600 dark:text-green-400">
-                    {formatCurrency((payment.paidAmount || 0) + formData.amount)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-sm pt-2 border-t border-blue-200 dark:border-blue-800">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    {tPayment('remainingAfterPayment') || 'Còn lại sau thanh toán'}
-                  </span>
-                  <span
-                    className={`font-bold text-lg ${
-                      isFullPayment
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-orange-600 dark:text-orange-400'
-                    }`}
-                  >
-                    {formatCurrency(Math.max(0, remainingAmount - formData.amount))}
-                  </span>
-                </div>
-                {isFullPayment && (
-                  <div className="text-center pt-2">
-                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-sm font-medium">
-                      ✓ {tPayment('fullPayment') || 'Thanh toán đủ'}
-                    </span>
+              {/* Right Column - Payment Info and Summary */}
+              <div className="space-y-4">
+                {/* Payment Info */}
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 p-4 space-y-3">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {tPayment('paymentInfo') || 'Thông Tin Thanh Toán'}
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <span className="text-slate-500">{tPayment('packagePaymentLabel') || 'Gói thanh toán:'}:</span>
+                      <div className="font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2 mt-1">
+                        <Package className="size-4" />
+                        {tPayment('packageLabel', { number: payment.packageNumber }) || `Gói ${payment.packageNumber}`}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">{tPayment('sessionRangeLabel') || 'Phạm vi buổi học:'}:</span>
+                      <div className="font-medium text-slate-900 dark:text-slate-100 mt-1">
+                        {tPayment('sessionRange', { 
+                          start: payment.startSessionNumber, 
+                          end: payment.endSessionNumber 
+                        }) || `Buổi ${payment.startSessionNumber} - ${payment.endSessionNumber}`}
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-slate-500">{tPayment('totalTuitionLabel') || 'Tổng học phí'}:</span>
+                        <span className="font-medium text-slate-900 dark:text-slate-100">
+                          {formatCurrency(payment.expectedAmount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-slate-500">{tPayment('paidLabel') || 'Đã đóng'}:</span>
+                        <span className="font-medium text-green-600 dark:text-green-400">
+                          {formatCurrency(payment.paidAmount || 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-500 font-medium">{tPayment('remainingLabel') || 'Còn lại'}:</span>
+                        <span className="font-bold text-lg text-orange-600 dark:text-orange-400">
+                          {formatCurrency(remainingAmount)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
+
+                {/* Payment Summary */}
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800 p-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-600 dark:text-slate-400">
+                        {tPayment('paymentAmountSummary') || 'Số tiền thanh toán'}
+                      </span>
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                        {formatCurrency(formData.amount)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-600 dark:text-slate-400">
+                        {tPayment('totalPaidSummary') || 'Tổng đã đóng'}
+                      </span>
+                      <span className="font-semibold text-green-600 dark:text-green-400">
+                        {formatCurrency((payment.paidAmount || 0) + formData.amount)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm pt-2 border-t border-blue-200 dark:border-blue-800">
+                      <span className="text-slate-600 dark:text-slate-400">
+                        {tPayment('remainingAfterPayment') || 'Còn lại sau thanh toán'}
+                      </span>
+                      <span
+                        className={`font-bold text-lg ${
+                          isFullPayment
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-orange-600 dark:text-orange-400'
+                        }`}
+                      >
+                        {formatCurrency(Math.max(0, remainingAmount - formData.amount))}
+                      </span>
+                    </div>
+                    {isFullPayment && (
+                      <div className="text-center pt-2">
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-sm font-medium">
+                          ✓ {tPayment('fullPayment') || 'Thanh toán đủ'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

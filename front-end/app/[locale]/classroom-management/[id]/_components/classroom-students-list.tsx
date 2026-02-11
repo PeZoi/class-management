@@ -20,7 +20,7 @@ import { useBulkRemoveStudentsFromClass, useBulkUpdateStudentShift } from '@/hoo
 import { cn } from '@/lib/utils';
 import { StudentType } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/helper';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, Row } from '@tanstack/react-table';
 import {
   AlertTriangle,
   ArrowRight,
@@ -55,6 +55,7 @@ interface ClassroomStudentsListProps {
   onEditStudent?: (student: StudentType) => void;
   onPayment?: (student: StudentType) => void;
   onStudentsUpdate?: () => void;
+  isTeacher?: boolean;
 }
 
 interface ClassroomStudentItem extends StudentType {
@@ -112,7 +113,7 @@ const getCurrentMonthPaymentStatus = (
   };
 };
 
-export function ClassroomStudentsList({ students, classId, onEditStudent, onPayment, onStudentsUpdate }: ClassroomStudentsListProps) {
+export function ClassroomStudentsList({ students, classId, onEditStudent, onPayment, onStudentsUpdate, isTeacher = false }: ClassroomStudentsListProps) {
   const t = useTranslations('classroom-detail');
   const tCommon = useTranslations('common');
   const tNotif = useTranslations('notifications');
@@ -355,7 +356,7 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
   };
 
   const columns: ColumnDef<ClassroomStudentItem>[] = [
-    {
+    ...(isTeacher ? [] : [{
       id: 'select',
       header: () => (
         <div className="flex justify-center">
@@ -367,7 +368,7 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
           />
         </div>
       ),
-      cell: ({ row }) => (
+      cell: ({ row }: { row: Row<ClassroomStudentItem> }) => (
         <div className="flex justify-center">
           <input
             type="checkbox"
@@ -379,7 +380,7 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
       ),
       enableSorting: false,
       enableHiding: false,
-    },
+    }]),
     {
       accessorKey: 'fullName',
       header: ({ column }) => (
@@ -649,17 +650,21 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
                     {t('editInfo')}
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
-                  onClick={() => {
-                    setSelectedStudentIds(new Set([student.id]));
-                    setIsRemoveDialogOpen(true);
-                  }}
-                >
-                  <UserMinus className="size-4 mr-2" />
-                  {tCommon('removeFromClass')}
-                </DropdownMenuItem>
+                {!isTeacher && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                      onClick={() => {
+                        setSelectedStudentIds(new Set([student.id]));
+                        setIsRemoveDialogOpen(true);
+                      }}
+                    >
+                      <UserMinus className="size-4 mr-2" />
+                      {tCommon('removeFromClass')}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -699,7 +704,7 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
                 {t('studentsListDescription')}
               </p>
             </div>
-            {classId && (
+            {classId && !isTeacher && (
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"

@@ -43,6 +43,7 @@ export const queryKeys = {
     details: () => ['classes', 'detail'] as const,
     detail: (id: string) => ['classes', 'detail', id] as const,
     byTeacher: (teacherId: string) => ['classes', 'teacher', teacherId] as const,
+    myClasses: () => ['classes', 'my-classes'] as const,
     revenueData: (period: TimePeriod) => ['classes', 'revenue-data', period] as const,
     classRevenueData: (classId: string, period: TimePeriod) =>
       ['classes', 'revenue-data', classId, period] as const,

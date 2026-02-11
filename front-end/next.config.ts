@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   output: 'standalone',
+  // Allow build to continue even if fonts fail to load
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
 };
 
 export default withNextIntl(nextConfig);

@@ -18,9 +18,10 @@ import { useUpdateStudentShift } from '@/hooks/use-students';
 interface StudentClassInfoProps {
   student: StudentType;
   onUpdate?: () => void;
+  isTeacher?: boolean;
 }
 
-export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
+export function StudentClassInfo({ student, onUpdate, isTeacher = false }: StudentClassInfoProps) {
   const t = useTranslations('student-detail');
   const tNotif = useTranslations('notifications');
   const tCommon = useTranslations('common');
@@ -114,19 +115,23 @@ export function StudentClassInfo({ student, onUpdate }: StudentClassInfoProps) {
                       {student.class.shiftName}
                     </Badge>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => setIsDialogOpen(true)} className="h-7 px-2 text-xs">
-                    <Edit className="size-3 mr-1" />
-                    {tCommon('updateShift')}
-                  </Button>
+                  {!isTeacher && (
+                    <Button variant="ghost" size="sm" onClick={() => setIsDialogOpen(true)} className="h-7 px-2 text-xs">
+                      <Edit className="size-3 mr-1" />
+                      {tCommon('updateShift')}
+                    </Button>
+                  )}
                 </div>
               )}
               {!student.class.shiftName && student.class.id && (
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-slate-500 dark:text-slate-400">{tCommon('noShift')}</span>
-                  <Button variant="ghost" size="sm" onClick={() => setIsDialogOpen(true)} className="h-7 px-2 text-xs">
-                    <Edit className="size-3 mr-1" />
-                    {tCommon('addShift')}
-                  </Button>
+                  {!isTeacher && (
+                    <Button variant="ghost" size="sm" onClick={() => setIsDialogOpen(true)} className="h-7 px-2 text-xs">
+                      <Edit className="size-3 mr-1" />
+                      {tCommon('addShift')}
+                    </Button>
+                  )}
                 </div>
               )}
               <div className="flex items-center gap-2">

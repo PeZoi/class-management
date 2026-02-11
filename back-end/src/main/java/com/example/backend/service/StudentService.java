@@ -21,8 +21,13 @@ import com.example.backend.repository.ClassShiftRepository;
 import com.example.backend.repository.PaymentRepository;
 import com.example.backend.repository.StudentClassRepository;
 import com.example.backend.repository.StudentRepository;
+import com.example.backend.repository.UserRepository;
+import com.example.backend.security.SecurityUtil;
+import com.example.backend.exception.CustomException;
+import com.example.backend.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +52,7 @@ public class StudentService {
     private final ClassShiftRepository classShiftRepository;
     private final ModelMapper modelMapper;
     private final SessionPaymentService sessionPaymentService;
+    private final UserRepository userRepository;
 
     private boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
@@ -515,6 +521,26 @@ public class StudentService {
     public StudentResponse getStudentById(String id) {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
+
+        // Kiểm tra quyền truy cập cho giáo viên
+        String currentUsername = SecurityUtil.getCurrentUserLogin()
+                .orElseThrow(() -> new CustomException("Không tìm thấy thông tin người dùng", HttpStatus.UNAUTHORIZED));
+        
+        User currentUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new CustomException("Không tìm thấy người dùng", HttpStatus.UNAUTHORIZED));
+        
+        // Nếu là giáo viên, kiểm tra xem học viên có thuộc lớp mà giáo viên đang dạy không
+        if ("ROLE_TEACHER".equals(currentUser.getRole())) {
+            StudentClass studentClass = getClassByStudent(id);
+            if (studentClass == null) {
+                throw new CustomException("Học viên chưa thuộc lớp nào", HttpStatus.FORBIDDEN);
+            }
+            
+            Class classDB = studentClass.getClazz();
+            if (classDB.getTeacher() == null || !classDB.getTeacher().getId().equals(currentUser.getId())) {
+                throw new CustomException("Bạn không có quyền xem thông tin học viên này", HttpStatus.FORBIDDEN);
+            }
+        }
 
         StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
         StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();

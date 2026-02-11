@@ -318,6 +318,7 @@ export default function TeacherDetailPage() {
         notes: data.notes,
       };
       await createTeacherPayment.mutateAsync(paymentData);
+      toast.success(tNotif('successPaySalary'));
     } catch (error) {
       console.error('Error creating salary payment:', error);
       toast.error(tNotif('errorPaySalary'));

@@ -27,9 +27,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
       const isAuthenticated = !!user && !!accessToken;
 
-      // Nếu đã đăng nhập và đang ở trang sign-in, redirect về dashboard
+      // Nếu đã đăng nhập và đang ở trang sign-in, redirect dựa trên role
       if (isAuthenticated && isPublicRoute) {
-        router.push(`/${locale}/dashboard`);
+        if (user.role === 'ROLE_TEACHER') {
+          router.push(`/${locale}/classroom-management`);
+        } else {
+          router.push(`/${locale}/dashboard`);
+        }
         return;
       }
 

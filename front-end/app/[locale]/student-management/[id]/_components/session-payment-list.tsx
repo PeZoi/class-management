@@ -9,7 +9,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { SessionPaymentStatus } from '@/types';
 import { SessionPaymentDialog } from './session-payment-dialog';
 import { SessionPaymentDetailDialog } from './session-payment-detail-dialog';
-import { PaymentHistoryItem } from './student-payment-history';
+import { PaymentHistoryItem } from '@/types';
 import { toast } from 'react-toastify';
 
 interface SessionPaymentListProps {
@@ -29,6 +29,7 @@ interface SessionPaymentListProps {
   }) => Promise<void> | void;
   isSubmittingPayment?: boolean;
   onPaymentSuccess?: () => void;
+  isTeacher?: boolean;
 }
 
 export function SessionPaymentList({
@@ -39,6 +40,7 @@ export function SessionPaymentList({
   onPaymentSubmit,
   isSubmittingPayment,
   onPaymentSuccess,
+  isTeacher = false,
 }: SessionPaymentListProps) {
   const t = useTranslations('student-detail');
   
@@ -135,6 +137,12 @@ export function SessionPaymentList({
     if (payment.status === 'PAID') {
       setSelectedPayment(payment);
       setDetailDialogOpen(true);
+      return;
+    }
+
+    // If teacher tries to pay, show message
+    if (isTeacher && (payment.status === 'UNPAID' || payment.status === 'PARTIAL')) {
+      toast.info(t('teacherCannotPay') || 'Đóng tiền thông qua quản trị viên');
       return;
     }
 

@@ -13,9 +13,10 @@ import { ClassShiftType } from '@/types/class-type';
 
 interface ClassroomScheduleInfoProps {
   classId: string;
+  isTeacher?: boolean;
 }
 
-export function ClassroomScheduleInfo({ classId }: ClassroomScheduleInfoProps) {
+export function ClassroomScheduleInfo({ classId, isTeacher = false }: ClassroomScheduleInfoProps) {
   const t = useTranslations('classroom-detail');
   const tCommon = useTranslations('common');
   const tNotif = useTranslations('notifications');
@@ -199,14 +200,16 @@ export function ClassroomScheduleInfo({ classId }: ClassroomScheduleInfoProps) {
               <Calendar className="size-5 text-purple-600 dark:text-purple-400" />
               {t('schedule')}
             </CardTitle>
-            <Button
-              onClick={handleOpenCreateDialog}
-              size="sm"
-              className="gap-2"
-            >
-              <Plus className="size-4" />
-              {tCommon('addShift')}
-            </Button>
+            {!isTeacher && (
+              <Button
+                onClick={handleOpenCreateDialog}
+                size="sm"
+                className="gap-2"
+              >
+                <Plus className="size-4" />
+                {tCommon('addShift')}
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -250,27 +253,29 @@ export function ClassroomScheduleInfo({ classId }: ClassroomScheduleInfoProps) {
                     </div>
                   </div>
 
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-7 text-slate-500 hover:text-slate-800 dark:hover:text-slate-100"
-                      onClick={() => handleOpenEditDialog(shift)}
-                      type="button"
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-7 text-red-500 hover:text-red-700 dark:hover:text-red-400"
-                      onClick={() => handleDelete(shift.id)}
-                      type="button"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
+                  {/* Action buttons - Only show for admin */}
+                  {!isTeacher && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-7 text-slate-500 hover:text-slate-800 dark:hover:text-slate-100"
+                        onClick={() => handleOpenEditDialog(shift)}
+                        type="button"
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-7 text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                        onClick={() => handleDelete(shift.id)}
+                        type="button"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

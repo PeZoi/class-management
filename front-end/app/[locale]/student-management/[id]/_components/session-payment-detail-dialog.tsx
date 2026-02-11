@@ -13,8 +13,7 @@ import {
 import { formatCurrency, formatDateTime } from '@/utils/helper';
 import { ArrowLeftRight, Banknote, Calendar, CheckCircle, CreditCard, Package } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { SessionPaymentStatus } from '@/types';
-import { PaymentHistoryItem } from './student-payment-history';
+import { SessionPaymentStatus, PaymentHistoryItem } from '@/types';
 
 interface SessionPaymentDetailDialogProps {
   open: boolean;

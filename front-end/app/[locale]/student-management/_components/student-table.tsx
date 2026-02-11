@@ -33,7 +33,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
-import { StudentItem } from '../student-management-page';
+import { StudentItem } from '@/types/student-type';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 
@@ -67,7 +67,7 @@ export function StudentTable({
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
 
-  const getPaymentBadge = (paymentStatus: StudentItem['paymentStatus']) => {
+  const getPaymentBadge = (paymentStatus: 'paid' | 'partial' | 'unpaid') => {
     const paymentConfig = {
       paid: {
         label: t('payment_paid'),
@@ -84,7 +84,7 @@ export function StudentTable({
         className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
         icon: XCircle,
       },
-    };
+    } as const;
 
     const config = paymentConfig[paymentStatus];
     const Icon = config.icon;

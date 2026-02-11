@@ -24,6 +24,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByIdCard(String idCard);
 
     Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email);
     
     @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.email = ?1 AND u.id <> ?2")
     boolean existsByEmailAndIdNot(String email, String id);

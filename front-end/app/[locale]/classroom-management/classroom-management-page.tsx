@@ -3,6 +3,7 @@
 import { PageLoading } from '@/components/page-loading';
 import {
   useClasses,
+  useMyClasses,
   useClassRevenueData,
   useCreateClass,
   useUpdateClass,
@@ -16,6 +17,7 @@ import { ClassroomDialog } from './_components/classroom-dialog';
 import { ClassroomRevenueChart } from './_components/classroom-revenue-chart';
 import { ClassroomTable } from './_components/classroom-table';
 import { TimePeriod } from '@/types/common-type';
+import { useAuthStore } from '@/store';
 
 // Màu sắc cho từng lớp học (sẽ map động từ classes)
 const colorPalette = [
@@ -35,16 +37,31 @@ export default function ClassroomManagementPage() {
   const t = useTranslations('classroom-management');
   const tNotif = useTranslations('notifications');
   const tCommon = useTranslations('common');
+  const { user } = useAuthStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassType | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
 
-  // Sử dụng TanStack Query hooks
+  // Check if user is teacher
+  const isTeacher = user?.role === 'ROLE_TEACHER';
+
+  // Sử dụng TanStack Query hooks - teacher chỉ thấy lớp của mình
   const {
-    data: classes = [],
-    isLoading,
-    error: classesError,
+    data: allClasses = [],
+    isLoading: isLoadingAll,
+    error: allClassesError,
   } = useClasses();
+
+  const {
+    data: teacherClasses = [],
+    isLoading: isLoadingTeacher,
+    error: teacherClassesError,
+  } = useMyClasses();
+
+  // Chọn classes dựa trên role
+  const classes = isTeacher ? teacherClasses : allClasses;
+  const isLoading = isTeacher ? isLoadingTeacher : isLoadingAll;
+  const classesError = isTeacher ? teacherClassesError : allClassesError;
 
   const {
     data: revenueDataResponse = [],
@@ -141,23 +158,25 @@ export default function ClassroomManagementPage() {
       <ClassroomTable
         classes={classes}
         formatCurrency={formatCurrency}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onAdd={handleAdd}
+        onEdit={isTeacher ? undefined : handleEdit}
+        onDelete={isTeacher ? undefined : handleDelete}
+        onAdd={isTeacher ? undefined : handleAdd}
         title={t('title')}
         description={t('description')}
-        showActions={true}
+        showActions={!isTeacher}
       />
 
-      {/* Revenue Chart */}
-      <ClassroomRevenueChart
-        selectedPeriod={selectedPeriod}
-        onPeriodChange={handlePeriodChange}
-        revenueData={revenueData}
-        formatCurrency={formatCurrency}
-        classNames={classColors}
-        isLoading={isLoadingRevenue}
-      />
+      {/* Revenue Chart - Only show for admin */}
+      {!isTeacher && (
+        <ClassroomRevenueChart
+          selectedPeriod={selectedPeriod}
+          onPeriodChange={handlePeriodChange}
+          revenueData={revenueData}
+          formatCurrency={formatCurrency}
+          classNames={classColors}
+          isLoading={isLoadingRevenue}
+        />
+      )}
 
       <ClassroomDialog
         open={isDialogOpen}

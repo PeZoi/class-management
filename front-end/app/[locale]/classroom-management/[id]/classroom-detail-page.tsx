@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { ClipboardCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { TimePeriod } from '@/types/common-type';
+import { useAuthStore } from '@/store';
 
 export default function ClassroomDetailPage() {
   const params = useParams();
@@ -36,6 +37,7 @@ export default function ClassroomDetailPage() {
   const locale = params.locale as string;
   const tNotif = useTranslations('notifications');
   const tCommon = useTranslations('common');
+  const { user } = useAuthStore();
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
@@ -71,10 +73,28 @@ export default function ClassroomDetailPage() {
   const queryClient = useQueryClient();
   const updateStudent = useUpdateStudent();
 
-  // Xử lý 404 error - redirect to not found
+  // Check if user is teacher
+  const isTeacher = user?.role === 'ROLE_TEACHER';
+
+  // Check if teacher can access this class
   useEffect(() => {
-    if (classError instanceof HttpError && classError.status === 404) {
-      router.push(`/${locale}/__not-found__`);
+    if (isTeacher && classData) {
+      // Check if the current user is the teacher of this class
+      if (classData.teacher?.id !== user.id) {
+        // Teacher is trying to access a class they don't teach - redirect to 403
+        router.push(`/${locale}/forbidden`);
+      }
+    }
+  }, [isTeacher, classData, user, router, locale]);
+
+  // Xử lý 404 và 403 errors - redirect to appropriate page
+  useEffect(() => {
+    if (classError instanceof HttpError) {
+      if (classError.status === 404) {
+        router.push(`/${locale}/__not-found__`);
+      } else if (classError.status === 403) {
+        router.push(`/${locale}/forbidden`);
+      }
     }
   }, [classError, router, locale]);
 
@@ -200,27 +220,30 @@ export default function ClassroomDetailPage() {
       {/* Class Info & Schedule */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ClassroomTeacherInfo teacher={classData?.teacher as TeacherType} />
-        {classId && <ClassroomScheduleInfo classId={classId as string} />}
+        {classId && <ClassroomScheduleInfo classId={classId as string} isTeacher={isTeacher} />}
       </div>
 
-      {/* Revenue Chart */}
-      <ClassroomDetailRevenueChart
-        selectedPeriod={selectedPeriod}
-        onPeriodChange={setSelectedPeriod}
-        revenueData={revenueData}
-        color={currentClassData.color}
-        isLoading={isLoadingRevenue}
-      />
+      {/* Revenue Chart - Only show for admin */}
+      {!isTeacher && (
+        <ClassroomDetailRevenueChart
+          selectedPeriod={selectedPeriod}
+          onPeriodChange={setSelectedPeriod}
+          revenueData={revenueData}
+          color={currentClassData.color}
+          isLoading={isLoadingRevenue}
+        />
+      )}
 
       {/* Students List */}
       <ClassroomStudentsList 
         students={students} 
         classId={classId}
-        onEditStudent={handleEditStudent} 
-        onPayment={handlePayment}
+        onEditStudent={isTeacher ? undefined : handleEditStudent} 
+        onPayment={isTeacher ? undefined : handlePayment}
         onStudentsUpdate={() => {
           // TanStack Query tự động refetch khi cần
         }}
+        isTeacher={isTeacher}
       />
 
       {/* Student Attendance */}
@@ -260,26 +283,30 @@ export default function ClassroomDetailPage() {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Student Edit Dialog */}
-      <StudentDialog
-        open={isStudentDialogOpen}
-        onOpenChange={(open) => {
-          setIsStudentDialogOpen(open);
-          if (!open) {
-            setSelectedStudent(null);
-          }
-        }}
-        student={selectedStudent}
-        onSave={handleSaveStudent}
-      />
+      {/* Student Edit Dialog - Only for admin */}
+      {!isTeacher && (
+        <>
+          <StudentDialog
+            open={isStudentDialogOpen}
+            onOpenChange={(open) => {
+              setIsStudentDialogOpen(open);
+              if (!open) {
+                setSelectedStudent(null);
+              }
+            }}
+            student={selectedStudent}
+            onSave={handleSaveStudent}
+          />
 
-      {/* Payment Calendar Dialog */}
-      <PaymentCalendarDialog
-        open={isPaymentDialogOpen}
-        onOpenChange={setIsPaymentDialogOpen}
-        student={studentForPayment}
-        onPaymentSuccess={handlePaymentSuccess}
-      />
+          {/* Payment Calendar Dialog */}
+          <PaymentCalendarDialog
+            open={isPaymentDialogOpen}
+            onOpenChange={setIsPaymentDialogOpen}
+            student={studentForPayment}
+            onPaymentSuccess={handlePaymentSuccess}
+          />
+        </>
+      )}
     </div>
   );
 }

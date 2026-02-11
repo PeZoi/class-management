@@ -10,11 +10,13 @@ import com.example.backend.entity.ClassShift;
 import com.example.backend.entity.User;
 import com.example.backend.enums.PaymentDirection;
 import com.example.backend.enums.StudentStatus;
+import com.example.backend.exception.CustomException;
 import com.example.backend.exception.NotFoundException;
 import com.example.backend.repository.ClassRepository;
 import com.example.backend.repository.PaymentRepository;
 import com.example.backend.repository.StudentClassRepository;
 import com.example.backend.repository.UserRepository;
+import com.example.backend.security.SecurityUtil;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -25,6 +27,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -181,10 +184,35 @@ public class ClassService {
         return classResponses;
     }
 
-    public ClassResponse getClassById(String classId) {
+    public List<ClassResponse> getClassesByCurrentTeacher() {
+        String username = SecurityUtil.getCurrentUserLogin()
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy thông tin người dùng"));
+        
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy người dùng"));
+        
+        return getClassesByTeacherId(currentUser.getId());
+    }
+
+    public ClassResponse getClassById(String classId, boolean checkTeacherAccess) {
         // Dùng findByIdWithClassShifts để fetch join classShifts
         Class classDB = classRepository.findByIdWithClassShifts(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy " +
                 "lớp học"));
+        
+        // Kiểm tra quyền truy cập nếu là teacher
+        if (checkTeacherAccess) {
+            String username = SecurityUtil.getCurrentUserLogin().orElse(null);
+            if (username != null) {
+                User currentUser = userRepository.findByUsername(username).orElse(null);
+                if (currentUser != null && "ROLE_TEACHER".equals(currentUser.getRole().getName())) {
+                    // Teacher chỉ có thể truy cập lớp của mình
+                    if (!classDB.getTeacher().getId().equals(currentUser.getId())) {
+                        throw new CustomException("Bạn không có quyền truy cập lớp học này", HttpStatus.FORBIDDEN);
+                    }
+                }
+            }
+        }
+        
         ClassResponse classResponse = modelMapper.map(classDB, ClassResponse.class);
         classResponse.setClassShifts(mapClassShifts(classDB));
         int studentCount = countActiveStudents(classResponse.getId());

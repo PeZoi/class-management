@@ -29,6 +29,7 @@ import {
   invalidateStudentClassHistory,
   invalidateStudentsByClass,
 } from '@/lib/queryHelpers';
+import { useAuthStore } from '@/store/auth-store';
 
 // Convert API ClassHistoryResponse to ClassHistoryItem
 const convertToClassHistoryItem = (apiHistory: ClassHistoryResponse): ClassHistoryItem => {
@@ -93,6 +94,8 @@ export default function StudentDetailPage() {
   const tNotif = useTranslations('notifications');
 
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const isTeacher = user?.role === 'ROLE_TEACHER';
 
   const {
     data: studentData,
@@ -121,6 +124,8 @@ export default function StudentDetailPage() {
   useEffect(() => {
     if (studentError instanceof HttpError && studentError.status === 404) {
       router.push(`/${locale}/__not-found__`);
+    } else if (studentError instanceof HttpError && studentError.status === 403) {
+      router.push(`/${locale}/forbidden`);
     }
   }, [studentError, router, locale]);
 
@@ -229,6 +234,7 @@ export default function StudentDetailPage() {
         <StudentClassInfo
           student={studentData}
           onUpdate={refreshStudentData}
+          isTeacher={isTeacher}
         />
       </div>
 
@@ -239,6 +245,7 @@ export default function StudentDetailPage() {
         paymentHistory={paymentHistory}
         onPaymentSubmit={handleSessionPaymentSubmit}
         isSubmittingPayment={createSessionPayment.isPending}
+        isTeacher={isTeacher}
       />
 
       <StudentPaymentHistory paymentHistory={paymentHistory} />

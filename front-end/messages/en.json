@@ -5,6 +5,7 @@
     "search": "Search",
     "inbox": "Inbox",
     "calendar": "Calendar",
+    "month": "Month",
     "title_application": "Class Management",
     "dashboard": "Dashboard",
     "Class Management": "Class management",
@@ -534,7 +535,14 @@
     "month9": "September",
     "month10": "October",
     "month11": "November",
-    "month12": "December"
+    "month12": "December",
+    "paySalary": "Pay Teacher Salary",
+    "remaining": "Remaining",
+    "enterBaseSalary": "Enter base salary",
+    "enterBonus": "Enter bonus amount",
+    "enterDeduction": "Enter deduction amount",
+    "remainingAfterPayment": "Remaining after payment",
+    "confirmPaySalary": "Confirm Pay Salary"
   },
   "student-detail": {
     "back": "Back",
@@ -640,7 +648,8 @@
     "filterByPackage": "By Package",
     "selectPackage": "Select Package",
     "mustPayPreviousPackage": "Please pay the previous package in full before paying this package",
-    "mustPayPreviousFirst": "Must pay previous package first"
+    "mustPayPreviousFirst": "Must pay previous package first",
+    "teacherCannotPay": "Please contact the administrator to make payment"
   },
   "profile": {
     "title": "Profile",
@@ -832,6 +841,7 @@
     "dates": "Dates",
     "createdDate": "Created Date",
     "dueDate": "Due Date",
+    "paymentDate": "Payment Date",
     "paymentMethod": "Payment Method",
     "status": "Status",
     "actions": "Actions",
@@ -970,7 +980,13 @@
     "totalPaidSummary": "Total paid:",
     "remainingAfterPayment": "Remaining after payment:",
     "fullPayment": "Full payment",
-    "confirmPayment": "Confirm Payment"
+    "confirmPayment": "Confirm Payment",
+    "paymentForPackage": "Payment for Package {packageNumber} (Session {startSession} - {endSession})",
+    "packagePaymentLabel": "Payment package:",
+    "packageLabel": "Package {number}",
+    "sessionRangeLabel": "Session range:",
+    "sessionRange": "Session {start} - {end}",
+    "paymentInfo": "Payment Information"
   },
   "notFound": {
     "title": "Page Not Found",
@@ -982,6 +998,12 @@
     "classManagement": "Class Management",
     "studentManagement": "Student Management",
     "teacherManagement": "Teacher Management"
+  },
+  "forbidden": {
+    "title": "Access Forbidden",
+    "description": "You do not have permission to access this resource.",
+    "message": "If you believe this is an error, please contact the administrator.",
+    "goBack": "Go Back to Classes"
   },
   "notifications": {
     "errorLoadShifts": "Cannot load shift list",

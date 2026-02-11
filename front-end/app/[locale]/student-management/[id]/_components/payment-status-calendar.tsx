@@ -6,10 +6,9 @@ import { CheckCircle, XCircle, DollarSign, Package, AlertCircle } from 'lucide-r
 import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/utils/helper';
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { SessionPaymentStatus } from '@/types';
+import { PaymentHistoryItem, SessionPaymentStatus } from '@/types';
 import { SessionPaymentDialog } from './session-payment-dialog';
 import { SessionPaymentDetailDialog } from './session-payment-detail-dialog';
-import { PaymentHistoryItem } from './student-payment-history';
 import { toast } from 'react-toastify';
 
 interface PaymentStatusCalendarProps {
