@@ -9,8 +9,8 @@ export function Providers({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 15 * 60 * 1000, // 15 phút - data được coi là fresh
-            gcTime: 30 * 60 * 1000, // 30 phút - cache time
+            staleTime: 5 * 60 * 1000, // 5 phút - data được coi là fresh (optimized)
+            gcTime: 10 * 60 * 1000, // 10 phút - cache time (optimized, renamed from cacheTime)
             refetchOnWindowFocus: false, // Không refetch khi focus window
             retry: 1, // Retry 1 lần nếu fail
           },

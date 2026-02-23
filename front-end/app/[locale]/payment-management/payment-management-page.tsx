@@ -11,6 +11,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import { usePayments } from '@/hooks/use-payments';
 import { useStudent } from '@/hooks/use-students';
 import { useTeacher } from '@/hooks/use-teachers';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 // Helper function to parse URL params into filter state
 const parseFiltersFromURL = (searchParams: URLSearchParams): PaymentFilterState => {
@@ -52,10 +54,27 @@ export default function PaymentManagementPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
   const t = useTranslations('payment-management');
+  const tCommon = useTranslations('common');
   const tNotif = useTranslations('notifications');
   const isUpdatingFromURL = useRef(false);
 
-  const paymentsQuery = usePayments();
+  // Build filters object for pagination
+  const paginationFilters = useMemo(() => ({
+    direction: filters.type === 'income' ? 'INCOME' as const : filters.type === 'expense' ? 'EXPENSE' as const : undefined,
+    paymentStatus: filters.status === 'paid' ? 'COMPLETED' as const : filters.status === 'partial' ? 'INCOMPLETE' as const : undefined,
+    paymentMethod: filters.paymentMethod === 'cash' ? 'CASH' as const : 
+                   filters.paymentMethod === 'bank_transfer' ? 'BANK_TRANSFER' as const :
+                   filters.paymentMethod === 'credit_card' ? 'CREDIT_CARD' as const :
+                   filters.paymentMethod === 'e_wallet' ? 'E_WALLET' as const : undefined,
+  }), [filters.type, filters.status, filters.paymentMethod]);
+
+  const paymentsQuery = usePayments(filters.searchQuery, paginationFilters);
+  
+  // Flatten all pages into single array
+  const paymentsData = useMemo(() => {
+    if (!paymentsQuery.data) return [];
+    return paymentsQuery.data.pages.flatMap(page => page.content);
+  }, [paymentsQuery.data]);
 
   // Sync filters with URL params when filters change
   useEffect(() => {
@@ -92,12 +111,13 @@ export default function PaymentManagementPage() {
   }, [searchParams.toString()]);
 
   const payments: PaymentItem[] = useMemo(() => {
-    const data = (paymentsQuery.data ?? []) as PaymentResponse[];
+    const data = (paymentsData ?? []) as PaymentResponse[];
     const dateLocale = locale === 'vi' ? 'vi-VN' : 'en-US';
 
     return data.map((p: PaymentResponse, index: number) => {
-      const type: 'income' | 'expense' = p.direction === 'INCOME' ? 'income' : 'expense';
-      const status: 'paid' | 'partial' = p.paymentStatus === 'COMPLETED' ? 'paid' : 'partial';
+      // Safe defaults in case of missing data
+      const type: 'income' | 'expense' = p?.direction === 'INCOME' ? 'income' : 'expense';
+      const status: 'paid' | 'partial' = p?.paymentStatus === 'COMPLETED' ? 'paid' : 'partial';
 
       const paymentMethodMap: Record<string, PaymentItem['paymentMethod']> = {
         CASH: 'cash',
@@ -106,10 +126,10 @@ export default function PaymentManagementPage() {
         E_WALLET: 'e_wallet',
       };
 
-      const paymentDate = p.createdAt ?? p.billingMonth;
+      const paymentDate = p?.createdAt ?? p?.billingMonth;
       const createdDate = paymentDate ? new Date(paymentDate as unknown as string).toISOString() : new Date().toISOString();
 
-      const period = p.billingMonth
+      const period = p?.billingMonth
         ? new Date(p.billingMonth as unknown as string).toLocaleDateString(dateLocale, {
             month: '2-digit',
             year: 'numeric',
@@ -118,30 +138,30 @@ export default function PaymentManagementPage() {
 
       return {
         id: index + 1,
-        backendId: p.id,
-        invoiceId: p.paymentId,
+        backendId: p?.id ?? '',
+        invoiceId: p?.paymentId ?? '',
         type,
-        studentId: p.student?.id,
-        teacherId: p.teacher?.id,
-        studentName: p.student?.fullName,
-        teacherName: p.teacher?.fullName,
-        studentGender: p.student?.gender,
-        teacherGender: p.teacher?.gender,
-        className: p.class?.name,
+        studentId: p?.student?.id,
+        teacherId: p?.teacher?.id,
+        studentName: p?.student?.fullName,
+        teacherName: p?.teacher?.fullName,
+        studentGender: p?.student?.gender,
+        teacherGender: p?.teacher?.gender,
+        className: p?.clazz?.name ?? p?.class?.name,
         period,
-        totalAmount: Number(p.feeSnapshot ?? p.amount ?? 0),
-        paidAmount: Number(p.paid ?? 0),
+        totalAmount: Number(p?.feeSnapshot ?? p?.amount ?? 0),
+        paidAmount: Number(p?.paid ?? 0),
         createdDate,
-        paymentMethod: paymentMethodMap[p.paymentMethod] ?? 'cash',
+        paymentMethod: paymentMethodMap[p?.paymentMethod ?? 'CASH'] ?? 'cash',
         status,
-        note: p.note ?? undefined,
+        note: p?.note ?? undefined,
         // Teacher salary details (only for expense type)
-        feeSnapshot: p.feeSnapshot ? Number(p.feeSnapshot) : undefined,
-        bonus: p.bonus ? Number(p.bonus) : undefined,
-        deduction: p.deduction ? Number(p.deduction) : undefined,
+        feeSnapshot: p?.feeSnapshot ? Number(p.feeSnapshot) : undefined,
+        bonus: p?.bonus ? Number(p.bonus) : undefined,
+        deduction: p?.deduction ? Number(p.deduction) : undefined,
       };
     });
-  }, [paymentsQuery.data, locale]);
+  }, [paymentsData, locale]);
 
   const selectedPersonType = selectedPayment?.type === 'income' ? 'student' : selectedPayment ? 'teacher' : null;
   const selectedStudentId = selectedPersonType === 'student' ? selectedPayment?.studentId : undefined;
@@ -205,39 +225,14 @@ export default function PaymentManagementPage() {
   }, [payments]);
 
   // Filter and sort payments
+  // Note: type, status, search, and paymentMethod are handled by backend pagination
+  // We only need to apply client-side filtering for className (not supported by backend yet)
   const filteredPayments = useMemo(() => {
     let result = [...payments];
 
-    // Apply type filter
-    if (filters.type !== 'all') {
-      result = result.filter((payment) => payment.type === filters.type);
-    }
-
-    // Apply status filter
-    if (filters.status !== 'all') {
-      result = result.filter((payment) => payment.status === filters.status);
-    }
-
-    // Apply search filter
-    if (filters.searchQuery) {
-      const query = filters.searchQuery.toLowerCase();
-      result = result.filter(
-        (payment) =>
-          payment.invoiceId.toLowerCase().includes(query) ||
-          (payment.studentName && payment.studentName.toLowerCase().includes(query)) ||
-          (payment.teacherName && payment.teacherName.toLowerCase().includes(query)) ||
-          (payment.className && payment.className.toLowerCase().includes(query))
-      );
-    }
-
-    // Apply class filter
+    // Apply class filter (client-side only, backend doesn't support this yet)
     if (filters.className !== 'all') {
       result = result.filter((payment) => payment.className === filters.className);
-    }
-
-    // Apply payment method filter
-    if (filters.paymentMethod !== 'all') {
-      result = result.filter((payment) => payment.paymentMethod === filters.paymentMethod);
     }
 
     // Apply sorting
@@ -288,6 +283,28 @@ export default function PaymentManagementPage() {
         error={errorMessage || undefined}
       />
 
+      {/* Load More Button */}
+      {paymentsQuery.hasNextPage && (
+        <div className="flex justify-center">
+          <Button
+            onClick={() => paymentsQuery.fetchNextPage()}
+            disabled={paymentsQuery.isFetchingNextPage}
+            variant="outline"
+            size="lg"
+            className="gap-2"
+          >
+            {paymentsQuery.isFetchingNextPage ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                {tCommon('loading')}
+              </>
+            ) : (
+              tCommon('loadMore')
+            )}
+          </Button>
+        </div>
+      )}
+
       {/* Person Detail Drawer */}
       <PersonDetailDrawer
         isOpen={isDrawerOpen}
@@ -296,6 +313,10 @@ export default function PaymentManagementPage() {
           setSelectedPayment(null);
         }}
         person={selectedPerson}
+        isLoading={
+          (selectedPersonType === 'student' && studentQuery.isLoading) ||
+          (selectedPersonType === 'teacher' && teacherQuery.isLoading)
+        }
       />
     </div>
   );

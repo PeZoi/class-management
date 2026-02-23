@@ -1,5 +1,5 @@
 import http from "@/lib/http";
-import { ResponseType, StudentRequest, StudentType, ClassHistoryResponse, UpdateStudentShiftRequest, BulkUpdateStudentShiftRequest, RemoveStudentsFromClassRequest } from "@/types";
+import { ResponseType, StudentRequest, StudentType, ClassHistoryResponse, UpdateStudentShiftRequest, BulkUpdateStudentShiftRequest, RemoveStudentsFromClassRequest, PageResponse } from "@/types";
 
 export const studentService = {
   createStudent: (studentData: StudentRequest) => {
@@ -25,7 +25,28 @@ export const studentService = {
   removeStudentsFromClass: async (request: RemoveStudentsFromClassRequest): Promise<ResponseType<StudentType[], StudentType[]>> => {
     return http.put<ResponseType<StudentType[], StudentType[]>>('/api/student/remove-from-class', request);
   },
-  getStudents: () => http.get<ResponseType<StudentType[], StudentType[]>>('/api/student/get-all'),
+  getStudents: (
+    page: number, 
+    size: number, 
+    search: string,
+    filters?: {
+      gender?: 'MALE' | 'FEMALE' | 'OTHER';
+      status?: 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DROPPED_OUT';
+      classId?: string;
+    }
+  ) => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('size', String(size));
+    if (search) params.append('search', search);
+    if (filters?.gender) params.append('gender', filters.gender);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.classId) params.append('classId', filters.classId);
+    
+    return http.get<ResponseType<PageResponse<StudentType>, PageResponse<StudentType>>>(
+      `/api/student/get-all?${params.toString()}`
+    );
+  },
   getStudentsByClass: (classId: string) => http.get<ResponseType<StudentType[], StudentType[]>>(`/api/student/get-students-by-class/${classId}`),
   getStudentsByClassShift: (classShiftId: string) =>
     http.get<ResponseType<StudentType[], StudentType[]>>(`/api/student/get-students-by-class-shift/${classShiftId}`),

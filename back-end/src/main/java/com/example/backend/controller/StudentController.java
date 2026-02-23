@@ -4,8 +4,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.backend.dto.common.PageResponse;
 import com.example.backend.dto.student.ClassHistoryResponse;
 import com.example.backend.dto.student.UpdateStudentShiftRequest;
+import com.example.backend.enums.Genders;
+import com.example.backend.enums.StudentStatus;
 import com.example.backend.dto.student.BulkUpdateStudentShiftRequest;
 import com.example.backend.dto.student.RemoveStudentsFromClassRequest;
 import com.example.backend.dto.student.StudentRequest;
@@ -22,10 +25,29 @@ import java.util.List;
 public class StudentController {
     private final StudentService studentService;
 
+    /**
+     * Get all students with pagination, search and filtering support
+     * @param page Page number (0-based), default 0
+     * @param size Number of items per page, default 10
+     * @param search Search term for fullName, email, or phoneNumber (optional)
+     * @param gender Filter by gender: MALE, FEMALE, OTHER (optional)
+     * @param status Filter by status: ACTIVE, INACTIVE, GRADUATED, DROPPED_OUT (optional)
+     * @param classId Filter by class ID (optional)
+     * @return PageResponse with students and pagination metadata
+     */
     @GetMapping("/get-all")
-    public ResponseEntity<List<StudentResponse>> getAll() {
-        List<StudentResponse> studentResponseList = studentService.getAll();
-        return new ResponseEntity<>(studentResponseList, HttpStatus.OK);
+    public ResponseEntity<PageResponse<StudentResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false) Genders gender,
+            @RequestParam(required = false) StudentStatus status,
+            @RequestParam(required = false) String classId
+    ) {
+        PageResponse<StudentResponse> response = studentService.getAllPaginated(
+                page, size, search, gender, status, classId
+        );
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @GetMapping("/get-students-by-class/{classId}")

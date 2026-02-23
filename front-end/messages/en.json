@@ -28,6 +28,7 @@
     "loadingStudents": "Loading student list...",
     "loadingClasses": "Loading class list...",
     "loadingTeachers": "Loading teacher list...",
+    "loadMore": "Load More",
     "confirm": "Confirm",
     "confirmDelete": "Confirm delete",
     "confirmRemove": "Confirm remove",
@@ -201,7 +202,6 @@
     "daysOverdue": "Days Overdue",
     "actions": "Actions",
     "viewDetail": "View Details",
-    "viewDetails": "View details",
     "overdueStudents": "Students with Unpaid Fees",
     "overdueStudentsDescription": "List of students with outstanding payments, sorted by number of unpaid packages",
     "noOverdueStudents": "No students with unpaid fees",
@@ -905,9 +905,6 @@
     "paySalary": "Pay Salary",
     "paySalaryTitle": "Pay Teacher Salary",
     "paySalaryDescription": "Record salary payment for teacher",
-    "baseSalary": "Base Salary",
-    "bonus": "Bonus",
-    "deduction": "Deduction",
     "totalSalary": "Total Salary",
     "paymentPeriod": "Payment Period",
     "periodPlaceholder": "e.g. December 2024",
@@ -985,8 +982,7 @@
     "packagePaymentLabel": "Payment package:",
     "packageLabel": "Package {number}",
     "sessionRangeLabel": "Session range:",
-    "sessionRange": "Session {start} - {end}",
-    "paymentInfo": "Payment Information"
+    "sessionRange": "Session {start} - {end}"
   },
   "notFound": {
     "title": "Page Not Found",

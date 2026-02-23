@@ -1,4 +1,4 @@
-import PaymentManagementPage from '@/app/[locale]/payment-management/payment-management';
+import PaymentManagementPage from '@/app/[locale]/payment-management/payment-management-page';
 import { RoleGuard } from '@/components/role-guard';
 
 export default function Index() {

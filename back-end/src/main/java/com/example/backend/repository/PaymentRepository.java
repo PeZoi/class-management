@@ -2,6 +2,11 @@ package com.example.backend.repository;
 
 import com.example.backend.entity.Payment;
 import com.example.backend.enums.PaymentDirection;
+import com.example.backend.enums.PaymentMethod;
+import com.example.backend.enums.PaymentStatus;
+import com.example.backend.enums.PaymentType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -85,4 +90,111 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     // Lấy payments với class được fetch sẵn (để tránh lazy loading exception)
     @Query("SELECT p FROM Payment p LEFT JOIN FETCH p.clazz WHERE p.direction = :direction AND p.createdAt >= :startDate AND p.createdAt < :endDate")
     List<Payment> findAllByDirectionAndCreatedAtBetweenWithClass(@Param("direction") PaymentDirection direction, @Param("startDate") Instant startDate, @Param("endDate") Instant endDate);
+
+    // ===== PERFORMANCE OPTIMIZATION QUERIES (AGGREGATION) =====
+    
+    // Tính tổng paid amount theo direction và billing month (thay thế findAll() + stream)
+    @Query("""
+        SELECT COALESCE(SUM(p.paid), 0) 
+        FROM Payment p 
+        WHERE p.direction = :direction 
+        AND p.billingMonth = :billingMonth
+    """)
+    Long sumPaidByDirectionAndBillingMonth(
+        @Param("direction") PaymentDirection direction, 
+        @Param("billingMonth") Instant billingMonth
+    );
+
+    // Count distinct students có payment trong tháng (thay thế findAll() + stream)
+    @Query("""
+        SELECT COUNT(DISTINCT p.student.id) 
+        FROM Payment p 
+        WHERE p.billingMonth = :billingMonth
+        AND p.student IS NOT NULL
+    """)
+    Long countDistinctStudentsByBillingMonth(@Param("billingMonth") Instant billingMonth);
+
+    // Tính tổng salary theo teacher và billing month - dùng aggregation
+    // Returns: List<Object[]> where [0] = teacherId (String), [1] = totalAmount (Long)
+    @Query("""
+        SELECT p.teacher.id,
+               COALESCE(SUM(p.feeSnapshot + COALESCE(p.bonus, 0) - COALESCE(p.deduction, 0)), 0)
+        FROM Payment p
+        WHERE p.paymentType = 'TEACHER_SALARY'
+        AND p.billingMonth = :billingMonth
+        AND p.teacher IS NOT NULL
+        GROUP BY p.teacher.id
+    """)
+    List<Object[]> sumSalaryByBillingMonth(@Param("billingMonth") Instant billingMonth);
+
+    // Lấy payments theo direction và created date range - aggregated by payment method
+    // Returns: List<Object[]> where [0] = paymentMethod (PaymentMethod), [1] = totalPaid (Long), [2] = count (Long)
+    @Query("""
+        SELECT p.paymentMethod, 
+               COALESCE(SUM(p.paid), 0),
+               COUNT(p)
+        FROM Payment p
+        WHERE p.direction = :direction
+        AND p.createdAt >= :startDate
+        AND p.createdAt < :endDate
+        GROUP BY p.paymentMethod
+    """)
+    List<Object[]> sumPaymentsByMethodAndDateRange(
+        @Param("direction") PaymentDirection direction,
+        @Param("startDate") Instant startDate,
+        @Param("endDate") Instant endDate
+    );
+
+    // Tương tự cho payment status - aggregated by status
+    // Returns: List<Object[]> where [0] = paymentStatus (PaymentStatus), [1] = totalPaid (Long), [2] = count (Long)
+    @Query("""
+        SELECT p.paymentStatus,
+               COALESCE(SUM(p.paid), 0),
+               COUNT(p)
+        FROM Payment p
+        WHERE p.direction = :direction
+        AND p.createdAt >= :startDate
+        AND p.createdAt < :endDate
+        GROUP BY p.paymentStatus
+    """)
+    List<Object[]> sumPaymentsByStatusAndDateRange(
+        @Param("direction") PaymentDirection direction,
+        @Param("startDate") Instant startDate,
+        @Param("endDate") Instant endDate
+    );
+
+    // ===== PAGINATION SUPPORT FOR PAYMENT TABLE =====
+    
+    /**
+     * Tìm kiếm payments với pagination và filtering support
+     * Filter theo: paymentId, direction, paymentType, status, student name, teacher name
+     */
+    @Query("""
+        SELECT p FROM Payment p
+        LEFT JOIN FETCH p.student s
+        LEFT JOIN FETCH p.teacher t
+        LEFT JOIN FETCH p.clazz c
+        WHERE (:search IS NULL OR :search = ''
+               OR LOWER(p.paymentId) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(s.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(t.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+        AND (:direction IS NULL OR p.direction = :direction)
+        AND (:paymentType IS NULL OR p.paymentType = :paymentType)
+        AND (:paymentStatus IS NULL OR p.paymentStatus = :paymentStatus)
+        AND (:paymentMethod IS NULL OR p.paymentMethod = :paymentMethod)
+        AND (:startDate IS NULL OR p.createdAt >= :startDate)
+        AND (:endDate IS NULL OR p.createdAt <= :endDate)
+        ORDER BY p.createdAt DESC
+    """)
+    Page<Payment> findAllWithFilters(
+        @Param("search") String search,
+        @Param("direction") PaymentDirection direction,
+        @Param("paymentType") PaymentType paymentType,
+        @Param("paymentStatus") PaymentStatus paymentStatus,
+        @Param("paymentMethod") PaymentMethod paymentMethod,
+        @Param("startDate") Instant startDate,
+        @Param("endDate") Instant endDate,
+        Pageable pageable
+    );
 }

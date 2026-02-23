@@ -49,115 +49,60 @@ public class DashboardService {
         // Get previous month start
         Instant previousMonthStart = getPreviousMonthStart();
 
-        // Total Classes
+        // Total Classes - optimized with count()
         Long totalClasses = classRepository.count();
 
-        // Total Students
+        // Total Students - optimized with count()
         Long totalStudents = studentRepository.count();
 
-        // Total Teachers (ROLE_TEACHER and status != DELETED)
-        Long totalTeachers = userRepository.findAll().stream()
-                .filter(user -> Objects.equals(user.getRole().getName(), "ROLE_TEACHER"))
-                .filter(user -> user.getStatus() != Status.DELETED)
-                .count();
+        // Total Teachers - optimized with custom query (no more findAll())
+        Long totalTeachers = userRepository.countByRoleNameAndStatusNot("ROLE_TEACHER", Status.DELETED);
 
-        // Revenue this month (Total Revenue = current month revenue)
-        Long currentMonthRevenue = paymentRepository.findAll().stream()
-                .filter(payment -> payment.getDirection() == PaymentDirection.INCOME)
-                .filter(payment -> payment.getBillingMonth() != null && 
-                        payment.getBillingMonth().equals(currentMonthStart))
-                .mapToLong(payment -> payment.getPaid() != null ? payment.getPaid() : 0L)
-                .sum();
+        // Revenue this month - optimized with aggregation query (no more findAll())
+        Long currentMonthRevenue = paymentRepository.sumPaidByDirectionAndBillingMonth(
+                PaymentDirection.INCOME, currentMonthStart
+        );
+        if (currentMonthRevenue == null) {
+            currentMonthRevenue = 0L;
+        }
 
-        // Revenue previous month
-        Long previousMonthRevenue = paymentRepository.findAll().stream()
-                .filter(payment -> payment.getDirection() == PaymentDirection.INCOME)
-                .filter(payment -> payment.getBillingMonth() != null && 
-                        payment.getBillingMonth().equals(previousMonthStart))
-                .mapToLong(payment -> payment.getPaid() != null ? payment.getPaid() : 0L)
-                .sum();
+        // Revenue previous month - optimized with aggregation query
+        Long previousMonthRevenue = paymentRepository.sumPaidByDirectionAndBillingMonth(
+                PaymentDirection.INCOME, previousMonthStart
+        );
+        if (previousMonthRevenue == null) {
+            previousMonthRevenue = 0L;
+        }
 
         // Calculate revenue growth
         Double revenueGrowth = calculateGrowth(currentMonthRevenue, previousMonthRevenue);
 
-        // Students with payments this month (unique students) - Total Students = current month students
-        Long currentMonthStudents = paymentRepository.findAll().stream()
-                .filter(payment -> payment.getBillingMonth() != null && 
-                        payment.getBillingMonth().equals(currentMonthStart))
-                .map(payment -> payment.getStudent() != null ? payment.getStudent().getId() : null)
-                .filter(Objects::nonNull)
-                .distinct()
-                .count();
+        // Students with payments this month - optimized with count distinct query
+        Long currentMonthStudents = paymentRepository.countDistinctStudentsByBillingMonth(currentMonthStart);
+        if (currentMonthStudents == null) {
+            currentMonthStudents = 0L;
+        }
 
-        // Students with payments previous month (unique students)
-        Long previousMonthStudents = paymentRepository.findAll().stream()
-                .filter(payment -> payment.getBillingMonth() != null && 
-                        payment.getBillingMonth().equals(previousMonthStart))
-                .map(payment -> payment.getStudent() != null ? payment.getStudent().getId() : null)
-                .filter(Objects::nonNull)
-                .distinct()
-                .count();
+        // Students with payments previous month - optimized with count distinct query
+        Long previousMonthStudents = paymentRepository.countDistinctStudentsByBillingMonth(previousMonthStart);
+        if (previousMonthStudents == null) {
+            previousMonthStudents = 0L;
+        }
 
         // Calculate student growth
         Double studentGrowth = calculateGrowth(currentMonthStudents, previousMonthStudents);
 
-        // Calculate total salary expense for current month
-        // Tổng lương giáo viên cần trả = tổng totalAmount (feeSnapshot + bonus - deduction) cho tất cả giáo viên
-        // Nhóm payments theo teacherId và billingMonth
-        Map<String, Long> teacherTotalAmountMap = new HashMap<>();
-        Map<String, Long> teacherPaidAmountMap = new HashMap<>();
-        
-        paymentRepository.findAll().stream()
-                .filter(payment -> payment.getPaymentType() == PaymentType.TEACHER_SALARY)
-                .filter(payment -> payment.getBillingMonth() != null && 
-                        payment.getBillingMonth().equals(currentMonthStart))
-                .filter(payment -> payment.getTeacher() != null)
-                .forEach(payment -> {
-                    String teacherId = payment.getTeacher().getId();
-                    
-                    // Tính totalAmount từ payment (feeSnapshot + bonus - deduction)
-                    Long feeSnapshot = payment.getFeeSnapshot() != null ? payment.getFeeSnapshot() : 0L;
-                    Long bonus = payment.getBonus() != null ? payment.getBonus() : 0L;
-                    Long deduction = payment.getDeduction() != null ? payment.getDeduction() : 0L;
-                    Long totalAmount = feeSnapshot + bonus - deduction;
-                    
-                    // Lưu totalAmount lớn nhất cho mỗi giáo viên (nếu có nhiều payments với totalAmount khác nhau)
-                    teacherTotalAmountMap.put(teacherId, 
-                            Math.max(teacherTotalAmountMap.getOrDefault(teacherId, 0L), totalAmount));
-                    
-                    // Tổng hợp paidAmount cho mỗi giáo viên
-                    Long paidAmount = payment.getPaid() != null ? payment.getPaid() : 0L;
-                    teacherPaidAmountMap.put(teacherId, 
-                            teacherPaidAmountMap.getOrDefault(teacherId, 0L) + paidAmount);
-                });
-        
-        // Tính tổng lương cần trả = tổng totalAmount của tất cả giáo viên
-        Long totalSalaryExpense = teacherTotalAmountMap.values().stream()
-                .mapToLong(Long::longValue)
+        // Calculate total salary expense for current month - optimized with aggregation query
+        // Returns: List<Object[]> where [0] = teacherId (String), [1] = totalAmount (Long)
+        List<Object[]> currentSalaries = paymentRepository.sumSalaryByBillingMonth(currentMonthStart);
+        Long totalSalaryExpense = currentSalaries.stream()
+                .mapToLong(row -> ((Number) row[1]).longValue())
                 .sum();
         
-        // Calculate total salary expense for previous month (for growth calculation)
-        Map<String, Long> prevTeacherTotalAmountMap = new HashMap<>();
-        
-        paymentRepository.findAll().stream()
-                .filter(payment -> payment.getPaymentType() == PaymentType.TEACHER_SALARY)
-                .filter(payment -> payment.getBillingMonth() != null && 
-                        payment.getBillingMonth().equals(previousMonthStart))
-                .filter(payment -> payment.getTeacher() != null)
-                .forEach(payment -> {
-                    String teacherId = payment.getTeacher().getId();
-                    
-                    Long feeSnapshot = payment.getFeeSnapshot() != null ? payment.getFeeSnapshot() : 0L;
-                    Long bonus = payment.getBonus() != null ? payment.getBonus() : 0L;
-                    Long deduction = payment.getDeduction() != null ? payment.getDeduction() : 0L;
-                    Long totalAmount = feeSnapshot + bonus - deduction;
-                    
-                    prevTeacherTotalAmountMap.put(teacherId, 
-                            Math.max(prevTeacherTotalAmountMap.getOrDefault(teacherId, 0L), totalAmount));
-                });
-        
-        Long previousMonthSalaryExpense = prevTeacherTotalAmountMap.values().stream()
-                .mapToLong(Long::longValue)
+        // Calculate total salary expense for previous month - optimized with aggregation query
+        List<Object[]> previousSalaries = paymentRepository.sumSalaryByBillingMonth(previousMonthStart);
+        Long previousMonthSalaryExpense = previousSalaries.stream()
+                .mapToLong(row -> ((Number) row[1]).longValue())
                 .sum();
         
         // Calculate salary expense growth
@@ -232,28 +177,11 @@ public class DashboardService {
                 revenue = 0L;
             }
 
-            // Tính tổng expense (lương giáo viên) cho tháng này
-            Map<String, Long> teacherTotalAmountMap = new HashMap<>();
-            
-            paymentRepository.findAll().stream()
-                    .filter(payment -> payment.getPaymentType() == PaymentType.TEACHER_SALARY)
-                    .filter(payment -> payment.getBillingMonth() != null && 
-                            payment.getBillingMonth().equals(billingMonth))
-                    .filter(payment -> payment.getTeacher() != null)
-                    .forEach(payment -> {
-                        String teacherId = payment.getTeacher().getId();
-                        
-                        Long feeSnapshot = payment.getFeeSnapshot() != null ? payment.getFeeSnapshot() : 0L;
-                        Long bonus = payment.getBonus() != null ? payment.getBonus() : 0L;
-                        Long deduction = payment.getDeduction() != null ? payment.getDeduction() : 0L;
-                        Long totalAmount = feeSnapshot + bonus - deduction;
-                        
-                        teacherTotalAmountMap.put(teacherId, 
-                                Math.max(teacherTotalAmountMap.getOrDefault(teacherId, 0L), totalAmount));
-                    });
-            
-            Long expense = teacherTotalAmountMap.values().stream()
-                    .mapToLong(Long::longValue)
+            // Tính tổng expense (lương giáo viên) cho tháng này - OPTIMIZED
+            // Sử dụng aggregation query thay vì findAll()
+            List<Object[]> salaries = paymentRepository.sumSalaryByBillingMonth(billingMonth);
+            Long expense = salaries.stream()
+                    .mapToLong(row -> ((Number) row[1]).longValue())
                     .sum();
 
             // Tạo label cho tháng
@@ -274,13 +202,14 @@ public class DashboardService {
     }
 
     /**
-     * Lấy danh sách học sinh chưa đóng tiền.
+     * Lấy danh sách học sinh chưa đóng tiền - OPTIMIZED với limit parameter.
      * Ưu tiên dùng sessionPaymentStatuses (theo gói buổi học) để tính tổng nợ từ quá khứ tới hiện tại.
      * Nếu học viên chưa có sessionPaymentStatuses thì fallback về monthPaymentStatuses như cũ.
      *
-     * @return Danh sách học sinh có nợ
+     * @param limit Số lượng học sinh tối đa cần lấy (top N students có nợ nhiều nhất)
+     * @return Danh sách học sinh có nợ, giới hạn theo limit
      */
-    public List<StudentResponse> getStudentsWithUnpaidFees() {
+    public List<StudentResponse> getStudentsWithUnpaidFees(int limit) {
         // Lấy tất cả học sinh với đầy đủ thông tin payment (monthPaymentStatuses & sessionPaymentStatuses)
         List<StudentResponse> allStudents = studentService.getAll();
 
@@ -336,6 +265,8 @@ public class DashboardService {
                 .filter(entry -> entry.getValue() > 0)
                 // Sắp xếp giảm dần theo tổng nợ
                 .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()))
+                // OPTIMIZED: Giới hạn số lượng trả về (dashboard chỉ cần top N students)
+                .limit(limit > 0 ? limit : 10)
                 // Trả về danh sách StudentResponse
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
@@ -401,7 +332,8 @@ public class DashboardService {
     }
 
     /**
-     * Lấy doanh thu theo phương thức thanh toán (theo ngày thanh toán)
+     * Lấy doanh thu theo phương thức thanh toán (theo ngày thanh toán) - OPTIMIZED
+     * Sử dụng aggregation query thay vì findAll()
      */
     public List<RevenueByPaymentMethodResponse> getRevenueByPaymentMethod(String period) {
         LocalDate now = LocalDate.now();
@@ -425,38 +357,35 @@ public class DashboardService {
         Instant startInstant = startDate.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant endInstant = now.plusMonths(1).withDayOfMonth(1).atStartOfDay(ZoneOffset.UTC).toInstant();
         
-        Map<PaymentMethod, RevenueByPaymentMethodResponse> revenueMap = new HashMap<>();
+        // Optimized: Use aggregation query instead of findAll() + stream
+        // Returns: List<Object[]> where [0] = paymentMethod, [1] = totalPaid, [2] = count
+        List<Object[]> results = paymentRepository.sumPaymentsByMethodAndDateRange(
+                PaymentDirection.INCOME, startInstant, endInstant
+        );
         
-        paymentRepository.findAll().stream()
-                .filter(payment -> payment.getDirection() == PaymentDirection.INCOME)
-                .filter(payment -> payment.getCreatedAt() != null)
-                .filter(payment -> payment.getCreatedAt().isAfter(startInstant) && payment.getCreatedAt().isBefore(endInstant))
-                .forEach(payment -> {
-                    PaymentMethod method = payment.getPaymentMethod();
-                    Long paid = payment.getPaid() != null ? payment.getPaid() : 0L;
+        List<RevenueByPaymentMethodResponse> responses = results.stream()
+                .map(row -> {
+                    PaymentMethod method = (PaymentMethod) row[0];
+                    Long totalPaid = ((Number) row[1]).longValue();
+                    Long count = ((Number) row[2]).longValue();
+                    String methodLabel = getPaymentMethodLabel(method);
                     
-                    RevenueByPaymentMethodResponse existing = revenueMap.get(method);
-                    if (existing == null) {
-                        String methodLabel = getPaymentMethodLabel(method);
-                        revenueMap.put(method, RevenueByPaymentMethodResponse.builder()
-                                .paymentMethod(method.name())
-                                .paymentMethodLabel(methodLabel)
-                                .revenue(paid)
-                                .count(1L)
-                                .build());
-                    } else {
-                        existing.setRevenue(existing.getRevenue() + paid);
-                        existing.setCount(existing.getCount() + 1);
-                    }
-                });
-        
-        return revenueMap.values().stream()
+                    return RevenueByPaymentMethodResponse.builder()
+                            .paymentMethod(method.name())
+                            .paymentMethodLabel(methodLabel)
+                            .revenue(totalPaid)
+                            .count(count)
+                            .build();
+                })
                 .sorted((a, b) -> Long.compare(b.getRevenue(), a.getRevenue()))
                 .collect(Collectors.toList());
+        
+        return responses;
     }
 
     /**
-     * Lấy doanh thu theo trạng thái thanh toán (theo ngày thanh toán)
+     * Lấy doanh thu theo trạng thái thanh toán (theo ngày thanh toán) - OPTIMIZED
+     * Sử dụng aggregation query thay vì findAll()
      */
     public List<RevenueByStatusResponse> getRevenueByStatus(String period) {
         LocalDate now = LocalDate.now();
@@ -480,34 +409,30 @@ public class DashboardService {
         Instant startInstant = startDate.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant endInstant = now.plusMonths(1).withDayOfMonth(1).atStartOfDay(ZoneOffset.UTC).toInstant();
         
-        Map<PaymentStatus, RevenueByStatusResponse> revenueMap = new HashMap<>();
+        // Optimized: Use aggregation query instead of findAll() + stream
+        // Returns: List<Object[]> where [0] = paymentStatus, [1] = totalPaid, [2] = count
+        List<Object[]> results = paymentRepository.sumPaymentsByStatusAndDateRange(
+                PaymentDirection.INCOME, startInstant, endInstant
+        );
         
-        paymentRepository.findAll().stream()
-                .filter(payment -> payment.getDirection() == PaymentDirection.INCOME)
-                .filter(payment -> payment.getCreatedAt() != null)
-                .filter(payment -> payment.getCreatedAt().isAfter(startInstant) && payment.getCreatedAt().isBefore(endInstant))
-                .forEach(payment -> {
-                    PaymentStatus status = payment.getPaymentStatus();
-                    Long paid = payment.getPaid() != null ? payment.getPaid() : 0L;
+        List<RevenueByStatusResponse> responses = results.stream()
+                .map(row -> {
+                    PaymentStatus status = (PaymentStatus) row[0];
+                    Long totalPaid = ((Number) row[1]).longValue();
+                    Long count = ((Number) row[2]).longValue();
+                    String statusLabel = getPaymentStatusLabel(status);
                     
-                    RevenueByStatusResponse existing = revenueMap.get(status);
-                    if (existing == null) {
-                        String statusLabel = getPaymentStatusLabel(status);
-                        revenueMap.put(status, RevenueByStatusResponse.builder()
-                                .status(status.name())
-                                .statusLabel(statusLabel)
-                                .revenue(paid)
-                                .count(1L)
-                                .build());
-                    } else {
-                        existing.setRevenue(existing.getRevenue() + paid);
-                        existing.setCount(existing.getCount() + 1);
-                    }
-                });
-        
-        return revenueMap.values().stream()
+                    return RevenueByStatusResponse.builder()
+                            .status(status.name())
+                            .statusLabel(statusLabel)
+                            .revenue(totalPaid)
+                            .count(count)
+                            .build();
+                })
                 .sorted((a, b) -> Long.compare(b.getRevenue(), a.getRevenue()))
                 .collect(Collectors.toList());
+        
+        return responses;
     }
 
     private String getPaymentMethodLabel(PaymentMethod method) {

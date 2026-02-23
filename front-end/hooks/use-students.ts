@@ -10,24 +10,46 @@ import {
 } from '@/lib/queryHelpers';
 import { queryKeys } from '@/lib/queryKeys';
 import { studentService } from '@/services/student-service';
-import { ClassHistoryResponse, StudentRequest, StudentType } from '@/types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ClassHistoryResponse, StudentRequest, StudentType, PageResponse } from '@/types';
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toast } from 'react-toastify';
+import { useDebounce } from './use-debounce';
 
 /**
- * Hook để lấy tất cả students
+ * Hook để lấy tất cả students với pagination, filtering và infinite scroll
+ * Sử dụng useInfiniteQuery để load thêm data khi scroll
+ * 
+ * @param search Search term (debounced automatically)
+ * @param filters Object containing optional filters (gender, status, classId)
+ * @returns Infinite query result với pages data
  */
-export function useStudents() {
-  return useQuery<StudentType[]>({
-    queryKey: queryKeys.students.list(),
-    queryFn: async () => {
-      const response = await studentService.getStudents();
+export function useStudents(
+  search: string = '',
+  filters: {
+    gender?: 'MALE' | 'FEMALE' | 'OTHER';
+    status?: 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DROPPED_OUT';
+    classId?: string;
+  } = {}
+) {
+  const debouncedSearch = useDebounce(search, 500);
+  
+  return useInfiniteQuery<PageResponse<StudentType>>({
+    queryKey: queryKeys.students.listPaginated(debouncedSearch, filters),
+    queryFn: async ({ pageParam = 0 }) => {
+      const response = await studentService.getStudents(
+        pageParam as number, 
+        10, 
+        debouncedSearch,
+        filters
+      );
       if (response.status === 200 && response.data) {
         return response.data;
       }
       throw new Error('Failed to fetch students');
     },
+    getNextPageParam: (lastPage) => lastPage.hasNext ? lastPage.page + 1 : undefined,
+    initialPageParam: 0,
   });
 }
 
@@ -323,4 +345,3 @@ export function useBulkRemoveStudentsFromClass() {
     },
   });
 }
-

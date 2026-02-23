@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toast } from 'react-toastify';
 
@@ -6,21 +6,46 @@ import { invalidateDashboard, invalidatePaymentsByStudent, invalidatePaymentsByT
 import { queryKeys } from '@/lib/queryKeys';
 import { paymentService } from '@/services/payment-service';
 import { formatCurrency } from '@/utils/helper';
-import { CreateStudentPaymentData, CreateTeacherPaymentData, CreateSessionPaymentData, PaymentResponse } from '@/types';
+import { CreateStudentPaymentData, CreateTeacherPaymentData, CreateSessionPaymentData, PaymentResponse, PageResponse } from '@/types';
+import { useDebounce } from './use-debounce';
 
 /**
- * Hook để lấy tất cả payments (payment management list)
+ * Hook để lấy tất cả payments với pagination và infinite scroll
+ * Hỗ trợ filter theo direction, paymentType, paymentStatus, paymentMethod, date range
+ * 
+ * @param search Search term (debounced automatically)
+ * @param filters Object containing optional filters
+ * @returns Infinite query result với pages data
  */
-export function usePayments() {
-  return useQuery<PaymentResponse[]>({
-    queryKey: queryKeys.payments.list(),
-    queryFn: async () => {
-      const response = await paymentService.getAllPayments();
+export function usePayments(
+  search: string = '',
+  filters: {
+    direction?: 'INCOME' | 'EXPENSE';
+    paymentType?: 'STUDENT_FEE' | 'TEACHER_SALARY' | 'REFUND';
+    paymentStatus?: 'COMPLETED' | 'INCOMPLETE' | 'CANCELLED';
+    paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CREDIT_CARD' | 'E_WALLET';
+    startDate?: string;
+    endDate?: string;
+  } = {},
+) {
+  const debouncedSearch = useDebounce(search, 500);
+  
+  return useInfiniteQuery<PageResponse<PaymentResponse>>({
+    queryKey: queryKeys.payments.listPaginated({ ...filters, search: debouncedSearch }),
+    queryFn: async ({ pageParam = 0 }) => {
+      const response = await paymentService.getPaymentsPaginated(
+        pageParam as number,
+        10,
+        debouncedSearch,
+        filters,
+      );
       if (response.status === 200 && response.data) {
         return response.data;
       }
       throw new Error('Failed to fetch payments');
     },
+    getNextPageParam: (lastPage) => (lastPage.hasNext ? lastPage.page + 1 : undefined),
+    initialPageParam: 0,
   });
 }
 
@@ -208,5 +233,4 @@ export function useCreateSessionPayment() {
     },
   });
 }
-
 

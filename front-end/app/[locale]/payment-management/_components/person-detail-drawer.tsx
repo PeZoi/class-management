@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import {
   BookOpen,
@@ -20,28 +21,71 @@ interface PersonDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   person: PersonDetail | null;
+  isLoading?: boolean;
 }
 
 export function PersonDetailDrawer({
   isOpen,
   onClose,
   person,
+  isLoading = false,
 }: PersonDetailDrawerProps) {
   const t = useTranslations('payment-management');
+  const tCommon = useTranslations('common');
 
-  if (!person) return null;
-
-  const isStudent = person.type === 'student';
+  const isStudent = person?.type === 'student';
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-900 px-5">
-        <>
-          {/* Header */}
-          <div className="bg-white dark:bg-slate-800 -m-6 mb-4 p-6 border-b border-slate-200 dark:border-slate-700">
-            <SheetTitle className="text-xl font-semibold text-slate-900 dark:text-slate-50 my-4 text-center">
-              {isStudent ? t('personDetailTitle_student') : t('personDetailTitle_teacher')}
-            </SheetTitle>
+        {!person || isLoading ? (
+          // Loading UI
+          <div className="space-y-4">
+            {/* Header Skeleton */}
+            <div className="bg-white dark:bg-slate-800 -m-6 mb-4 p-6 border-b border-slate-200 dark:border-slate-700">
+              <SheetTitle className="sr-only">
+                {tCommon('loading')}
+              </SheetTitle>
+              <SheetDescription className="sr-only">
+                {tCommon('loadingData')}
+              </SheetDescription>
+              <Skeleton className="h-7 w-48 mx-auto mb-4" />
+              <Separator className="mb-4" />
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-12 h-12 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              </div>
+            </div>
+
+            {/* Content Skeleton */}
+            <div className="space-y-3">
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-4">
+                <Skeleton className="h-5 w-32 mb-3" />
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-4">
+                <Skeleton className="h-5 w-32 mb-3" />
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="bg-white dark:bg-slate-800 -m-6 mb-4 p-6 border-b border-slate-200 dark:border-slate-700">
+              <SheetTitle className="text-xl font-semibold text-slate-900 dark:text-slate-50 my-4 text-center">
+                {isStudent ? t('personDetailTitle_student') : t('personDetailTitle_teacher')}
+              </SheetTitle>
 
             <Separator className="mb-4" />
 
@@ -218,7 +262,8 @@ export function PersonDetailDrawer({
               </Button>
             </div>
           </div>
-        </>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );

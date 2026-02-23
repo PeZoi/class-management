@@ -1,5 +1,6 @@
 package com.example.backend.service;
 
+import com.example.backend.dto.common.PageResponse;
 import com.example.backend.dto.student.ClassHistoryResponse;
 import com.example.backend.dto.student.MonthPaymentStatus;
 import com.example.backend.dto.student.SessionPaymentStatusDTO;
@@ -13,6 +14,7 @@ import com.example.backend.entity.ClassShift;
 import com.example.backend.entity.Payment;
 import com.example.backend.entity.Student;
 import com.example.backend.entity.StudentClass;
+import com.example.backend.enums.Genders;
 import com.example.backend.enums.StudentClassStatus;
 import com.example.backend.enums.StudentStatus;
 import com.example.backend.exception.NotFoundException;
@@ -27,6 +29,9 @@ import com.example.backend.exception.CustomException;
 import com.example.backend.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -150,6 +155,46 @@ public class StudentService {
             studentResponseList.add(studentResponse);
         }
         return studentResponseList;
+    }
+
+    /**
+     * Get all students with pagination, search and filtering support
+     * @param page Page number (0-based)
+     * @param size Number of items per page
+     * @param search Search term (searches in fullName, email, phoneNumber)
+     * @param gender Filter by gender (optional)
+     * @param status Filter by student status (optional)
+     * @param classId Filter by class ID (optional)
+     * @return PageResponse containing students and pagination metadata
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<StudentResponse> getAllPaginated(
+            int page, 
+            int size, 
+            String search,
+            Genders gender,
+            StudentStatus status,
+            String classId
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Student> studentPage = studentRepository.findAllWithFilters(search, gender, status, classId, pageable);
+        
+        List<StudentResponse> content = new ArrayList<>();
+        for (Student student : studentPage.getContent()) {
+            // Reuse existing logic to build student response with class info
+            StudentResponse studentResponse = buildStudentResponseWithCurrentClass(student.getId());
+            content.add(studentResponse);
+        }
+        
+        return new PageResponse<>(
+                content,
+                studentPage.getNumber(),
+                studentPage.getSize(),
+                studentPage.getTotalElements(),
+                studentPage.getTotalPages(),
+                studentPage.hasNext(),
+                studentPage.hasPrevious()
+        );
     }
 
     @Transactional(readOnly = true)

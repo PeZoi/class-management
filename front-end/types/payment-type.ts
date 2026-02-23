@@ -45,6 +45,7 @@ export interface ClassPayment {
 
 // Payment response (from backend)
 export interface PaymentResponse {
+  clazz: ClassPayment;
   id: string;
   paymentId: string;
   amount: number;

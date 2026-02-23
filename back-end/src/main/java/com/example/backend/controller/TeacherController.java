@@ -1,14 +1,15 @@
 package com.example.backend.controller;
 
+import com.example.backend.dto.common.PageResponse;
 import com.example.backend.dto.teacher.TeacherRequest;
 import com.example.backend.dto.teacher.TeacherResponse;
+import com.example.backend.enums.Genders;
+import com.example.backend.enums.Status;
 import com.example.backend.service.TeacherService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/teacher")
@@ -16,10 +17,27 @@ import java.util.List;
 public class TeacherController {
     private final TeacherService teacherService;
 
+    /**
+     * Get all teachers with pagination, search and filtering support
+     * @param page Page number (0-based), default 0
+     * @param size Number of items per page, default 10
+     * @param search Search term for fullName, email, or phoneNumber (optional)
+     * @param gender Filter by gender: MALE, FEMALE, OTHER (optional)
+     * @param status Filter by status: ACTIVE, INACTIVE (optional)
+     * @return PageResponse with teachers and pagination metadata
+     */
     @GetMapping("/get-all")
-    public ResponseEntity<List<TeacherResponse>> getAllTeachers() {
-        List<TeacherResponse> teachers = teacherService.getAllTeachers();
-        return ResponseEntity.ok(teachers);
+    public ResponseEntity<PageResponse<TeacherResponse>> getAllTeachers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false) Genders gender,
+            @RequestParam(required = false) Status status
+    ) {
+        PageResponse<TeacherResponse> response = teacherService.getAllPaginated(
+                page, size, search, gender, status
+        );
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/get/{id}")

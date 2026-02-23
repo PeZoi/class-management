@@ -56,24 +56,19 @@ export function GlobalSearchBar() {
       setIsOpen(true);
 
       try {
-        const query = debouncedSearchQuery.toLowerCase().trim();
+        const query = debouncedSearchQuery.trim();
+        
+        // Backend handles all search filtering, only fetch top results
         const [studentsResponse, teachersResponse] = await Promise.all([
-          studentService.getStudents(),
-          teacherService.getAllTeachers(),
+          studentService.getStudents(0, 100, query, undefined), // Backend filters students
+          teacherService.getAllTeachers(0, 100, query, undefined), // Backend filters teachers
         ]);
 
         const allResults: SearchResult[] = [];
 
-        // Filter students
+        // Map students (already filtered by backend)
         if (studentsResponse.status === 200 && studentsResponse.data) {
-          const filteredStudents = studentsResponse.data.filter(
-            (student: StudentType) =>
-              student.fullName.toLowerCase().includes(query) ||
-              student.email.toLowerCase().includes(query) ||
-              student.phoneNumber.includes(query),
-          );
-
-          filteredStudents.forEach((student: StudentType) => {
+          studentsResponse.data.content.forEach((student: StudentType) => {
             allResults.push({
               id: student.id,
               name: student.fullName,
@@ -83,16 +78,9 @@ export function GlobalSearchBar() {
           });
         }
 
-        // Filter teachers
+        // Map teachers (already filtered by backend)
         if (teachersResponse.status === 200 && teachersResponse.data) {
-          const filteredTeachers = teachersResponse.data.filter(
-            (teacher: TeacherType) =>
-              teacher.fullName.toLowerCase().includes(query) ||
-              teacher.email.toLowerCase().includes(query) ||
-              teacher.phoneNumber.includes(query),
-          );
-
-          filteredTeachers.forEach((teacher: TeacherType) => {
+          teachersResponse.data.content.forEach((teacher: TeacherType) => {
             allResults.push({
               id: teacher.id,
               name: teacher.fullName,

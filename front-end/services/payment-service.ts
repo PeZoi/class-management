@@ -1,5 +1,5 @@
 import http from '@/lib/http';
-import { ResponseType, PaymentRequest, PaymentResponse, CreateStudentPaymentData, CreateTeacherPaymentData, CreateSessionPaymentData } from '@/types';
+import { ResponseType, PaymentRequest, PaymentResponse, CreateStudentPaymentData, CreateTeacherPaymentData, CreateSessionPaymentData, PageResponse } from '@/types';
 
 // Helper function to convert CreateStudentPaymentData to PaymentRequest
 const convertToPaymentRequest = (data: CreateStudentPaymentData, monthlyFee: number): PaymentRequest => {
@@ -117,7 +117,46 @@ export const paymentService = {
   },
 
   getAllPayments: () => {
-    return http.get<ResponseType<PaymentResponse[], PaymentResponse[]>>('/api/payment');
+    // Note: Backend now returns PageResponse, but this method kept for backward compatibility
+    // If you need paginated data, use getPaymentsPaginated instead
+    return http.get<ResponseType<PageResponse<PaymentResponse>, PageResponse<PaymentResponse>>>('/api/payment?page=0&size=10');
+  },
+
+  /**
+   * Get payments with pagination and filtering - OPTIMIZED
+   * @param page Page number (0-based)
+   * @param size Number of items per page
+   * @param search Search term for paymentId, student/teacher/class name
+   * @param filters Object containing optional filters
+   * @returns PageResponse with payments and pagination metadata
+   */
+  getPaymentsPaginated: async (
+    page: number,
+    size: number,
+    search: string,
+    filters: {
+      direction?: 'INCOME' | 'EXPENSE';
+      paymentType?: 'STUDENT_FEE' | 'TEACHER_SALARY' | 'REFUND';
+      paymentStatus?: 'COMPLETED' | 'INCOMPLETE' | 'CANCELLED';
+      paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CREDIT_CARD' | 'E_WALLET';
+      startDate?: string;
+      endDate?: string;
+    } = {},
+  ) => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('size', String(size));
+    if (search) params.append('search', search);
+    if (filters.direction) params.append('direction', filters.direction);
+    if (filters.paymentType) params.append('paymentType', filters.paymentType);
+    if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
+    if (filters.paymentMethod) params.append('paymentMethod', filters.paymentMethod);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+
+    return await http.get<ResponseType<PageResponse<PaymentResponse>, PageResponse<PaymentResponse>>>(
+      `/api/payment?${params.toString()}`,
+    );
   },
 
   /**

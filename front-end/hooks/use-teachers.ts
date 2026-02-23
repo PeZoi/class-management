@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toast } from 'react-toastify';
 
@@ -11,16 +11,54 @@ import {
   invalidateTeacherLists,
 } from '@/lib/queryHelpers';
 import { teacherService } from '@/services/teacher-service';
-import { TeacherRequest, TeacherType } from '@/types';
+import { TeacherRequest, TeacherType, PageResponse } from '@/types';
+import { useDebounce } from './use-debounce';
 
 /**
- * Hook để lấy tất cả teachers
+ * Hook để lấy tất cả teachers với pagination, filtering và infinite scroll
+ * Sử dụng useInfiniteQuery để load thêm data khi scroll
+ * 
+ * @param search Search term (debounced automatically)
+ * @param filters Object containing optional filters (gender, status)
+ * @returns Infinite query result với pages data
  */
-export function useTeachers({ enabled = true }: { enabled?: boolean }) {
+export function useTeachers(
+  search: string = '',
+  filters: {
+    gender?: 'MALE' | 'FEMALE' | 'OTHER';
+    status?: 'ACTIVE' | 'INACTIVE';
+  } = {}
+) {
+  const debouncedSearch = useDebounce(search, 500);
+  
+  return useInfiniteQuery<PageResponse<TeacherType>>({
+    queryKey: queryKeys.teachers.listPaginated(debouncedSearch, filters),
+    queryFn: async ({ pageParam = 0 }) => {
+      const response = await teacherService.getAllTeachers(
+        pageParam as number,
+        10,
+        debouncedSearch,
+        filters
+      );
+      if (response.status === 200 && response.data) {
+        return response.data;
+      }
+      throw new Error('Failed to fetch teachers');
+    },
+    getNextPageParam: (lastPage) => lastPage.hasNext ? lastPage.page + 1 : undefined,
+    initialPageParam: 0,
+  });
+}
+
+/**
+ * Hook để lấy tất cả teachers đơn giản (cho dropdowns/selects)
+ * Backward compatibility cho components cần list teachers
+ */
+export function useTeachersSimple({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<TeacherType[]>({
     queryKey: queryKeys.teachers.list(),
     queryFn: async () => {
-      const response = await teacherService.getAllTeachers();
+      const response = await teacherService.getAllTeachersSimple();
       if (response.status === 200 && response.data) {
         return response.data;
       }

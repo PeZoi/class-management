@@ -2,7 +2,8 @@
 
 import { PageLoading } from '@/components/page-loading';
 import { useCreateStudent, useStudents, useUpdateStudent } from '@/hooks/use-students';
-import { StudentRequest, StudentType } from '@/types/student-type';
+import { StudentRequest, StudentType, FilterState, StudentItem } from '@/types/student-type';
+import { SessionPaymentStatus } from '@/types/payment-type';
 import { useTranslations } from 'next-intl';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -10,7 +11,8 @@ import { PaymentCalendarDialog } from './_components/payment-calendar-dialog';
 import { StudentDialog } from './_components/student-dialog';
 import { StudentFilter } from './_components/student-filter';
 import { StudentTable } from './_components/student-table';
-import { FilterState, StudentItem } from '@/types/student-type';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 const NO_CLASS_FILTER_VALUE = '__no_class__';
 
@@ -74,7 +76,7 @@ const mapStudentTypeToStudentItem = (student: StudentType, index: number): Stude
   let paymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
   let paidAmount = 0;
 
-  const currentPackage = student.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
+  const currentPackage = student.sessionPaymentStatuses?.find((pkg: SessionPaymentStatus) => pkg.isCurrent === true);
   if (currentPackage) {
     // Convert status từ API format (PAID, PARTIAL, UNPAID) sang component format
     const statusMap: Record<'PAID' | 'PARTIAL' | 'UNPAID', 'paid' | 'unpaid' | 'partial'> = {
@@ -82,7 +84,8 @@ const mapStudentTypeToStudentItem = (student: StudentType, index: number): Stude
       PARTIAL: 'partial',
       UNPAID: 'unpaid',
     };
-    paymentStatus = statusMap[currentPackage.status] || 'unpaid';
+    const status = currentPackage.status as 'PAID' | 'PARTIAL' | 'UNPAID';
+    paymentStatus = statusMap[status] || 'unpaid';
     paidAmount = currentPackage.paidAmount || 0;
   } else {
     // Fallback về monthPaymentStatuses (cách cũ)
@@ -138,15 +141,7 @@ export default function StudentManagementPage() {
   
   const tCommon = useTranslations('common');
 
-  // TanStack Query hooks
-  const {
-    data: studentsData = [],
-    isLoading,
-    error: studentsError,
-  } = useStudents();
-  const createStudent = useCreateStudent();
-  const updateStudent = useUpdateStudent();
-
+  // State declarations - must come before hooks that use them
   const [deletedStudentIds, setDeletedStudentIds] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
@@ -156,6 +151,25 @@ export default function StudentManagementPage() {
     parseFiltersFromURL(searchParams)
   );
   const isUpdatingFromURL = useRef(false);
+
+  // TanStack Query hooks - use infinite query with pagination
+  const {
+    data: studentPages,
+    isLoading,
+    error: studentsError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useStudents(filters.searchQuery);
+  
+  const createStudent = useCreateStudent();
+  const updateStudent = useUpdateStudent();
+  
+  // Flatten all pages into single array
+  const studentsData = useMemo(() => {
+    if (!studentPages) return [];
+    return studentPages.pages.flatMap(page => page.content);
+  }, [studentPages]);
 
   // Map API students -> UI students, and apply local deletions
   const students = useMemo(() => {
@@ -370,6 +384,28 @@ export default function StudentManagementPage() {
         onPayment={handlePayment}
         showActions={true}
       />
+
+      {/* Load More Button */}
+      {hasNextPage && (
+        <div className="flex justify-center">
+          <Button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            variant="outline"
+            size="lg"
+            className="gap-2"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                {tCommon('loading')}
+              </>
+            ) : (
+              tCommon('loadMore')
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* Student Dialog */}
       <StudentDialog

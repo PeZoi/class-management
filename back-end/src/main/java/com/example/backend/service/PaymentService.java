@@ -8,8 +8,12 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.example.backend.dto.common.PageResponse;
 import com.example.backend.entity.SessionPaymentPackage;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +25,7 @@ import com.example.backend.entity.Student;
 import com.example.backend.entity.StudentClass;
 import com.example.backend.entity.User;
 import com.example.backend.enums.PaymentDirection;
+import com.example.backend.enums.PaymentMethod;
 import com.example.backend.enums.PaymentStatus;
 import com.example.backend.enums.PaymentType;
 import com.example.backend.enums.StudentClassStatus;
@@ -370,14 +375,6 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public List<PaymentResponse> getAllPayments() {
-        List<Payment> payments = paymentRepository.findAllByOrderByCreatedAtDesc();
-        return payments.stream()
-                .map(this::mapToPaymentResponse)
-                .collect(Collectors.toList());
-    }
-    
-    @Transactional(readOnly = true)
     public PaymentResponse getPaymentById(String paymentId) {
         // Tìm theo ID trước
         Optional<Payment> paymentOpt = paymentRepository.findById(paymentId);
@@ -497,6 +494,51 @@ public class PaymentService {
         return payments.stream()
                 .mapToLong(p -> p.getPaid() != null ? p.getPaid() : 0L)
                 .sum();
+    }
+
+    /**
+     * Get all payments with pagination and full filtering support
+     * @param page Page number (0-based)
+     * @param size Number of items per page
+     * @param search Search term (searches in paymentId, student name, teacher name, class name)
+     * @param direction Filter by payment direction (optional)
+     * @param paymentType Filter by payment type (optional)
+     * @param paymentStatus Filter by payment status (optional)
+     * @param paymentMethod Filter by payment method (optional)
+     * @param startDate Filter by created date from (optional)
+     * @param endDate Filter by created date to (optional)
+     * @return PageResponse containing payments and pagination metadata
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentResponse> getAllPaginated(
+            int page,
+            int size,
+            String search,
+            PaymentDirection direction,
+            PaymentType paymentType,
+            PaymentStatus paymentStatus,
+            PaymentMethod paymentMethod,
+            Instant startDate,
+            Instant endDate
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Payment> paymentPage = paymentRepository.findAllWithFilters(
+                search, direction, paymentType, paymentStatus, paymentMethod, startDate, endDate, pageable
+        );
+
+        List<PaymentResponse> content = paymentPage.getContent().stream()
+                .map(this::mapToPaymentResponse)
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                content,
+                paymentPage.getNumber(),
+                paymentPage.getSize(),
+                paymentPage.getTotalElements(),
+                paymentPage.getTotalPages(),
+                paymentPage.hasNext(),
+                paymentPage.hasPrevious()
+        );
     }
 
     /**

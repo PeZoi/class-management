@@ -9,6 +9,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { TeacherDialog } from './_components/teacher-dialog';
 import { TeacherTable } from './_components/teacher-table';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 export default function TeacherManagementPage() {
   const router = useRouter();
@@ -18,10 +20,25 @@ export default function TeacherManagementPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherType | null>(null);
 
-  const { data: teachersData = [], isLoading, error: teachersError } = useTeachers({ enabled: true });
+  // Use infinite query with pagination
+  const {
+    data: teacherPages,
+    isLoading,
+    error: teachersError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useTeachers('', {}); // Empty search and no filters for now
+  
   const createTeacher = useCreateTeacher();
   const updateTeacher = useUpdateTeacher();
   const resetPassword = useResetTeacherPassword();
+
+  // Flatten all pages into single array
+  const teachersData = useMemo(() => {
+    if (!teacherPages) return [];
+    return teacherPages.pages.flatMap(page => page.content);
+  }, [teacherPages]);
 
   useEffect(() => {
     if (teachersError) {
@@ -120,6 +137,28 @@ export default function TeacherManagementPage() {
         onResetPassword={handleResetPassword}
         showActions={true}
       />
+
+      {/* Load More Button */}
+      {hasNextPage && (
+        <div className="flex justify-center">
+          <Button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            variant="outline"
+            size="lg"
+            className="gap-2"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                {tCommon('loading')}
+              </>
+            ) : (
+              tCommon('loadMore')
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* Teacher Dialog */}
       <TeacherDialog

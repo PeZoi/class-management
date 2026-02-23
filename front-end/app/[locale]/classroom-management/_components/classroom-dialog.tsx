@@ -13,8 +13,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useTeachers } from '@/hooks/use-teachers';
-import { ClassRequest, ClassType } from '@/types/class-type';
+import { useTeachersSimple } from '@/hooks/use-teachers';
+import { ClassRequest, ClassType, TeacherType } from '@/types';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
@@ -30,7 +30,9 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave, isSubmi
   const t = useTranslations('classroom-management');
   const tCommon = useTranslations('common');
 
-  const { data: teachers = [] } = useTeachers({ enabled: open });
+  const teachersQuery = useTeachersSimple({ enabled: open });
+  const teachers = (teachersQuery.data ?? []) as TeacherType[];
+  
   const [formData, setFormData] = useState<ClassRequest>({
     name: '',
     teacherId: '',
@@ -100,7 +102,7 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave, isSubmi
                     <SelectValue placeholder={t('teacherPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {teachers.map((teacher) => (
+                    {teachers.map((teacher: TeacherType) => (
                       <SelectItem key={teacher.id} value={teacher.id}>
                         {teacher.fullName} ({teacher.gender === 'MALE' ? 'Nam' : 'Nữ'})
                       </SelectItem>
