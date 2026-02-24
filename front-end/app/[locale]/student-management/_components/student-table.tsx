@@ -21,6 +21,7 @@ import {
   Edit,
   Mail,
   MoreHorizontal,
+  Package,
   Phone,
   Plus,
   Trash2,
@@ -250,7 +251,7 @@ export function StudentTable({
       header: ({ column }) => (
         <div className="flex items-center justify-center gap-2">
           <SortableHeader column={column} className="justify-center">
-            <Calendar className="size-4" />
+            <Package className="size-4" />
             {t('unpaidMonths')}
           </SortableHeader>
         </div>
@@ -266,8 +267,11 @@ export function StudentTable({
         const packageUnpaidCount = packageUnpaid.length;
 
         return (
-          <div className="text-center text-slate-700 dark:text-slate-300 text-sm font-medium">
-            {packageUnpaidCount}
+          <div className="text-center">
+            <Badge variant="outline" className="font-semibold flex items-center justify-center gap-1.5 w-fit mx-auto">
+              <Package className="size-3.5" />
+              {packageUnpaidCount}
+            </Badge>
           </div>
         );
       },
@@ -308,6 +312,18 @@ export function StudentTable({
             (sum, pkg) => sum + (pkg.remainingAmount || 0),
             0,
           ) ?? 0;
+        }
+
+        if (!currentPackage) {
+          return (
+            <div className="text-right space-y-1.5">
+              <div className="space-y-1">
+                <Badge variant="outline" className="font-semibold gap-1.5 w-fit">
+                  {tCommon('noData')}
+                </Badge>
+              </div>
+            </div>
+          );
         }
 
         return (

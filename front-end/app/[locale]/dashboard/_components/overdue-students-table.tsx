@@ -2,12 +2,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 import { StudentType } from '@/types';
 import { formatDate } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
-import { BookOpen, Calendar, CheckCircle, Clock, CreditCard, DollarSign, Mail, Phone, User, Users } from 'lucide-react';
+import { BookOpen, Calendar, CheckCircle, Clock, CreditCard, DollarSign, Mail, Package, Phone, User, Users } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { OverdueStudentItem } from '@/types/student-type';
@@ -213,7 +214,7 @@ export function OverdueStudentsTable({ students, formatCurrency, onPayment }: Ov
       header: ({ column }) => (
         <div className="flex items-center justify-center gap-2">
           <SortableHeader column={column} className="justify-center">
-            <Calendar className="size-4" />
+            <Package className="size-4" />
             {t('unpaidMonths')}
           </SortableHeader>
         </div>
@@ -222,7 +223,14 @@ export function OverdueStudentsTable({ students, formatCurrency, onPayment }: Ov
         const currentPackage = row.original.sessionPaymentStatuses?.find((pkg) => pkg.isCurrent === true);
         const packageUnpaid = row.original.sessionPaymentStatuses?.filter((pkg) => pkg?.packageNumber <= (currentPackage?.packageNumber ?? 0) && (pkg.status === 'UNPAID' || pkg.status === 'PARTIAL'));
         const packageUnpaidCount = packageUnpaid?.length ?? 0;
-        return <div className="text-center text-slate-700 dark:text-slate-300 text-sm font-medium">{packageUnpaidCount}</div>;
+        return (
+          <div className="text-center">
+            <Badge variant="outline" className="font-semibold flex items-center justify-center gap-1.5 w-fit mx-auto">
+              <Package className="size-3.5" />
+              {packageUnpaidCount}
+            </Badge>
+          </div>
+        );
       },
       sortingFn: (rowA, rowB) => {
         const unpaidMonthsA =

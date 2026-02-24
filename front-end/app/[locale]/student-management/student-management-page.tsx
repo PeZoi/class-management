@@ -70,7 +70,7 @@ const getCurrentMonthPaymentStatus = (
 // Helper function to map API StudentType to StudentItem
 const mapStudentTypeToStudentItem = (student: StudentType, index: number): StudentItem => {
   // Lấy monthly fee từ class hoặc fallback
-  const monthlyFee = student.class?.monthlyFee || 4000000 + (index % 2) * 500000;
+  const monthlyFee = student.class?.monthlyFee || 0;
 
   // Ưu tiên sử dụng sessionPaymentStatuses (cách mới)
   let paymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid';
