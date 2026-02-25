@@ -2,9 +2,20 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SelectItem } from '@/components/ui/select';
+import { FloatingLabelSelect } from '@/components/ui/floating-label-select';
 import { cn } from '@/lib/utils';
-import { CheckCircle, CreditCard, Search, SortAsc, X } from 'lucide-react';
+import {
+  CheckCircle,
+  CreditCard,
+  Search,
+  SortAsc,
+  X,
+  ArrowDownRight,
+  ArrowUpRight,
+  Wallet,
+  Banknote,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PaymentFilterState } from '@/types/payment-type';
 
@@ -69,6 +80,56 @@ export function PaymentFilter({
     filters.className !== 'all' ||
     filters.paymentMethod !== 'all';
 
+  // Config objects for active filter pills and matching select styles
+  const typeFilterConfig = {
+    income: {
+      icon: ArrowDownRight,
+      className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
+      label: t('type_income'),
+    },
+    expense: {
+      icon: ArrowUpRight,
+      className: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
+      label: t('type_expense'),
+    },
+  } as const;
+
+  const statusFilterConfig = {
+    paid: {
+      icon: CheckCircle,
+      className: 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300',
+      label: t('filter_status_paid'),
+    },
+    partial: {
+      icon: ArrowDownRight,
+      className: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300',
+      label: t('filter_status_partial'),
+    },
+  } as const;
+
+  const methodFilterConfig = {
+    cash: {
+      icon: Banknote,
+      className: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+      label: t('method_cash'),
+    },
+    bank_transfer: {
+      icon: ArrowDownRight,
+      className: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
+      label: t('method_bank_transfer'),
+    },
+    credit_card: {
+      icon: CreditCard,
+      className: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300',
+      label: t('method_credit_card'),
+    },
+    e_wallet: {
+      icon: Wallet,
+      className: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
+      label: t('method_e_wallet'),
+    },
+  } as const;
+
   return (
     <div className={cn('space-y-4', className)}>
       {/* Search Bar - Standalone */}
@@ -85,72 +146,129 @@ export function PaymentFilter({
       {/* Filters Bar */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Type Filter */}
-        <Select value={filters.type} onValueChange={(value) => handleChange('type', value)}>
-          <SelectTrigger className="h-9 w-auto min-w-[160px] rounded-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm">
-            <SelectValue placeholder={t('filterByType')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('filter_all_types')}</SelectItem>
-            <SelectItem value="income">{t('type_income')}</SelectItem>
-            <SelectItem value="expense">{t('type_expense')}</SelectItem>
-          </SelectContent>
-        </Select>
+        <FloatingLabelSelect
+          label={t('filterByType')}
+          value={filters.type}
+          onValueChange={(value) => handleChange('type', value)}
+          className="w-auto min-w-[160px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="all">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
+              {t('filter_all_types')}
+            </span>
+          </SelectItem>
+          <SelectItem value="income">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+              <ArrowDownRight className="size-3" />
+              {t('type_income')}
+            </span>
+          </SelectItem>
+          <SelectItem value="expense">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-700 dark:text-rose-300">
+              <ArrowUpRight className="size-3" />
+              {t('type_expense')}
+            </span>
+          </SelectItem>
+        </FloatingLabelSelect>
 
         {/* Status Filter */}
-        <Select value={filters.status} onValueChange={(value) => handleChange('status', value)}>
-          <SelectTrigger className="h-9 w-auto min-w-[160px] rounded-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm">
-            <SelectValue placeholder={t('filterByStatus')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('filter_all_status_payment')}</SelectItem>
-            <SelectItem value="paid">{t('filter_status_paid')}</SelectItem>
-            <SelectItem value="partial">{t('filter_status_partial')}</SelectItem>
-          </SelectContent>
-        </Select>
+        <FloatingLabelSelect
+          label={t('filterByStatus')}
+          value={filters.status}
+          onValueChange={(value) => handleChange('status', value)}
+          className="w-auto min-w-[160px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="all">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
+              {t('filter_all_status_payment')}
+            </span>
+          </SelectItem>
+          <SelectItem value="paid">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
+              <CheckCircle className="size-3" />
+              {t('filter_status_paid')}
+            </span>
+          </SelectItem>
+          <SelectItem value="partial">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 dark:text-orange-400">
+              <ArrowDownRight className="size-3" />
+              {t('filter_status_partial')}
+            </span>
+          </SelectItem>
+        </FloatingLabelSelect>
 
         {/* Class Filter */}
-        <Select value={filters.className} onValueChange={handleClassChange}>
-          <SelectTrigger className="h-9 w-auto min-w-[140px] rounded-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm">
-            <SelectValue placeholder={t('filterByClass')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('filter_all_classes')}</SelectItem>
-            {availableClasses.map((cls) => (
-              <SelectItem key={cls} value={cls}>
-                {cls}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FloatingLabelSelect
+          label={t('filterByClass')}
+          value={filters.className}
+          onValueChange={handleClassChange}
+          className="w-auto min-w-[140px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="all">{t('filter_all_classes')}</SelectItem>
+          {availableClasses.map((cls) => (
+            <SelectItem key={cls} value={cls}>
+              {cls}
+            </SelectItem>
+          ))}
+        </FloatingLabelSelect>
 
         {/* Payment Method Filter */}
-        <Select value={filters.paymentMethod} onValueChange={handlePaymentMethodChange}>
-          <SelectTrigger className="h-9 w-auto min-w-[160px] rounded-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm">
-            <SelectValue placeholder={t('filterByMethod')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('filter_all_methods')}</SelectItem>
-            <SelectItem value="cash">{t('method_cash')}</SelectItem>
-            <SelectItem value="bank_transfer">{t('method_bank_transfer')}</SelectItem>
-            <SelectItem value="credit_card">{t('method_credit_card')}</SelectItem>
-            <SelectItem value="e_wallet">{t('method_e_wallet')}</SelectItem>
-          </SelectContent>
-        </Select>
+        <FloatingLabelSelect
+          label={t('filterByMethod')}
+          value={filters.paymentMethod}
+          onValueChange={handlePaymentMethodChange}
+          className="w-auto min-w-[160px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="all">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
+              {t('filter_all_methods')}
+            </span>
+          </SelectItem>
+          <SelectItem value="cash">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+              <Banknote className="size-3" />
+              {t('method_cash')}
+            </span>
+          </SelectItem>
+          <SelectItem value="bank_transfer">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 dark:text-blue-300">
+              <ArrowDownRight className="size-3" />
+              {t('method_bank_transfer')}
+            </span>
+          </SelectItem>
+          <SelectItem value="credit_card">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-700 dark:text-purple-300">
+              <CreditCard className="size-3" />
+              {t('method_credit_card')}
+            </span>
+          </SelectItem>
+          <SelectItem value="e_wallet">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-700 dark:text-indigo-300">
+              <Wallet className="size-3" />
+              {t('method_e_wallet')}
+            </span>
+          </SelectItem>
+        </FloatingLabelSelect>
 
         {/* Divider */}
         <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
 
         {/* Sort By */}
-        <Select value={filters.sortBy} onValueChange={handleSortByChange}>
-          <SelectTrigger className="h-9 w-auto min-w-[140px] rounded-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm">
-            <SelectValue placeholder={t('sortBy')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="createdDate">{t('sort_by_created_date')}</SelectItem>
-            <SelectItem value="amount">{t('sort_by_amount')}</SelectItem>
-            <SelectItem value="studentName">{t('sort_by_student')}</SelectItem>
-          </SelectContent>
-        </Select>
+        <FloatingLabelSelect
+          label={t('sortBy')}
+          value={filters.sortBy}
+          onValueChange={handleSortByChange}
+          className="w-auto min-w-[140px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="createdDate">{t('sort_by_created_date')}</SelectItem>
+          <SelectItem value="amount">{t('sort_by_amount')}</SelectItem>
+          <SelectItem value="studentName">{t('sort_by_student')}</SelectItem>
+        </FloatingLabelSelect>
 
         {/* Sort Order Button */}
         <Button
@@ -198,15 +316,40 @@ export function PaymentFilter({
             </div>
           )}
           {filters.type !== 'all' && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 text-xs font-medium">
-              {t(`type_${filters.type}`)}
-            </div>
+            (() => {
+              const cfg = typeFilterConfig[filters.type as 'income' | 'expense'];
+              if (!cfg) return null;
+              const Icon = cfg.icon;
+              return (
+                <div
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                    cfg.className,
+                  )}
+                >
+                  <Icon className="size-3" />
+                  <span>{cfg.label}</span>
+                </div>
+              );
+            })()
           )}
           {filters.status !== 'all' && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 text-xs font-medium">
-              <CheckCircle className="size-3" />
-              {filters.status === 'paid' ? t('filter_status_paid') : t('filter_status_partial')}
-            </div>
+            (() => {
+              const cfg = statusFilterConfig[filters.status as 'paid' | 'partial'];
+              if (!cfg) return null;
+              const Icon = cfg.icon;
+              return (
+                <div
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                    cfg.className,
+                  )}
+                >
+                  <Icon className="size-3" />
+                  <span>{cfg.label}</span>
+                </div>
+              );
+            })()
           )}
           {filters.className !== 'all' && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 text-xs font-medium">
@@ -214,10 +357,25 @@ export function PaymentFilter({
             </div>
           )}
           {filters.paymentMethod !== 'all' && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 text-xs font-medium">
-              <CreditCard className="size-3" />
-              {t(`method_${filters.paymentMethod}`)}
-            </div>
+            (() => {
+              const cfg =
+                methodFilterConfig[
+                  filters.paymentMethod as 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet'
+                ];
+              if (!cfg) return null;
+              const Icon = cfg.icon;
+              return (
+                <div
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                    cfg.className,
+                  )}
+                >
+                  <Icon className="size-3" />
+                  <span>{cfg.label}</span>
+                </div>
+              );
+            })()
           )}
         </div>
       )}

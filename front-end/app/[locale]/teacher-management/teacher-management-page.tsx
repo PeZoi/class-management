@@ -2,13 +2,14 @@
 
 import { PageLoading } from '@/components/page-loading';
 import { useCreateTeacher, useResetTeacherPassword, useTeachers, useUpdateTeacher } from '@/hooks/use-teachers';
-import { TeacherRequest, TeacherType } from '@/types';
+import { TeacherFilterState, TeacherRequest, TeacherType } from '@/types';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { TeacherDialog } from './_components/teacher-dialog';
 import { TeacherTable } from './_components/teacher-table';
+import { TeacherFilter } from './_components/teacher-filter';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
@@ -19,8 +20,22 @@ export default function TeacherManagementPage() {
   const tCommon = useTranslations('common');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherType | null>(null);
+  const [filters, setFilters] = useState<TeacherFilterState>({
+    searchQuery: '',
+    gender: 'all',
+    sortBy: 'name',
+    sortOrder: 'asc',
+  });
 
-  // Use infinite query with pagination
+  // Map UI gender filter -> API filter
+  const genderMap: Record<'all' | 'male' | 'female' | 'other', 'MALE' | 'FEMALE' | 'OTHER' | undefined> = {
+    all: undefined,
+    male: 'MALE',
+    female: 'FEMALE',
+    other: 'OTHER',
+  };
+
+  // Use infinite query with pagination + server-side filters
   const {
     data: teacherPages,
     isLoading,
@@ -28,7 +43,9 @@ export default function TeacherManagementPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useTeachers('', {}); // Empty search and no filters for now
+  } = useTeachers(filters.searchQuery, {
+    gender: genderMap[filters.gender] as 'MALE' | 'FEMALE' | 'OTHER' | undefined,
+  });
   
   const createTeacher = useCreateTeacher();
   const updateTeacher = useUpdateTeacher();
@@ -37,7 +54,7 @@ export default function TeacherManagementPage() {
   // Flatten all pages into single array
   const teachersData = useMemo(() => {
     if (!teacherPages) return [];
-    return teacherPages.pages.flatMap(page => page.content);
+    return teacherPages.pages.flatMap((page) => page.content);
   }, [teacherPages]);
 
   useEffect(() => {
@@ -50,10 +67,44 @@ export default function TeacherManagementPage() {
   // Optional: local remove for optimistic UI when child component "deletes" from table
   // (actual delete API isn't present in teacherService currently)
   const [deletedTeacherIds, setDeletedTeacherIds] = useState<string[]>([]);
+
+  // Apply local filters (deleted items, gender, sorting)
   const teachers = useMemo(() => {
-    if (!deletedTeacherIds.length) return teachersData;
-    return teachersData.filter((t) => !deletedTeacherIds.includes(t.id));
-  }, [teachersData, deletedTeacherIds]);
+    let result = [...teachersData];
+
+    if (deletedTeacherIds.length) {
+      result = result.filter((t) => !deletedTeacherIds.includes(t.id));
+    }
+
+    // Apply gender filter (client-side, in addition to server-side for safety)
+    if (filters.gender !== 'all') {
+      const apiGender = genderMap[filters.gender];
+      if (apiGender) {
+        result = result.filter((t) => t.gender === apiGender);
+      }
+    }
+
+    // Sorting
+    result.sort((a, b) => {
+      let comparison = 0;
+
+      switch (filters.sortBy) {
+        case 'name':
+          comparison = a.fullName.localeCompare(b.fullName, 'vi');
+          break;
+        case 'joinedDate':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'totalClasses':
+          comparison = (a.classList?.length || 0) - (b.classList?.length || 0);
+          break;
+      }
+
+      return filters.sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [teachersData, deletedTeacherIds, filters.gender, filters.sortBy, filters.sortOrder]);
 
   const handleAdd = useCallback(() => {
     setSelectedTeacher(null);
@@ -127,6 +178,9 @@ export default function TeacherManagementPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
+      {/* Filter Bar */}
+      <TeacherFilter filters={filters} onFilterChange={setFilters} />
+
       {/* Teacher Table */}
       <TeacherTable
         teachers={teachers}

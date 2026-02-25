@@ -4,5 +4,6 @@ public enum StudentStatus {
     ACTIVE, // Đang học
     INACTIVE, // Tạm nghỉ/ chưa đi học lại
     GRADUATED, // Đã tốt nghiệp
-    DROPPED_OUT // Bỏ học
+    DROPPED_OUT, // Bỏ học
+    DELETED // Đã xoá học viên này ra khỏi hệ thống
 }

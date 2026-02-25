@@ -24,6 +24,14 @@ export interface TeacherType {
   updatedAt: string;
 }
 
+// Filter state for teacher management page
+export interface TeacherFilterState {
+  searchQuery: string;
+  gender: 'all' | 'male' | 'female' | 'other';
+  sortBy: 'name' | 'joinedDate' | 'totalClasses';
+  sortOrder: 'asc' | 'desc';
+}
+
 export interface SalaryPayment {
   id: string;
   invoiceId: string;

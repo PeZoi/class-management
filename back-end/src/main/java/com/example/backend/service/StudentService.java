@@ -68,6 +68,12 @@ public class StudentService {
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
 
         StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
+        
+        // Explicitly set status and deletion fields
+        studentResponse.setStatus(student.getStatus());
+        studentResponse.setDeletedAt(student.getDeletedAt());
+        studentResponse.setDeletedBy(student.getDeletedBy());
+        
         StudentClass studentClass = getClassByStudent(studentId);
 
         if (studentClass != null) {
@@ -115,6 +121,12 @@ public class StudentService {
 
         for (Student s : studentList) {
             StudentResponse studentResponse = modelMapper.map(s, StudentResponse.class);
+            
+            // Explicitly set status and deletion fields
+            studentResponse.setStatus(s.getStatus());
+            studentResponse.setDeletedAt(s.getDeletedAt());
+            studentResponse.setDeletedBy(s.getDeletedBy());
+            
             StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
 
             StudentClass studentClass = getClassByStudent(studentResponse.getId());
@@ -208,6 +220,12 @@ public class StudentService {
 
         for (Student s : studentList) {
             StudentResponse studentResponse = modelMapper.map(s, StudentResponse.class);
+            
+            // Explicitly set status and deletion fields
+            studentResponse.setStatus(s.getStatus());
+            studentResponse.setDeletedAt(s.getDeletedAt());
+            studentResponse.setDeletedBy(s.getDeletedBy());
+            
             StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
 
             StudentClass studentClass = getClassByStudent(studentResponse.getId());
@@ -256,6 +274,12 @@ public class StudentService {
 
         for (Student s : studentList) {
             StudentResponse studentResponse = modelMapper.map(s, StudentResponse.class);
+            
+            // Explicitly set status and deletion fields
+            studentResponse.setStatus(s.getStatus());
+            studentResponse.setDeletedAt(s.getDeletedAt());
+            studentResponse.setDeletedBy(s.getDeletedBy());
+            
             StudentClass studentClass = getClassByStudent(studentResponse.getId());
             if (studentClass != null) {
                 Class classDB = studentClass.getClazz();
@@ -313,6 +337,12 @@ public class StudentService {
         StudentClass studentClassDB = studentClassRepository.save(studentClass);
 
         StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
+        
+        // Explicitly set status and deletion fields
+        studentResponse.setStatus(student.getStatus());
+        studentResponse.setDeletedAt(student.getDeletedAt());
+        studentResponse.setDeletedBy(student.getDeletedBy());
+        
         StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
         studentClassResponse.setId(classDB.getId());
         studentClassResponse.setName(classDB.getName());
@@ -339,6 +369,11 @@ public class StudentService {
 
         Student student = studentRepository.save(studentDB);
         StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
+        
+        // Explicitly set status and deletion fields
+        studentResponse.setStatus(student.getStatus());
+        studentResponse.setDeletedAt(student.getDeletedAt());
+        studentResponse.setDeletedBy(student.getDeletedBy());
 
         StudentClass studentClassDB = studentClassRepository.findCurrentClassByStudent(studentId, StudentClassStatus.STUDYING);
 
@@ -556,7 +591,14 @@ public class StudentService {
             // After removal, student has no current class => response without clazz
             Student student = studentRepository.findById(studentId)
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
-            results.add(modelMapper.map(student, StudentResponse.class));
+            StudentResponse response = modelMapper.map(student, StudentResponse.class);
+            
+            // Explicitly set status and deletion fields
+            response.setStatus(student.getStatus());
+            response.setDeletedAt(student.getDeletedAt());
+            response.setDeletedBy(student.getDeletedBy());
+            
+            results.add(response);
         }
 
         return results;
@@ -588,6 +630,12 @@ public class StudentService {
         }
 
         StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
+        
+        // Explicitly set status and deletion fields
+        studentResponse.setStatus(student.getStatus());
+        studentResponse.setDeletedAt(student.getDeletedAt());
+        studentResponse.setDeletedBy(student.getDeletedBy());
+        
         StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
 
         StudentClass studentClass = getClassByStudent(studentResponse.getId());
@@ -772,5 +820,69 @@ public class StudentService {
         }
 
         return classHistoryList;
+    }
+
+    /**
+     * Soft delete multiple students by setting status to DELETED and marking deletion time/user
+     * @param studentIds List of student IDs to delete
+     * @return List of deleted student responses
+     */
+    @Transactional
+    public List<StudentResponse> deleteStudents(List<String> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            throw new CustomException("Danh sách học viên không được rỗng", HttpStatus.BAD_REQUEST);
+        }
+
+        // Get current user
+        String currentUsername = SecurityUtil.getCurrentUserLogin()
+                .orElseThrow(() -> new CustomException("Không tìm thấy thông tin người dùng", HttpStatus.UNAUTHORIZED));
+
+        Instant now = Instant.now();
+        List<StudentResponse> responses = new ArrayList<>();
+
+        for (String studentId : studentIds) {
+            try {
+                Student student = studentRepository.findById(studentId)
+                        .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên với ID: " + studentId));
+
+                // Check if already deleted
+                if (student.getStatus() == StudentStatus.DELETED) {
+                    // Skip already deleted students
+                    continue;
+                }
+
+                // Soft delete: set status and deletion info
+                student.setStatus(StudentStatus.DELETED);
+                student.setDeletedAt(now);
+                student.setDeletedBy(currentUsername);
+
+                // Also mark student as left from current class (if any)
+                StudentClass currentClass = studentClassRepository.findCurrentClassByStudent(studentId, StudentClassStatus.STUDYING);
+                if (currentClass != null) {
+                    currentClass.setLeftAt(now);
+                    currentClass.setStatus(StudentClassStatus.DROPPED);
+                    studentClassRepository.save(currentClass);
+                }
+
+                Student deletedStudent = studentRepository.save(student);
+
+                // Build response
+                StudentResponse response = modelMapper.map(deletedStudent, StudentResponse.class);
+                response.setStatus(deletedStudent.getStatus());
+                response.setDeletedAt(deletedStudent.getDeletedAt());
+                response.setDeletedBy(deletedStudent.getDeletedBy());
+
+                responses.add(response);
+            } catch (Exception e) {
+                // Log error but continue with other students
+                System.err.println("Error deleting student " + studentId + ": " + e.getMessage());
+            }
+        }
+
+        if (responses.isEmpty()) {
+            throw new CustomException("Không thể xóa học viên nào", HttpStatus.BAD_REQUEST);
+        }
+
+        return responses;
     }
 }

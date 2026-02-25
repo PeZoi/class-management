@@ -25,6 +25,9 @@ export interface StudentType {
   gender: 'MALE' | 'FEMALE' | 'OTHER';
   fullNameParent: string;
   phoneNumberParent: string;
+  status: StudentStatus;
+  deletedAt?: string;
+  deletedBy?: string;
   class?: StudentClassResponse | null;
   monthPaymentStatuses?: MonthPaymentStatus[]; // DEPRECATED: Giữ lại để backward compatibility
   sessionPaymentStatuses?: import('./payment-type').SessionPaymentStatus[]; // Mới: session-based payment
@@ -86,6 +89,7 @@ export interface ClassHistoryItem {
 export interface FilterState {
   searchQuery: string;
   paymentStatus: 'all' | 'paid' | 'unpaid' | 'partial';
+  studentStatus: 'all' | 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DROPPED_OUT' | 'DELETED';
   className: string;
   gender: 'all' | 'male' | 'female' | 'other';
   sortBy: 'name' | 'joinedDate' | 'monthlyFee';
@@ -95,7 +99,6 @@ export interface FilterState {
 // Student item for student management page (extends StudentType with UI-specific fields)
 export interface StudentItem extends StudentType {
   idCard?: string; // ID card number (optional, not in API)
-  status: 'active' | 'pending' | 'completed';
   paymentStatus: 'paid' | 'unpaid' | 'partial';
   monthlyFee: number;
   amountPaid: number;
@@ -117,3 +120,6 @@ export interface OverdueStudentItem extends StudentType {
   unpaidMonthsCount: number;
   totalRemainingAmount: number;
 }
+
+// Student status type (matching backend enum)
+export type StudentStatus = 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DROPPED_OUT' | 'DELETED';

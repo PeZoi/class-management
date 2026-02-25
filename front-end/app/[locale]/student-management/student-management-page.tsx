@@ -1,7 +1,7 @@
 'use client';
 
 import { PageLoading } from '@/components/page-loading';
-import { useCreateStudent, useStudents, useUpdateStudent } from '@/hooks/use-students';
+import { useCreateStudent, useStudents, useUpdateStudent, useDeleteStudents } from '@/hooks/use-students';
 import { StudentRequest, StudentType, FilterState, StudentItem } from '@/types/student-type';
 import { SessionPaymentStatus } from '@/types/payment-type';
 import { useTranslations } from 'next-intl';
@@ -68,7 +68,7 @@ const getCurrentMonthPaymentStatus = (
 };
 
 // Helper function to map API StudentType to StudentItem
-const mapStudentTypeToStudentItem = (student: StudentType, index: number): StudentItem => {
+const mapStudentTypeToStudentItem = (student: StudentType): StudentItem => {
   // Lấy monthly fee từ class hoặc fallback
   const monthlyFee = student.class?.monthlyFee || 0;
 
@@ -84,8 +84,8 @@ const mapStudentTypeToStudentItem = (student: StudentType, index: number): Stude
       PARTIAL: 'partial',
       UNPAID: 'unpaid',
     };
-    const status = currentPackage.status as 'PAID' | 'PARTIAL' | 'UNPAID';
-    paymentStatus = statusMap[status] || 'unpaid';
+    const pkgStatus = currentPackage.status as 'PAID' | 'PARTIAL' | 'UNPAID';
+    paymentStatus = statusMap[pkgStatus] || 'unpaid';
     paidAmount = currentPackage.paidAmount || 0;
   } else {
     // Fallback về monthPaymentStatuses (cách cũ)
@@ -94,13 +94,13 @@ const mapStudentTypeToStudentItem = (student: StudentType, index: number): Stude
     paidAmount = currentMonthPayment.paidAmount;
   }
 
-  // Set status statically (mostly active)
-  const status: 'active' | 'pending' | 'completed' = index % 10 === 0 ? 'pending' : index % 20 === 0 ? 'completed' : 'active';
+  // Status đã có từ API (StudentStatus: ACTIVE, INACTIVE, GRADUATED, DROPPED_OUT, DELETED)
+  // Không cần tạo fake status nữa, sử dụng trực tiếp từ student.status
 
   return {
     ...student,
     idCard: '', // Not available in API, set empty
-    status,
+    // status đã có trong student (kế thừa từ StudentType)
     paymentStatus,
     monthlyFee,
     amountPaid: paidAmount,
@@ -113,6 +113,7 @@ const parseFiltersFromURL = (searchParams: URLSearchParams): FilterState => {
   return {
     searchQuery: searchParams.get('search') || '',
     paymentStatus: (searchParams.get('paymentStatus') as FilterState['paymentStatus']) || 'all',
+    studentStatus: (searchParams.get('studentStatus') as FilterState['studentStatus']) || 'all',
     className: searchParams.get('class') || 'all',
     gender: (searchParams.get('gender') as FilterState['gender']) || 'all',
     sortBy: (searchParams.get('sortBy') as FilterState['sortBy']) || 'name',
@@ -126,6 +127,7 @@ const filtersToURLParams = (filters: FilterState): URLSearchParams => {
   
   if (filters.searchQuery) params.set('search', filters.searchQuery);
   if (filters.paymentStatus !== 'all') params.set('paymentStatus', filters.paymentStatus);
+  if (filters.studentStatus && filters.studentStatus !== 'all') params.set('studentStatus', filters.studentStatus);
   if (filters.className !== 'all') params.set('class', filters.className);
   if (filters.gender !== 'all') params.set('gender', filters.gender);
   if (filters.sortBy !== 'name') params.set('sortBy', filters.sortBy);
@@ -142,7 +144,6 @@ export default function StudentManagementPage() {
   const tCommon = useTranslations('common');
 
   // State declarations - must come before hooks that use them
-  const [deletedStudentIds, setDeletedStudentIds] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -164,6 +165,7 @@ export default function StudentManagementPage() {
   
   const createStudent = useCreateStudent();
   const updateStudent = useUpdateStudent();
+  const deleteStudents = useDeleteStudents();
   
   // Flatten all pages into single array
   const studentsData = useMemo(() => {
@@ -171,12 +173,10 @@ export default function StudentManagementPage() {
     return studentPages.pages.flatMap(page => page.content);
   }, [studentPages]);
 
-  // Map API students -> UI students, and apply local deletions
+  // Map API students -> UI students
   const students = useMemo(() => {
-    const mapped = studentsData.map((student, index) => mapStudentTypeToStudentItem(student, index));
-    if (!deletedStudentIds.length) return mapped;
-    return mapped.filter((student) => !deletedStudentIds.includes(student.id));
-  }, [studentsData, deletedStudentIds]);
+    return studentsData.map((student) => mapStudentTypeToStudentItem(student));
+  }, [studentsData]);
 
   // Show error toast if fetch students fail
   useEffect(() => {
@@ -232,8 +232,14 @@ export default function StudentManagementPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setDeletedStudentIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  const handleDelete = async (id: string) => {
+    try {
+      // Pass single ID as string, hook will convert to array
+      await deleteStudents.mutateAsync(id);
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      // Error toast đã được handle trong hook
+    }
   };
 
   const handlePayment = (student: StudentItem) => {
@@ -326,6 +332,11 @@ export default function StudentManagementPage() {
       result = result.filter((student) => student.paymentStatus === filters.paymentStatus);
     }
 
+    // Apply student status filter
+    if (filters.studentStatus && filters.studentStatus !== 'all') {
+      result = result.filter((student) => student.status === filters.studentStatus);
+    }
+
     // Apply class filter
     if (filters.className !== 'all') {
       result = result.filter((student) => {
@@ -346,6 +357,18 @@ export default function StudentManagementPage() {
 
     // Apply sorting
     result.sort((a, b) => {
+      // First: Sort by student status if "all" is selected (ACTIVE -> INACTIVE -> GRADUATED -> DROPPED_OUT -> DELETED)
+      if (!filters.studentStatus || filters.studentStatus === 'all') {
+        const statusOrder = { ACTIVE: 0, INACTIVE: 1, GRADUATED: 2, DROPPED_OUT: 3, DELETED: 4 };
+        const statusA = a.status ? statusOrder[a.status] ?? 99 : 99;
+        const statusB = b.status ? statusOrder[b.status] ?? 99 : 99;
+        
+        if (statusA !== statusB) {
+          return statusA - statusB;
+        }
+      }
+
+      // Second: Apply user-selected sorting
       let comparison = 0;
 
       switch (filters.sortBy) {
@@ -364,7 +387,7 @@ export default function StudentManagementPage() {
     });
 
     return result;
-  }, [students, filters.searchQuery, filters.paymentStatus, filters.className, filters.gender, filters.sortBy, filters.sortOrder]);
+  }, [students, filters.searchQuery, filters.paymentStatus, filters.studentStatus, filters.className, filters.gender, filters.sortBy, filters.sortOrder]);
 
   if (isLoading) {
     return <PageLoading message={tCommon('loadingStudents')} />;

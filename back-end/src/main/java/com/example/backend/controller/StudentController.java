@@ -11,6 +11,7 @@ import com.example.backend.enums.Genders;
 import com.example.backend.enums.StudentStatus;
 import com.example.backend.dto.student.BulkUpdateStudentShiftRequest;
 import com.example.backend.dto.student.RemoveStudentsFromClassRequest;
+import com.example.backend.dto.student.DeleteStudentsRequest;
 import com.example.backend.dto.student.StudentRequest;
 import com.example.backend.dto.student.StudentResponse;
 import com.example.backend.service.StudentService;
@@ -102,5 +103,18 @@ public class StudentController {
     public ResponseEntity<List<ClassHistoryResponse>> getClassHistory(@PathVariable String studentId) {
         List<ClassHistoryResponse> classHistoryList = studentService.getClassHistory(studentId);
         return new ResponseEntity<>(classHistoryList, HttpStatus.OK);
+    }
+
+    /**
+     * Soft delete multiple students by marking as DELETED
+     * Supports both single and bulk deletion
+     * Uses POST instead of DELETE to support request body across all HTTP clients
+     * @param request Request containing list of student IDs
+     * @return List of deleted student responses
+     */
+    @PostMapping("/delete")
+    public ResponseEntity<List<StudentResponse>> deleteStudents(@RequestBody DeleteStudentsRequest request) {
+        List<StudentResponse> studentResponses = studentService.deleteStudents(request.getStudentIds());
+        return new ResponseEntity<>(studentResponses, HttpStatus.OK);
     }
 }

@@ -345,3 +345,64 @@ export function useBulkRemoveStudentsFromClass() {
     },
   });
 }
+
+/**
+ * Hook để xóa students (soft delete) - hỗ trợ xóa nhiều học viên cùng lúc
+ * - Set status = DELETED, deletedAt và deletedBy
+ * - Invalidate tất cả queries liên quan
+ * @param studentIds Array of student IDs hoặc single student ID (sẽ tự convert sang array)
+ */
+export function useDeleteStudents() {
+  const queryClient = useQueryClient();
+  const tNotif = useTranslations('notifications');
+
+  return useMutation({
+    mutationFn: (studentIds: string | string[]) => {
+      // Support both single ID and array of IDs
+      const ids = Array.isArray(studentIds) ? studentIds : [studentIds];
+      return studentService.deleteStudents(ids);
+    },
+    onSuccess: (response, studentIds) => {
+      if (response.status === 200 && response.data) {
+        const ids = Array.isArray(studentIds) ? studentIds : [studentIds];
+        const count = ids.length;
+        
+        // Invalidate all student queries
+        invalidateStudentLists(queryClient);
+        invalidateDashboard(queryClient);
+        
+        // Invalidate each student's queries
+        const classIds = new Set<string>();
+        ids.forEach((id) => {
+          invalidateStudent(queryClient, id);
+          invalidateStudentClassHistory(queryClient, id);
+        });
+        
+        // Collect unique class IDs and invalidate
+        response.data.forEach((student) => {
+          if (student.class?.id) {
+            classIds.add(student.class.id);
+          }
+        });
+        
+        classIds.forEach((classId) => {
+          invalidateStudentsByClass(queryClient, classId);
+          invalidateClass(queryClient, classId);
+        });
+        
+        // Safe: invalidate all student queries
+        queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+        
+        // Show success message with count
+        const message = count === 1 
+          ? tNotif('successDeleteStudent')
+          : tNotif('successDeleteStudents', { count });
+        toast.success(message);
+      }
+    },
+    onError: (error) => {
+      console.error('Error deleting students:', error);
+      toast.error(tNotif('errorDeleteStudent'));
+    },
+  });
+}

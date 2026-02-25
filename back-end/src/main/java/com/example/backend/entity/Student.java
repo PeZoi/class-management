@@ -53,7 +53,14 @@ public class Student extends Auditable{
     private String phoneNumberParent;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     private StudentStatus status;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @Column(name = "deleted_by")
+    private String deletedBy;
 
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StudentClass> studentClasses = new ArrayList<>();

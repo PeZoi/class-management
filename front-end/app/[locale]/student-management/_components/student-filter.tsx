@@ -1,14 +1,22 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SelectItem } from '@/components/ui/select';
+import { FloatingLabelSelect } from '@/components/ui/floating-label-select';
 import { cn } from '@/lib/utils';
-import { Search, X, SortAsc } from 'lucide-react';
+import {
+  Search,
+  X,
+  SortAsc,
+  CheckCircle,
+  Clock,
+  XCircle,
+  UserCheck,
+  Timer,
+  GraduationCap,
+  UserX,
+  Ban,
+  User,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { FilterState } from '@/types/student-type';
 
@@ -35,6 +43,10 @@ export function StudentFilter({
     onFilterChange({ ...filters, paymentStatus: value as FilterState['paymentStatus'] });
   };
 
+  const handleStudentStatusChange = (value: string) => {
+    onFilterChange({ ...filters, studentStatus: value as FilterState['studentStatus'] });
+  };
+
   const handleClassChange = (value: string) => {
     onFilterChange({ ...filters, className: value });
   };
@@ -58,6 +70,7 @@ export function StudentFilter({
     onFilterChange({
       searchQuery: '',
       paymentStatus: 'all',
+      studentStatus: 'all',
       className: 'all',
       gender: 'all',
       sortBy: 'name',
@@ -65,9 +78,81 @@ export function StudentFilter({
     });
   };
 
+  // Config for active filter pills (matching select colors/icons)
+  const paymentFilterConfig: Record<
+    Exclude<FilterState['paymentStatus'], 'all'>,
+    { icon: React.ElementType; className: string; label: string }
+  > = {
+    paid: {
+      icon: CheckCircle,
+      className: 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400',
+      label: t('payment_paid'),
+    },
+    partial: {
+      icon: Clock,
+      className: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400',
+      label: t('payment_partial'),
+    },
+    unpaid: {
+      icon: XCircle,
+      className: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400',
+      label: t('payment_unpaid'),
+    },
+  };
+
+  const studentStatusFilterConfig: Record<
+    Exclude<FilterState['studentStatus'], 'all'>,
+    { icon: React.ElementType; className: string; label: string }
+  > = {
+    ACTIVE: {
+      icon: UserCheck,
+      className: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+      label: t('status_ACTIVE'),
+    },
+    INACTIVE: {
+      icon: Timer,
+      className: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400',
+      label: t('status_INACTIVE'),
+    },
+    GRADUATED: {
+      icon: GraduationCap,
+      className: 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400',
+      label: t('status_GRADUATED'),
+    },
+    DROPPED_OUT: {
+      icon: UserX,
+      className: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400',
+      label: t('status_DROPPED_OUT'),
+    },
+    DELETED: {
+      icon: Ban,
+      className: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400',
+      label: t('status_DELETED'),
+    },
+  };
+
+  const genderFilterConfig: Record<
+    Exclude<FilterState['gender'], 'all'>,
+    { className: string; label: string }
+  > = {
+    male: {
+      className: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
+      label: t('gender_male'),
+    },
+    female: {
+      className: 'bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300',
+      label: t('gender_female'),
+    },
+    other: {
+      className: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300',
+      label: t('gender_other'),
+    },
+  };
+
   const hasActiveFilters =
     filters.searchQuery !== '' ||
     filters.paymentStatus !== 'all' ||
+    (filters.studentStatus && filters.studentStatus !== 'all') ||
     filters.className !== 'all' ||
     filters.gender !== 'all';
 
@@ -87,60 +172,147 @@ export function StudentFilter({
       {/* Filters Bar */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Payment Status Filter */}
-        <Select value={filters.paymentStatus} onValueChange={handlePaymentStatusChange}>
-          <SelectTrigger className="h-9 w-auto min-w-[140px] rounded-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm">
-            <SelectValue placeholder={t('filterByPayment')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('filter_all_payment')}</SelectItem>
-            <SelectItem value="paid">{t('payment_paid')}</SelectItem>
-            <SelectItem value="partial">{t('payment_partial')}</SelectItem>
-            <SelectItem value="unpaid">{t('payment_unpaid')}</SelectItem>
-          </SelectContent>
-        </Select>
+        <FloatingLabelSelect
+          label={t('filterByPayment')}
+          value={filters.paymentStatus}
+          onValueChange={handlePaymentStatusChange}
+          className="w-auto min-w-[160px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="all">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
+              {t('filter_all_payment')}
+            </span>
+          </SelectItem>
+          <SelectItem value="paid">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
+              <CheckCircle className="size-3" />
+              {t('payment_paid')}
+            </span>
+          </SelectItem>
+          <SelectItem value="partial">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 dark:text-orange-400">
+              <Clock className="size-3" />
+              {t('payment_partial')}
+            </span>
+          </SelectItem>
+          <SelectItem value="unpaid">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400">
+              <XCircle className="size-3" />
+              {t('payment_unpaid')}
+            </span>
+          </SelectItem>
+        </FloatingLabelSelect>
+
+        {/* Student Status Filter */}
+        <FloatingLabelSelect
+          label={t('filterByStatus')}
+          value={filters.studentStatus || 'all'}
+          onValueChange={handleStudentStatusChange}
+          className="w-auto min-w-[160px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="all">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
+              {t('filter_all_status')}
+            </span>
+          </SelectItem>
+          <SelectItem value="ACTIVE">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 dark:text-blue-400">
+              <UserCheck className="size-3" />
+              {t('status_ACTIVE')}
+            </span>
+          </SelectItem>
+          <SelectItem value="INACTIVE">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-yellow-700 dark:text-yellow-400">
+              <Timer className="size-3" />
+              {t('status_INACTIVE')}
+            </span>
+          </SelectItem>
+          <SelectItem value="GRADUATED">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
+              <GraduationCap className="size-3" />
+              {t('status_GRADUATED')}
+            </span>
+          </SelectItem>
+          <SelectItem value="DROPPED_OUT">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 dark:text-orange-400">
+              <UserX className="size-3" />
+              {t('status_DROPPED_OUT')}
+            </span>
+          </SelectItem>
+          <SelectItem value="DELETED">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400">
+              <Ban className="size-3" />
+              {t('status_DELETED')}
+            </span>
+          </SelectItem>
+        </FloatingLabelSelect>
 
         {/* Class Filter */}
-        <Select value={filters.className} onValueChange={handleClassChange}>
-          <SelectTrigger className="h-9 w-auto min-w-[140px] rounded-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm">
-            <SelectValue placeholder={t('filterByClass')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('filter_all_classes')}</SelectItem>
-            {availableClasses.map((cls) => (
-              <SelectItem key={cls.value} value={cls.value}>
-                {cls.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FloatingLabelSelect
+          label={t('filterByClass')}
+          value={filters.className}
+          onValueChange={handleClassChange}
+          className="w-auto min-w-[140px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="all">{t('filter_all_classes')}</SelectItem>
+          {availableClasses.map((cls) => (
+            <SelectItem key={cls.value} value={cls.value}>
+              {cls.label}
+            </SelectItem>
+          ))}
+        </FloatingLabelSelect>
 
         {/* Gender Filter */}
-        <Select value={filters.gender} onValueChange={handleGenderChange}>
-          <SelectTrigger className="h-9 w-auto min-w-[140px] rounded-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm">
-            <SelectValue placeholder={t('filterByGender')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('filter_all_genders')}</SelectItem>
-            <SelectItem value="male">{t('gender_male')}</SelectItem>
-            <SelectItem value="female">{t('gender_female')}</SelectItem>
-            <SelectItem value="other">{t('gender_other')}</SelectItem>
-          </SelectContent>
-        </Select>
+        <FloatingLabelSelect
+          label={t('filterByGender')}
+          value={filters.gender}
+          onValueChange={handleGenderChange}
+          className="w-auto min-w-[140px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="all">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
+              {t('filter_all_genders')}
+            </span>
+          </SelectItem>
+          <SelectItem value="male">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 dark:text-blue-400">
+              <User className="size-3" />
+              {t('gender_male')}
+            </span>
+          </SelectItem>
+          <SelectItem value="female">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-pink-700 dark:text-pink-400">
+              <User className="size-3" />
+              {t('gender_female')}
+            </span>
+          </SelectItem>
+          <SelectItem value="other">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-700 dark:text-purple-400">
+              <User className="size-3" />
+              {t('gender_other')}
+            </span>
+          </SelectItem>
+        </FloatingLabelSelect>
 
         {/* Divider */}
         <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
 
         {/* Sort By */}
-        <Select value={filters.sortBy} onValueChange={handleSortByChange}>
-          <SelectTrigger className="h-9 w-auto min-w-[120px] rounded-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm">
-            <SelectValue placeholder={t('sortBy')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name">{t('sort_by_name')}</SelectItem>
-            <SelectItem value="joinedDate">{t('sort_by_date')}</SelectItem>
-            <SelectItem value="monthlyFee">{t('sort_by_fee')}</SelectItem>
-          </SelectContent>
-        </Select>
+        <FloatingLabelSelect
+          label={t('sortBy')}
+          value={filters.sortBy}
+          onValueChange={handleSortByChange}
+          className="w-auto min-w-[120px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="name">{t('sort_by_name')}</SelectItem>
+          <SelectItem value="joinedDate">{t('sort_by_date')}</SelectItem>
+          <SelectItem value="monthlyFee">{t('sort_by_fee')}</SelectItem>
+        </FloatingLabelSelect>
 
         {/* Sort Order Button */}
         <Button
@@ -181,27 +353,59 @@ export function StudentFilter({
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
             {t('activeFilters')}
           </span>
+
+          {/* Search pill */}
           {filters.searchQuery && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 text-xs font-medium">
               <Search className="size-3" />
               <span>{filters.searchQuery}</span>
             </div>
           )}
-          {filters.paymentStatus !== 'all' && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-300 text-xs font-medium">
-              {t(`payment_${filters.paymentStatus}`)}
-            </div>
-          )}
+
+          {/* Payment status pill (match select colors/icons) */}
+          {filters.paymentStatus !== 'all' && (() => {
+            const cfg = paymentFilterConfig[filters.paymentStatus as Exclude<FilterState['paymentStatus'], 'all'>];
+            if (!cfg) return null;
+            const Icon = cfg.icon;
+            return (
+              <div className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', cfg.className)}>
+                <Icon className="size-3" />
+                <span>{cfg.label}</span>
+              </div>
+            );
+          })()}
+
+          {/* Student status pill (match select colors/icons) */}
+          {filters.studentStatus && filters.studentStatus !== 'all' && (() => {
+            const cfg = studentStatusFilterConfig[filters.studentStatus as Exclude<FilterState['studentStatus'], 'all'>];
+            if (!cfg) return null;
+            const Icon = cfg.icon;
+            return (
+              <div className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', cfg.className)}>
+                <Icon className="size-3" />
+                <span>{cfg.label}</span>
+              </div>
+            );
+          })()}
+
+          {/* Class pill (keep neutral purple) */}
           {filters.className !== 'all' && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 text-xs font-medium">
               {filters.className}
             </div>
           )}
-          {filters.gender !== 'all' && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 text-xs font-medium">
-              {t(`gender_${filters.gender}`)}
-            </div>
-          )}
+
+          {/* Gender pill (match select colors) */}
+          {filters.gender !== 'all' && (() => {
+            const cfg = genderFilterConfig[filters.gender as Exclude<FilterState['gender'], 'all'>];
+            if (!cfg) return null;
+            return (
+              <div className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', cfg.className)}>
+                <User className="size-3" />
+                <span>{cfg.label}</span>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

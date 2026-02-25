@@ -1,6 +1,7 @@
 package com.example.backend.dto.student;
 
 import com.example.backend.enums.Genders;
+import com.example.backend.enums.StudentStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,6 +28,10 @@ public class StudentResponse {
 
     private String fullNameParent;
     private String phoneNumberParent;
+
+    private StudentStatus status;
+    private Instant deletedAt;
+    private String deletedBy;
 
     @JsonProperty("class")
     private StudentClassResponse clazz;

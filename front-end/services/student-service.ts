@@ -52,4 +52,5 @@ export const studentService = {
     http.get<ResponseType<StudentType[], StudentType[]>>(`/api/student/get-students-by-class-shift/${classShiftId}`),
   getStudentById: (studentId: string) => http.get<ResponseType<StudentType, StudentType>>(`/api/student/get/${studentId}`),
   getClassHistory: (studentId: string) => http.get<ResponseType<ClassHistoryResponse[], ClassHistoryResponse[]>>(`/api/student/class-history/${studentId}`),
+  deleteStudents: (studentIds: string[]) => http.post<ResponseType<StudentType[], StudentType[]>>('/api/student/delete', { studentIds }),
 };
