@@ -31,7 +31,7 @@ export const studentService = {
     search: string,
     filters?: {
       gender?: 'MALE' | 'FEMALE' | 'OTHER';
-      status?: 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DROPPED_OUT';
+      status?: 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED';
       classId?: string;
     }
   ) => {
@@ -51,6 +51,10 @@ export const studentService = {
   getStudentsByClassShift: (classShiftId: string) =>
     http.get<ResponseType<StudentType[], StudentType[]>>(`/api/student/get-students-by-class-shift/${classShiftId}`),
   getStudentById: (studentId: string) => http.get<ResponseType<StudentType, StudentType>>(`/api/student/get/${studentId}`),
-  getClassHistory: (studentId: string) => http.get<ResponseType<ClassHistoryResponse[], ClassHistoryResponse[]>>(`/api/student/class-history/${studentId}`),
-  deleteStudents: (studentIds: string[]) => http.post<ResponseType<StudentType[], StudentType[]>>('/api/student/delete', { studentIds }),
+  getClassHistory: (studentId: string) =>
+    http.get<ResponseType<ClassHistoryResponse[], ClassHistoryResponse[]>>(`/api/student/class-history/${studentId}`),
+  restoreStudent: (studentId: string) =>
+    http.post<ResponseType<StudentType, StudentType>>(`/api/student/restore/${studentId}`, {}),
+  deleteStudents: (studentIds: string[]) =>
+    http.post<ResponseType<StudentType[], StudentType[]>>('/api/student/delete', { studentIds }),
 };

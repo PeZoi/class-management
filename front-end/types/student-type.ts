@@ -89,7 +89,7 @@ export interface ClassHistoryItem {
 export interface FilterState {
   searchQuery: string;
   paymentStatus: 'all' | 'paid' | 'unpaid' | 'partial';
-  studentStatus: 'all' | 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DROPPED_OUT' | 'DELETED';
+  studentStatus: 'all' | 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED';
   className: string;
   gender: 'all' | 'male' | 'female' | 'other';
   sortBy: 'name' | 'joinedDate' | 'monthlyFee';
@@ -122,4 +122,4 @@ export interface OverdueStudentItem extends StudentType {
 }
 
 // Student status type (matching backend enum)
-export type StudentStatus = 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DROPPED_OUT' | 'DELETED';
+export type StudentStatus = 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED';

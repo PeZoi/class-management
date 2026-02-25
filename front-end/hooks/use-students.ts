@@ -28,7 +28,7 @@ export function useStudents(
   search: string = '',
   filters: {
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
-    status?: 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DROPPED_OUT';
+    status?: 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED';
     classId?: string;
   } = {}
 ) {
@@ -403,6 +403,43 @@ export function useDeleteStudents() {
     onError: (error) => {
       console.error('Error deleting students:', error);
       toast.error(tNotif('errorDeleteStudent'));
+    },
+  });
+}
+
+/**
+ * Hook để khôi phục 1 học viên (từ DELETED -> INACTIVE)
+ * - Invalidate tất cả queries liên quan
+ */
+export function useRestoreStudent() {
+  const queryClient = useQueryClient();
+  const tNotif = useTranslations('notifications');
+
+  return useMutation({
+    mutationFn: async (studentId: string) => {
+      const response = await studentService.restoreStudent(studentId);
+      if (response.status !== 200 || !response.data) {
+        throw new Error('Failed to restore student');
+      }
+      return response.data;
+    },
+    onSuccess: (student, studentId) => {
+      // Invalidate student detail & lists
+      invalidateStudent(queryClient, studentId);
+      invalidateStudentLists(queryClient);
+      invalidateDashboard(queryClient);
+
+      // Invalidate class-related data nếu học viên vẫn còn class
+      if (student.class?.id) {
+        invalidateStudentsByClass(queryClient, student.class.id);
+        invalidateClass(queryClient, student.class.id);
+      }
+
+      toast.success(tNotif('successRestoreStudent'));
+    },
+    onError: (error) => {
+      console.error('Error restoring student:', error);
+      toast.error(tNotif('errorRestoreStudent'));
     },
   });
 }

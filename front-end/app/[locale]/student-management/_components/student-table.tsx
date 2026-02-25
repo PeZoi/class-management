@@ -33,7 +33,6 @@ import {
   Eye,
   CreditCard,
   UserCheck,
-  UserX,
   Timer,
   GraduationCap,
   Ban,
@@ -49,6 +48,7 @@ interface StudentTableProps {
   onDelete?: (id: string) => void;
   onAdd?: () => void;
   onPayment?: (student: StudentItem) => void;
+   onRestore?: (id: string) => void;
   title?: string;
   description?: string;
   showActions?: boolean;
@@ -61,6 +61,7 @@ export function StudentTable({
   onDelete,
   onAdd,
   onPayment,
+  onRestore,
   title,
   description,
   showActions = true,
@@ -121,11 +122,6 @@ export function StudentTable({
         label: t('status_GRADUATED'),
         className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
         icon: GraduationCap,
-      },
-      DROPPED_OUT: {
-        label: t('status_DROPPED_OUT'),
-        className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-        icon: UserX,
       },
       DELETED: {
         label: t('status_DELETED'),
@@ -480,19 +476,19 @@ export function StudentTable({
                     {t('viewDetail')}
                   </Link>
                 </DropdownMenuItem>
-                {onPayment && (
+                {onPayment && student.status !== 'DELETED' && (
                   <DropdownMenuItem className="cursor-pointer" onClick={() => onPayment(student)}>
                     <CreditCard className="size-4 mr-2" />
                     {t('payment')}
                   </DropdownMenuItem>
                 )}
-                {onEdit && (
+                {onEdit && student.status !== 'DELETED' && (
                   <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(student)}>
                     <Edit className="size-4 mr-2" />
                     {t('edit')}
                   </DropdownMenuItem>
                 )}
-                {onDelete && (
+                {onDelete && student.status !== 'DELETED' && (
                   <DropdownMenuItem
                     className="cursor-pointer text-red-600 dark:text-red-400"
                     onClick={() => {
@@ -503,6 +499,19 @@ export function StudentTable({
                   >
                     <Trash2 className="size-4 mr-2" />
                     {t('delete')}
+                  </DropdownMenuItem>
+                )}
+                {onRestore && student.status === 'DELETED' && (
+                  <DropdownMenuItem
+                    className="cursor-pointer text-emerald-600 dark:text-emerald-400"
+                    onClick={() => {
+                      if (window.confirm(t('confirmRestore'))) {
+                        onRestore(student.id);
+                      }
+                    }}
+                  >
+                    <Ban className="size-4 mr-2 rotate-180" />
+                    {t('restore')}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

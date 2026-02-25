@@ -119,11 +119,6 @@ export function StudentFilter({
       className: 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400',
       label: t('status_GRADUATED'),
     },
-    DROPPED_OUT: {
-      icon: UserX,
-      className: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400',
-      label: t('status_DROPPED_OUT'),
-    },
     DELETED: {
       icon: Ban,
       className: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400',
@@ -233,12 +228,6 @@ export function StudentFilter({
             <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
               <GraduationCap className="size-3" />
               {t('status_GRADUATED')}
-            </span>
-          </SelectItem>
-          <SelectItem value="DROPPED_OUT">
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 dark:text-orange-400">
-              <UserX className="size-3" />
-              {t('status_DROPPED_OUT')}
             </span>
           </SelectItem>
           <SelectItem value="DELETED">

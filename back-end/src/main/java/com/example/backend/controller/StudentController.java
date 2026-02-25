@@ -32,7 +32,7 @@ public class StudentController {
      * @param size Number of items per page, default 10
      * @param search Search term for fullName, email, or phoneNumber (optional)
      * @param gender Filter by gender: MALE, FEMALE, OTHER (optional)
-     * @param status Filter by status: ACTIVE, INACTIVE, GRADUATED, DROPPED_OUT (optional)
+     * @param status Filter by status: ACTIVE, INACTIVE, GRADUATED, DELETED (optional)
      * @param classId Filter by class ID (optional)
      * @return PageResponse with students and pagination metadata
      */
@@ -103,6 +103,17 @@ public class StudentController {
     public ResponseEntity<List<ClassHistoryResponse>> getClassHistory(@PathVariable String studentId) {
         List<ClassHistoryResponse> classHistoryList = studentService.getClassHistory(studentId);
         return new ResponseEntity<>(classHistoryList, HttpStatus.OK);
+    }
+
+    /**
+     * Restore a soft-deleted student (set status back to INACTIVE)
+     * @param studentId ID of student to restore
+     * @return Restored student response
+     */
+    @PostMapping("/restore/{studentId}")
+    public ResponseEntity<StudentResponse> restoreStudent(@PathVariable String studentId) {
+        StudentResponse studentResponse = studentService.restoreStudent(studentId);
+        return new ResponseEntity<>(studentResponse, HttpStatus.OK);
     }
 
     /**

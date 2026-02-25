@@ -1,7 +1,7 @@
 'use client';
 
 import { PageLoading } from '@/components/page-loading';
-import { useCreateStudent, useStudents, useUpdateStudent, useDeleteStudents } from '@/hooks/use-students';
+import { useCreateStudent, useStudents, useUpdateStudent, useDeleteStudents, useRestoreStudent } from '@/hooks/use-students';
 import { StudentRequest, StudentType, FilterState, StudentItem } from '@/types/student-type';
 import { SessionPaymentStatus } from '@/types/payment-type';
 import { useTranslations } from 'next-intl';
@@ -94,7 +94,7 @@ const mapStudentTypeToStudentItem = (student: StudentType): StudentItem => {
     paidAmount = currentMonthPayment.paidAmount;
   }
 
-  // Status đã có từ API (StudentStatus: ACTIVE, INACTIVE, GRADUATED, DROPPED_OUT, DELETED)
+  // Status đã có từ API (StudentStatus: ACTIVE, INACTIVE, GRADUATED, DELETED)
   // Không cần tạo fake status nữa, sử dụng trực tiếp từ student.status
 
   return {
@@ -166,6 +166,7 @@ export default function StudentManagementPage() {
   const createStudent = useCreateStudent();
   const updateStudent = useUpdateStudent();
   const deleteStudents = useDeleteStudents();
+  const restoreStudent = useRestoreStudent();
   
   // Flatten all pages into single array
   const studentsData = useMemo(() => {
@@ -238,6 +239,15 @@ export default function StudentManagementPage() {
       await deleteStudents.mutateAsync(id);
     } catch (error) {
       console.error('Error deleting student:', error);
+      // Error toast đã được handle trong hook
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await restoreStudent.mutateAsync(id);
+    } catch (error) {
+      console.error('Error restoring student:', error);
       // Error toast đã được handle trong hook
     }
   };
@@ -357,9 +367,9 @@ export default function StudentManagementPage() {
 
     // Apply sorting
     result.sort((a, b) => {
-      // First: Sort by student status if "all" is selected (ACTIVE -> INACTIVE -> GRADUATED -> DROPPED_OUT -> DELETED)
+      // First: Sort by student status if "all" is selected (ACTIVE -> INACTIVE -> GRADUATED -> DELETED)
       if (!filters.studentStatus || filters.studentStatus === 'all') {
-        const statusOrder = { ACTIVE: 0, INACTIVE: 1, GRADUATED: 2, DROPPED_OUT: 3, DELETED: 4 };
+        const statusOrder = { ACTIVE: 0, INACTIVE: 1, GRADUATED: 2, DELETED: 3 };
         const statusA = a.status ? statusOrder[a.status] ?? 99 : 99;
         const statusB = b.status ? statusOrder[b.status] ?? 99 : 99;
         
@@ -403,6 +413,7 @@ export default function StudentManagementPage() {
         students={filteredStudents}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onRestore={handleRestore}
         onAdd={handleAdd}
         onPayment={handlePayment}
         showActions={true}

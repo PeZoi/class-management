@@ -25,7 +25,6 @@ import com.example.backend.entity.Payment;
 import com.example.backend.enums.PaymentDirection;
 import com.example.backend.enums.PaymentMethod;
 import com.example.backend.enums.PaymentStatus;
-import com.example.backend.enums.PaymentType;
 import com.example.backend.enums.Status;
 import com.example.backend.repository.ClassRepository;
 import com.example.backend.repository.PaymentRepository;

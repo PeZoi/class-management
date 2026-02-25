@@ -311,30 +311,14 @@ public class StudentService {
 
     @Transactional
     public StudentResponse create(StudentRequest studentRequest) {
-        Class classDB = classRepository.findById(studentRequest.getClassId()).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
         Student studentReq = modelMapper.map(studentRequest, Student.class);
         studentReq.setId(null);
-        studentReq.setStatus(StudentStatus.ACTIVE);
+        
+        // Nếu chọn lớp khi tạo mới => ACTIVE, nếu không chọn lớp => INACTIVE
+        boolean hasClass = studentRequest.getClassId() != null && !studentRequest.getClassId().trim().isEmpty();
+        studentReq.setStatus(hasClass ? StudentStatus.ACTIVE : StudentStatus.INACTIVE);
 
         Student student = studentRepository.save(studentReq);
-
-        StudentClass studentClass = new StudentClass();
-        studentClass.setStudent(student);
-        studentClass.setClazz(classDB);
-        studentClass.setJoinedAt(Instant.now());
-        studentClass.setStatus(StudentClassStatus.STUDYING);
-        // Ca học là tùy chọn, có thể để trống và thêm vào sau
-        if (studentRequest.getClassShiftId() != null && !studentRequest.getClassShiftId().trim().isEmpty()) {
-            ClassShift shift = classShiftRepository.findById(studentRequest.getClassShiftId())
-                    .orElseThrow(() -> new NotFoundException("Không tìm thấy ca học"));
-            // Đảm bảo ca thuộc đúng lớp
-            if (!shift.getClazz().getId().equals(classDB.getId())) {
-                throw new NotFoundException("Ca học không thuộc lớp đã chọn");
-            }
-            studentClass.setClassShift(shift);
-        }
-        // Nếu không có ca học, studentClass.getClassShift() sẽ là null, có thể thêm sau bằng updateStudentShift
-        StudentClass studentClassDB = studentClassRepository.save(studentClass);
 
         StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
         
@@ -342,17 +326,41 @@ public class StudentService {
         studentResponse.setStatus(student.getStatus());
         studentResponse.setDeletedAt(student.getDeletedAt());
         studentResponse.setDeletedBy(student.getDeletedBy());
-        
-        StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
-        studentClassResponse.setId(classDB.getId());
-        studentClassResponse.setName(classDB.getName());
-        studentClassResponse.setJoinAt(studentClassDB.getJoinedAt());
-        studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
-        if (studentClassDB.getClassShift() != null) {
-            studentClassResponse.setShiftId(studentClassDB.getClassShift().getId());
-            studentClassResponse.setShiftName(studentClassDB.getClassShift().getName());
+
+        // Nếu không chọn lớp khi tạo mới thì không cần tạo StudentClass / clazz trong response
+        if (hasClass) {
+            Class classDB = classRepository.findById(studentRequest.getClassId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+
+            StudentClass studentClass = new StudentClass();
+            studentClass.setStudent(student);
+            studentClass.setClazz(classDB);
+            studentClass.setJoinedAt(Instant.now());
+            studentClass.setStatus(StudentClassStatus.STUDYING);
+            // Ca học là tùy chọn, có thể để trống và thêm vào sau
+            if (studentRequest.getClassShiftId() != null && !studentRequest.getClassShiftId().trim().isEmpty()) {
+                ClassShift shift = classShiftRepository.findById(studentRequest.getClassShiftId())
+                        .orElseThrow(() -> new NotFoundException("Không tìm thấy ca học"));
+                // Đảm bảo ca thuộc đúng lớp
+                if (!shift.getClazz().getId().equals(classDB.getId())) {
+                    throw new NotFoundException("Ca học không thuộc lớp đã chọn");
+                }
+                studentClass.setClassShift(shift);
+            }
+            // Nếu không có ca học, studentClass.getClassShift() sẽ là null, có thể thêm sau bằng updateStudentShift
+            StudentClass studentClassDB = studentClassRepository.save(studentClass);
+
+            StudentResponse.StudentClassResponse studentClassResponse = new StudentResponse.StudentClassResponse();
+            studentClassResponse.setId(classDB.getId());
+            studentClassResponse.setName(classDB.getName());
+            studentClassResponse.setJoinAt(studentClassDB.getJoinedAt());
+            studentClassResponse.setMonthlyFee(classDB.getMonthlyFee());
+            if (studentClassDB.getClassShift() != null) {
+                studentClassResponse.setShiftId(studentClassDB.getClassShift().getId());
+                studentClassResponse.setShiftName(studentClassDB.getClassShift().getName());
+            }
+            studentResponse.setClazz(studentClassResponse);
         }
-        studentResponse.setClazz(studentClassResponse);
         return studentResponse;
     }
 
@@ -366,6 +374,18 @@ public class StudentService {
         studentDB.setGender(studentRequest.getGender());
         studentDB.setFullNameParent(studentRequest.getFullNameParent());
         studentDB.setPhoneNumberParent(studentRequest.getPhoneNumberParent());
+
+        boolean hasClass = studentRequest.getClassId() != null && !studentRequest.getClassId().trim().isEmpty();
+
+        // Nếu set lớp cho học viên đang INACTIVE thì chuyển sang ACTIVE
+        if (hasClass && studentDB.getStatus() == StudentStatus.INACTIVE) {
+            studentDB.setStatus(StudentStatus.ACTIVE);
+        }
+
+        // Nếu bỏ trống lớp (không còn lớp) thì đặt trạng thái về INACTIVE
+        if (!hasClass) {
+            studentDB.setStatus(StudentStatus.INACTIVE);
+        }
 
         Student student = studentRepository.save(studentDB);
         StudentResponse studentResponse = modelMapper.map(student, StudentResponse.class);
@@ -588,9 +608,14 @@ public class StudentService {
             studentClass.setStatus(StudentClassStatus.DROPPED);
             studentClassRepository.save(studentClass);
 
-            // After removal, student has no current class => response without clazz
+            // After removal, student has no current class => set status to INACTIVE
             Student student = studentRepository.findById(studentId)
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
+            
+            // Set student status to INACTIVE when removed from class
+            student.setStatus(StudentStatus.INACTIVE);
+            studentRepository.save(student);
+            
             StudentResponse response = modelMapper.map(student, StudentResponse.class);
             
             // Explicitly set status and deletion fields
@@ -884,5 +909,32 @@ public class StudentService {
         }
 
         return responses;
+    }
+
+    /**
+     * Restore a soft-deleted student by setting status back to INACTIVE
+     * and clearing deletion metadata.
+     *
+     * @param studentId ID of the student to restore
+     * @return Restored student response with class/payment info
+     */
+    @Transactional
+    public StudentResponse restoreStudent(String studentId) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
+
+        if (student.getStatus() != StudentStatus.DELETED) {
+            throw new CustomException("Chỉ có thể khôi phục học viên ở trạng thái đã xoá", HttpStatus.BAD_REQUEST);
+        }
+
+        // Restore to INACTIVE so admin có thể kiểm soát trước khi cho học lại
+        student.setStatus(StudentStatus.INACTIVE);
+        student.setDeletedAt(null);
+        student.setDeletedBy(null);
+
+        studentRepository.save(student);
+
+        // Trả về response đầy đủ thông tin class & payment giống các API khác
+        return buildStudentResponseWithCurrentClass(studentId);
     }
 }
