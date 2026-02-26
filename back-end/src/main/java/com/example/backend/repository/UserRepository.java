@@ -50,18 +50,25 @@ public interface UserRepository extends JpaRepository<User, String> {
      * Find teachers with pagination and filtering support
      * Search by fullName, email, or phoneNumber
      * Filter by gender and status
+     * Note: Returns all statuses (including DELETED) when status filter is not provided
      */
     @Query("""
         SELECT u FROM User u 
         WHERE u.role.name = 'ROLE_TEACHER'
-        AND u.status <> 'DELETED'
         AND (:search IS NULL OR :search = '' 
              OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
              OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))
              OR u.phoneNumber LIKE CONCAT('%', :search, '%'))
         AND (:gender IS NULL OR u.gender = :gender)
         AND (:status IS NULL OR u.status = :status)
-        ORDER BY u.createdAt DESC
+        ORDER BY 
+            CASE 
+                WHEN u.status = 'ACTIVE' THEN 1 
+                WHEN u.status = 'BLOCKED' THEN 2 
+                WHEN u.status = 'DELETED' THEN 3 
+                ELSE 4 
+            END,
+            u.createdAt DESC
     """)
     Page<User> findTeachersWithFilters(
         @Param("search") String search,

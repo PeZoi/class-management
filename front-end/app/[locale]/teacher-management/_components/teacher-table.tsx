@@ -30,6 +30,11 @@ import {
   Plus,
   Trash2,
   User,
+  CheckCircle2,
+  XCircle,
+  Ban,
+  RotateCcw,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -41,6 +46,8 @@ interface TeacherTableProps {
   onAdd?: () => void;
   onViewDetail?: (teacher: TeacherType) => void;
   onResetPassword?: (teacher: TeacherType) => void;
+  onRestore?: (id: string) => void;
+  onAssignClasses?: (teacher: TeacherType) => void;
   title?: string;
   description?: string;
   showActions?: boolean;
@@ -54,6 +61,8 @@ export function TeacherTable({
   onAdd,
   onViewDetail,
   onResetPassword,
+  onRestore,
+  onAssignClasses,
   title,
   description,
   showActions = true,
@@ -211,6 +220,65 @@ export function TeacherTable({
       },
     },
     {
+      accessorKey: 'status',
+      header: ({ column }) => (
+        <div className="flex items-center justify-center gap-2">
+          <SortableHeader column={column} className="justify-center">
+            <CheckCircle2 className="size-4" />
+            {t('status')}
+          </SortableHeader>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const status = row.original.status;
+        const getStatusConfig = () => {
+          switch (status) {
+            case 'ACTIVE':
+              return {
+                label: t('statusActive'),
+                className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                icon: CheckCircle2,
+              };
+            case 'DELETED':
+              return {
+                label: t('statusDeleted'),
+                className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                icon: XCircle,
+              };
+            case 'BLOCKED':
+              return {
+                label: t('statusBlocked'),
+                className: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+                icon: Ban,
+              };
+            default:
+              return {
+                label: status || t('statusActive'),
+                className: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
+                icon: CheckCircle2,
+              };
+          }
+        };
+
+        const config = getStatusConfig();
+        const Icon = config.icon;
+
+        return (
+          <div className="text-center">
+            <span className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium', config.className)}>
+              <Icon className="size-3" />
+              {config.label}
+            </span>
+          </div>
+        );
+      },
+      sortingFn: (rowA, rowB) => {
+        const statusA = rowA.original.status || 'ACTIVE';
+        const statusB = rowB.original.status || 'ACTIVE';
+        return statusA.localeCompare(statusB);
+      },
+    },
+    {
       accessorKey: 'createdAt',
       header: ({ column }) => (
         <div className="flex items-center justify-center gap-2">
@@ -242,6 +310,8 @@ export function TeacherTable({
       header: () => <div className="text-center">{t('actions')}</div>,
       cell: ({ row }) => {
         const teacher = row.original;
+        const isDeleted = teacher.status === 'DELETED';
+        
         return (
           <div className="text-center">
             <DropdownMenu>
@@ -260,36 +330,59 @@ export function TeacherTable({
                     {t('viewDetail')}
                   </DropdownMenuItem>
                 )}
-                {onEdit && (
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(teacher)}>
-                    <Edit className="size-4 mr-2" />
-                    {t('edit')}
-                  </DropdownMenuItem>
+                {!isDeleted && (
+                  <>
+                    {onEdit && (
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(teacher)}>
+                        <Edit className="size-4 mr-2" />
+                        {t('edit')}
+                      </DropdownMenuItem>
+                    )}
+                    {onAssignClasses && (
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => onAssignClasses(teacher)}>
+                        <ClipboardCheck className="size-4 mr-2" />
+                        {t('assignClasses')}
+                      </DropdownMenuItem>
+                    )}
+                    {onResetPassword && (
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => {
+                          if (window.confirm(t('confirmResetPassword'))) {
+                            onResetPassword(teacher);
+                          }
+                        }}
+                      >
+                        <Key className="size-4 mr-2" />
+                        {t('resetPassword')}
+                      </DropdownMenuItem>
+                    )}
+                    {onDelete && (
+                      <DropdownMenuItem
+                        className="cursor-pointer text-red-600 dark:text-red-400"
+                        onClick={() => {
+                          if (window.confirm(t('confirmDelete'))) {
+                            onDelete(teacher.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="size-4 mr-2" />
+                        {t('delete')}
+                      </DropdownMenuItem>
+                    )}
+                  </>
                 )}
-                {onResetPassword && (
+                {isDeleted && onRestore && (
                   <DropdownMenuItem
-                    className="cursor-pointer"
+                    className="cursor-pointer text-emerald-600 dark:text-emerald-400"
                     onClick={() => {
-                      if (window.confirm(t('confirmResetPassword'))) {
-                        onResetPassword(teacher);
+                      if (window.confirm(t('confirmRestore'))) {
+                        onRestore(teacher.id);
                       }
                     }}
                   >
-                    <Key className="size-4 mr-2" />
-                    {t('resetPassword')}
-                  </DropdownMenuItem>
-                )}
-                {onDelete && (
-                  <DropdownMenuItem
-                    className="cursor-pointer text-red-600 dark:text-red-400"
-                    onClick={() => {
-                      if (window.confirm(t('confirmDelete'))) {
-                        onDelete(teacher.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="size-4 mr-2" />
-                    {t('delete')}
+                    <RotateCcw className="size-4 mr-2" />
+                    {t('restore')}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

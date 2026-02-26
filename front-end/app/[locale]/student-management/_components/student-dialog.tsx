@@ -13,8 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { StudentType, StudentRequest } from '@/types/student-type';
-import { ClassType, ClassShiftType } from '@/types/class-type';
-import { classService, classShiftService } from '@/services';
+import { useClasses, useClassShiftsByClass } from '@/hooks/use-classes';
 
 interface StudentDialogProps {
   open: boolean;
@@ -27,9 +26,6 @@ interface StudentDialogProps {
 export function StudentDialog({ open, onOpenChange, student, onSave, isSubmitting }: StudentDialogProps) {
   const t = useTranslations('student-management');
   const tCommon = useTranslations('common');
-
-  const [classes, setClasses] = useState<ClassType[]>([]);
-  const [shifts, setShifts] = useState<ClassShiftType[]>([]);
   const [formData, setFormData] = useState<StudentRequest>({
     fullName: '',
     email: '',
@@ -42,26 +38,11 @@ export function StudentDialog({ open, onOpenChange, student, onSave, isSubmittin
     classShiftId: '',
   });
 
-  // Fetch classes
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const response = await classService.getAllClasses();
-        if (response.status === 200) {
-          setClasses(response.data || []);
-        }
-      } catch (error) {
-        console.error('Error fetching classes:', error);
-      }
-    };
-    if (open) {
-      fetchClasses();
-    }
-  }, [open]);
+  // TanStack Query: fetch classes (dùng useClasses)
+  const { data: classes = [] } = useClasses();
 
-  // Reset form when dialog opens/closes or student changes
-  // Note: setState in useEffect is necessary to sync form with props
   useEffect(() => {
+    // Đồng bộ form với dữ liệu student khi mở dialog
     if (student) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
@@ -90,25 +71,10 @@ export function StudentDialog({ open, onOpenChange, student, onSave, isSubmittin
     }
   }, [student, open]);
 
-  // Fetch shifts when classId changes
-  useEffect(() => {
-    const fetchShifts = async () => {
-      if (!formData.classId) {
-        setShifts([]);
-        return;
-      }
-      try {
-        const response = await classShiftService.getByClassId(formData.classId);
-        if (response.status === 200) {
-          setShifts(response.data || []);
-        }
-      } catch (error) {
-        console.error('Error fetching class shifts:', error);
-      }
-    };
-
-    fetchShifts();
-  }, [formData.classId]);
+  // TanStack Query: fetch shifts theo classId (dùng trực tiếp, không lưu thêm vào state)
+  const { data: shifts = [] } = useClassShiftsByClass(formData.classId, {
+    enabled: !!formData.classId,
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

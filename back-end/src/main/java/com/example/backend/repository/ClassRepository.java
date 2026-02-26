@@ -23,4 +23,8 @@ public interface ClassRepository extends JpaRepository<Class,String> {
     // Fetch join classShifts cho classes của một teacher
     @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts WHERE c.teacher = :teacher")
     List<Class> findAllByTeacherWithClassShifts(User teacher);
+    
+    // Lấy tất cả classes không có teacher (teacher is null)
+    @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts WHERE c.teacher IS NULL")
+    List<Class> findAllUnassignedClassesWithClassShifts();
 }

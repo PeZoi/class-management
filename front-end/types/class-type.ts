@@ -22,7 +22,7 @@ export interface ClassType {
   revenue: number;
   collected: number;
   total: number;
-  teacher: TeacherType;
+  teacher?: TeacherType;
   // Danh sách ca học trả luôn trong response lớp để tránh gọi /api/class-shift/by-class cho từng lớp
   classShifts?: ClassShiftType[];
 }

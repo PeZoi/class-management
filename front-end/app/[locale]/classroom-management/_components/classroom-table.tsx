@@ -59,6 +59,7 @@ export function ClassroomTable({
 }: ClassroomTableProps) {
   const t = useTranslations('classroom-management');
   const tDashboard = useTranslations('dashboard');
+  const tCommon = useTranslations('common');
   const locale = useLocale();
 
   const displayTitle = title || t('title');
@@ -103,14 +104,22 @@ export function ClassroomTable({
         </SortableHeader>
       ),
       cell: ({ row }) => {
+        const teacher = row.original.teacher;
+        if (!teacher) {
+          return (
+            <div className="font-medium text-slate-500 dark:text-slate-400 italic">
+              {tCommon('noTeacher')}
+            </div>
+          );
+        }
         return (
           <div className="font-medium text-slate-900 dark:text-slate-100">
             <div className="space-y-0.5">
-              <div>{row.original.teacher.fullName}</div>
+              <div>{teacher.fullName}</div>
               <div className="text-xs text-slate-500">
-                {row.original.teacher.gender === 'MALE'
+                {teacher.gender === 'MALE'
                   ? tDashboard('gender_male')
-                  : row.original.teacher.gender === 'FEMALE'
+                  : teacher.gender === 'FEMALE'
                     ? tDashboard('gender_female')
                     : tDashboard('gender_other')}
               </div>
@@ -119,7 +128,9 @@ export function ClassroomTable({
         );
       },
       sortingFn: (rowA, rowB) => {
-        return rowA.original.teacher.fullName.localeCompare(rowB.original.teacher.fullName);
+        const teacherA = rowA.original.teacher?.fullName || '';
+        const teacherB = rowB.original.teacher?.fullName || '';
+        return teacherA.localeCompare(teacherB);
       },
     },
     {

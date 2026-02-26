@@ -9,6 +9,7 @@ import com.example.backend.entity.User;
 import com.example.backend.enums.Genders;
 import com.example.backend.enums.Status;
 import com.example.backend.exception.NotFoundException;
+import com.example.backend.exception.CustomException;
 import com.example.backend.repository.ClassRepository;
 import com.example.backend.repository.RoleRepository;
 import com.example.backend.repository.UserRepository;
@@ -146,5 +147,89 @@ public class TeacherService {
         teacher.setPassword(passwordEncoder.encode(teacher.getUsername()));
         User teacherRes = userRepository.save(teacher);
         return modelMapper.map(teacherRes, TeacherResponse.class);
+    }
+
+    /**
+     * Soft delete a teacher by setting status to DELETED and
+     * detaching the teacher from all related classes (set teacher to null).
+     *
+     * This keeps historical data (classes, payments, etc.) while ensuring
+     * the deleted teacher can no longer log in or appear in active lists.
+     *
+     * @return TeacherResponse of the deleted teacher
+     */
+    @Transactional
+    public TeacherResponse deleteTeacher(String teacherId) {
+        User teacher = userRepository.findById(teacherId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+
+        if (!"ROLE_TEACHER".equals(teacher.getRole().getName())) {
+            throw new CustomException("Chỉ có thể xoá tài khoản giáo viên", org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
+
+        // If already deleted, return the teacher response
+        if (teacher.getStatus() == Status.DELETED) {
+            TeacherResponse response = modelMapper.map(teacher, TeacherResponse.class);
+            response.setClassList(new ArrayList<>());
+            return response;
+        }
+
+        // Detach teacher from all classes
+        List<Class> classes = classRepository.findAllByTeacher(teacher);
+        for (Class clazz : classes) {
+            clazz.setTeacher(null);
+        }
+        if (!classes.isEmpty()) {
+            classRepository.saveAll(classes);
+        }
+
+        // Soft delete teacher account
+        teacher.setStatus(Status.DELETED);
+        teacher.setEnabled(false);
+
+        User deletedTeacher = userRepository.save(teacher);
+
+        // Build response (no classes since teacher is detached)
+        TeacherResponse response = modelMapper.map(deletedTeacher, TeacherResponse.class);
+        response.setClassList(new ArrayList<>());
+        return response;
+    }
+
+    /**
+     * Restore a soft-deleted teacher by setting status back to ACTIVE
+     * and enabling the account.
+     *
+     * @param teacherId ID of the teacher to restore
+     * @return Restored teacher response with class info
+     */
+    @Transactional
+    public TeacherResponse restoreTeacher(String teacherId) {
+        User teacher = userRepository.findById(teacherId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+
+        if (!"ROLE_TEACHER".equals(teacher.getRole().getName())) {
+            throw new CustomException("Chỉ có thể khôi phục tài khoản giáo viên", org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
+
+        if (teacher.getStatus() != Status.DELETED) {
+            throw new CustomException("Chỉ có thể khôi phục giáo viên ở trạng thái đã xoá", org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
+
+        // Restore teacher account
+        teacher.setStatus(Status.ACTIVE);
+        teacher.setEnabled(true);
+
+        User restoredTeacher = userRepository.save(teacher);
+
+        // Build response with class list
+        List<Class> classList = classRepository.findAllByTeacher(restoredTeacher);
+        List<TeacherResponse.TeacherClass> teacherClassList =
+                classList.stream()
+                        .map(clazz -> modelMapper.map(clazz, TeacherResponse.TeacherClass.class))
+                        .toList();
+
+        TeacherResponse response = modelMapper.map(restoredTeacher, TeacherResponse.class);
+        response.setClassList(teacherClassList);
+        return response;
     }
 }

@@ -6,8 +6,10 @@ import { BookOpen, Calendar, DollarSign, ExternalLink, Users, Clock, Loader2 } f
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ClassType, ClassShiftType } from '@/types/class-type';
+import { useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 import { classShiftService } from '@/services';
-import { useEffect, useState } from 'react';
 
 interface TeacherClassesListProps {
   classes: ClassType[];
@@ -17,49 +19,32 @@ export function TeacherClassesList({ classes }: TeacherClassesListProps) {
   const t = useTranslations('teacher-detail');
   const tCommon = useTranslations('common');
   const locale = useLocale();
-  const [shiftsByClassId, setShiftsByClassId] = useState<Record<string, ClassShiftType[]>>({});
-  const [loadingShifts, setLoadingShifts] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    const fetchShiftsForAllClasses = async () => {
-      if (classes.length === 0) return;
+  // Dùng TanStack Query (useQueries) để load shifts cho tất cả classes
+  const classIds = useMemo(() => classes.map((c) => c.id), [classes]);
 
-      // Set loading state for all classes
-      const initialLoadingState: Record<string, boolean> = {};
-      classes.forEach((classItem) => {
-        initialLoadingState[classItem.id] = true;
-      });
-      setLoadingShifts(initialLoadingState);
-
-      // Fetch shifts for all classes in parallel
-      const shiftPromises = classes.map(async (classItem) => {
-        try {
-          const response = await classShiftService.getByClassId(classItem.id);
-          if (response.status === 200 && response.data) {
-            return { classId: classItem.id, shifts: response.data };
-          }
-          return { classId: classItem.id, shifts: [] };
-        } catch (error) {
-          console.error(`Error fetching shifts for class ${classItem.id}:`, error);
-          return { classId: classItem.id, shifts: [] };
+  const shiftQueries = useQueries({
+    queries: classIds.map((classId) => ({
+      queryKey: queryKeys.classShifts.byClass(classId),
+      queryFn: async () => {
+        const response = await classShiftService.getByClassId(classId);
+        if (response.status === 200 && response.data) {
+          return response.data as ClassShiftType[];
         }
-      });
+        return [] as ClassShiftType[];
+      },
+      enabled: !!classId,
+    })),
+  });
 
-      const results = await Promise.all(shiftPromises);
-      
-      // Update shifts state
-      const newShiftsByClassId: Record<string, ClassShiftType[]> = {};
-      results.forEach(({ classId, shifts }) => {
-        newShiftsByClassId[classId] = shifts;
-      });
-      setShiftsByClassId(newShiftsByClassId);
+  const shiftsByClassId: Record<string, ClassShiftType[]> = {};
+  const loadingShifts: Record<string, boolean> = {};
 
-      // Clear loading state
-      setLoadingShifts({});
-    };
-
-    fetchShiftsForAllClasses();
-  }, [classes]);
+  classes.forEach((cls, index) => {
+    const query = shiftQueries[index];
+    shiftsByClassId[cls.id] = (query.data as ClassShiftType[]) || [];
+    loadingShifts[cls.id] = query.isLoading;
+  });
 
   if (classes.length === 0) {
     return (

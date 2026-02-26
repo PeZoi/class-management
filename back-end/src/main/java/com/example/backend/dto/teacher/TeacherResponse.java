@@ -1,8 +1,7 @@
 package com.example.backend.dto.teacher;
 
 import com.example.backend.enums.Genders;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.nimbusds.openid.connect.sdk.claims.Gender;
+import com.example.backend.enums.Status;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,6 +25,7 @@ public class TeacherResponse {
     private Instant dob;
     private String avatar;
     private Genders gender;
+    private Status status;
     private Instant createdAt;
     private Instant updatedAt;
 

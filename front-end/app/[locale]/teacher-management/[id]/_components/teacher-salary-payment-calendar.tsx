@@ -65,6 +65,7 @@ export function TeacherSalaryPaymentCalendar({
   useEffect(() => {
     if (prevSubmittingRef.current && !isSubmittingPayment && paymentDialogOpen) {
       // Submission just completed (was submitting, now not submitting)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPaymentDialogOpen(false);
       setSelectedSalary(null);
     }

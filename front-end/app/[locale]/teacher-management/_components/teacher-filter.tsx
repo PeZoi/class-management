@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { SelectItem } from '@/components/ui/select';
 import { FloatingLabelSelect } from '@/components/ui/floating-label-select';
 import { cn } from '@/lib/utils';
-import { Search, SortAsc, X, User } from 'lucide-react';
+import { Search, SortAsc, X, User, CheckCircle2, XCircle, Ban } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TeacherFilterState } from '@/types/teacher-type';
 
@@ -26,6 +26,10 @@ export function TeacherFilter({ filters, onFilterChange, className }: TeacherFil
     onFilterChange({ ...filters, gender: value as TeacherFilterState['gender'] });
   };
 
+  const handleStatusChange = (value: string) => {
+    onFilterChange({ ...filters, status: value as TeacherFilterState['status'] });
+  };
+
   const handleSortByChange = (value: string) => {
     onFilterChange({ ...filters, sortBy: value as TeacherFilterState['sortBy'] });
   };
@@ -41,6 +45,7 @@ export function TeacherFilter({ filters, onFilterChange, className }: TeacherFil
     onFilterChange({
       searchQuery: '',
       gender: 'all',
+      status: 'all',
       sortBy: 'name',
       sortOrder: 'asc',
     });
@@ -49,8 +54,37 @@ export function TeacherFilter({ filters, onFilterChange, className }: TeacherFil
   const hasActiveFilters =
     filters.searchQuery !== '' ||
     filters.gender !== 'all' ||
+    filters.status !== 'all' ||
     filters.sortBy !== 'name' ||
     filters.sortOrder !== 'asc';
+
+  const genderPillClasses =
+    filters.gender === 'male'
+      ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
+      : filters.gender === 'female'
+        ? 'bg-pink-50 text-pink-700 dark:bg-pink-950/50 dark:text-pink-300'
+        : 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300';
+
+  const statusPillConfig =
+    filters.status === 'active'
+      ? {
+          label: t('statusActive'),
+          className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
+          icon: CheckCircle2,
+        }
+      : filters.status === 'deleted'
+        ? {
+            label: t('statusDeleted'),
+            className: 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300',
+            icon: XCircle,
+          }
+        : filters.status === 'blocked'
+          ? {
+              label: t('statusBlocked'),
+              className: 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300',
+              icon: Ban,
+            }
+          : null;
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -96,6 +130,39 @@ export function TeacherFilter({ filters, onFilterChange, className }: TeacherFil
             <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-700 dark:text-purple-400">
               <User className="size-3" />
               {t('other')}
+            </span>
+          </SelectItem>
+        </FloatingLabelSelect>
+
+        {/* Status Filter */}
+        <FloatingLabelSelect
+          label={t('status')}
+          value={filters.status}
+          onValueChange={handleStatusChange}
+          className="w-auto min-w-[160px]"
+          triggerClassName="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+        >
+          <SelectItem value="all">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
+              {t('filter_all_status')}
+            </span>
+          </SelectItem>
+          <SelectItem value="active">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+              <CheckCircle2 className="size-3" />
+              {t('statusActive')}
+            </span>
+          </SelectItem>
+          <SelectItem value="deleted">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400">
+              <XCircle className="size-3" />
+              {t('statusDeleted')}
+            </span>
+          </SelectItem>
+          <SelectItem value="blocked">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-700 dark:text-rose-400">
+              <Ban className="size-3" />
+              {t('statusBlocked')}
             </span>
           </SelectItem>
         </FloatingLabelSelect>
@@ -174,9 +241,28 @@ export function TeacherFilter({ filters, onFilterChange, className }: TeacherFil
             </div>
           )}
           {filters.gender !== 'all' && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 text-xs font-medium">
+            <div
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                genderPillClasses,
+              )}
+            >
               <User className="size-3" />
               <span>{t(filters.gender)}</span>
+            </div>
+          )}
+          {filters.status !== 'all' && statusPillConfig && (
+            <div
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                statusPillConfig.className,
+              )}
+            >
+              {(() => {
+                const StatusIcon = statusPillConfig.icon;
+                return <StatusIcon className="size-3" />;
+              })()}
+              <span>{statusPillConfig.label}</span>
             </div>
           )}
         </div>

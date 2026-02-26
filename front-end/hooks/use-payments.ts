@@ -50,6 +50,46 @@ export function usePayments(
 }
 
 /**
+ * Hook để lấy payments với pagination theo page/size (dùng cho DataTable server-side pagination)
+ */
+export function usePaymentsPaginated(
+  search: string = '',
+  filters: {
+    direction?: 'INCOME' | 'EXPENSE';
+    paymentType?: 'STUDENT_FEE' | 'TEACHER_SALARY' | 'REFUND';
+    paymentStatus?: 'COMPLETED' | 'INCOMPLETE' | 'CANCELLED';
+    paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CREDIT_CARD' | 'E_WALLET';
+    startDate?: string;
+    endDate?: string;
+  } = {},
+  page: number = 0,
+  size: number = 10,
+) {
+  const debouncedSearch = useDebounce(search, 500);
+
+  return useQuery<PageResponse<PaymentResponse>>({
+    queryKey: queryKeys.payments.listPaginated({
+      ...filters,
+      search: debouncedSearch,
+      page,
+      size,
+    }),
+    queryFn: async () => {
+      const response = await paymentService.getPaymentsPaginated(
+        page,
+        size,
+        debouncedSearch,
+        filters,
+      );
+      if (response.status === 200 && response.data) {
+        return response.data;
+      }
+      throw new Error('Failed to fetch payments');
+    },
+  });
+}
+
+/**
  * Hook để lấy payment history theo studentId
  */
 export function usePaymentsByStudent(studentId: string) {

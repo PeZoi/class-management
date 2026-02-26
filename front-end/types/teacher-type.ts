@@ -19,6 +19,7 @@ export interface TeacherType {
   dob: string;
   avatar: string;
   gender: string;
+  status: 'ACTIVE' | 'DELETED' | 'BLOCKED';
   classList: ClassType[];
   createdAt: string;
   updatedAt: string;
@@ -28,6 +29,7 @@ export interface TeacherType {
 export interface TeacherFilterState {
   searchQuery: string;
   gender: 'all' | 'male' | 'female' | 'other';
+  status: 'all' | 'active' | 'deleted' | 'blocked';
   sortBy: 'name' | 'joinedDate' | 'totalClasses';
   sortOrder: 'asc' | 'desc';
 }

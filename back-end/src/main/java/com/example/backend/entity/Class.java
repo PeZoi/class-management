@@ -37,7 +37,7 @@ public class Class extends Auditable {
     private int monthlyFee;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "teacher_id", nullable = false)
+    @JoinColumn(name = "teacher_id", nullable = true)
     private User teacher;
 
     @OneToMany(mappedBy = "clazz", cascade = CascadeType.ALL)

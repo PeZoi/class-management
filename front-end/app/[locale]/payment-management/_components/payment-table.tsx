@@ -55,6 +55,11 @@ interface PaymentTableProps {
   className?: string;
   isLoading?: boolean;
   error?: string;
+  pageIndex?: number;
+  pageSize?: number;
+  totalItems?: number;
+  onPageChange?: (pageIndex: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 }
 
 export function PaymentTable({
@@ -69,6 +74,11 @@ export function PaymentTable({
   className,
   isLoading,
   error,
+  pageIndex,
+  pageSize,
+  totalItems,
+  onPageChange,
+  onPageSizeChange,
 }: PaymentTableProps) {
   const t = useTranslations('payment-management');
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
@@ -579,6 +589,12 @@ export function PaymentTable({
           <DataTable
             columns={columns}
             data={payments}
+            pageSize={pageSize}
+            manualPagination={typeof pageIndex === 'number' && typeof totalItems === 'number'}
+            pageIndex={pageIndex}
+            totalItems={totalItems}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
             getRowClassName={(payment) =>
               payment.type === 'income'
                 ? 'bg-green-50/30 dark:bg-green-950/10 hover:bg-green-50/50 dark:hover:bg-green-950/20'

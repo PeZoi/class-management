@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -401,5 +403,105 @@ public class ClassService {
         // Lấy top 3 (hoặc ít hơn nếu có ít hơn 3 lớp)
         int topCount = Math.min(3, classResponsesWithRevenue.size());
         return classResponsesWithRevenue.subList(0, topCount);
+    }
+
+    /**
+     * Lấy danh sách classes không có teacher (chưa được gán giáo viên)
+     * @return List of ClassResponse với classShifts
+     */
+    public List<ClassResponse> getUnassignedClasses() {
+        List<ClassResponse> classResponses = new ArrayList<>();
+        // Dùng findAllUnassignedClassesWithClassShifts để fetch join classShifts
+        List<Class> classes = classRepository.findAllUnassignedClassesWithClassShifts();
+
+        for (Class c : classes) {
+            ClassResponse classResponse = modelMapper.map(c, ClassResponse.class);
+            classResponse.setClassShifts(mapClassShifts(c));
+            int studentCount = countActiveStudents(classResponse.getId());
+            int total = studentCount * classResponse.getMonthlyFee();
+            
+            // Tính collected và revenue từ payments có direction = INCOME trong tháng hiện tại
+            Instant currentMonth = getCurrentMonthStart();
+            Long collectedLong = paymentRepository.sumByClassIdAndDirectionAndMonth(classResponse.getId(), PaymentDirection.INCOME, currentMonth);
+            Long revenueLong = paymentRepository.sumByClassIdAndDirectionAndMonth(classResponse.getId(), PaymentDirection.INCOME, currentMonth);
+            
+            int collected = collectedLong != null ? collectedLong.intValue() : 0;
+            int revenue = revenueLong != null ? revenueLong.intValue() : 0;
+            
+            classResponse.setTotal(total);
+            classResponse.setCollected(collected);
+            classResponse.setRevenue(revenue);
+            classResponse.setStudentCount(studentCount);
+            classResponses.add(classResponse);
+        }
+
+        return classResponses;
+    }
+
+    /**
+     * Assign teacher cho nhiều classes.
+     * Danh sách classIds được coi là danh sách CUỐI CÙNG:
+     * - Những lớp hiện đang dạy nhưng KHÔNG nằm trong classIds sẽ bị bỏ teacher (unassign).
+     * - Những lớp trong classIds sẽ được gán teacher (nếu chưa có).
+     *
+     * @param teacherId ID của teacher
+     * @param classIds Danh sách ID của các classes cần assign
+     * @return List of ClassResponse các lớp teacher sẽ dạy sau khi cập nhật
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public List<ClassResponse> assignClassesToTeacher(String teacherId, List<String> classIds) {
+        User teacher = userRepository.findById(teacherId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+
+        if (!"ROLE_TEACHER".equals(teacher.getRole().getName())) {
+            throw new CustomException("Chỉ có thể gán lớp cho giáo viên", HttpStatus.BAD_REQUEST);
+        }
+
+        // Đảm bảo không null
+        if (classIds == null) {
+            classIds = List.of();
+        }
+
+        Set<String> targetClassIds = new HashSet<>(classIds);
+
+        // 1. Bỏ teacher khỏi các lớp hiện tại nhưng không còn trong targetClassIds
+        List<Class> currentClasses = classRepository.findAllByTeacherWithClassShifts(teacher);
+        for (Class clazz : currentClasses) {
+            if (!targetClassIds.contains(clazz.getId())) {
+                clazz.setTeacher(null);
+                classRepository.save(clazz);
+            }
+        }
+
+        // 2. Gán teacher cho tất cả các lớp trong targetClassIds
+        List<ClassResponse> assignedClasses = new ArrayList<>();
+        for (String classId : targetClassIds) {
+            Class classDB = classRepository.findByIdWithClassShifts(classId)
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học với id: " + classId));
+
+            classDB.setTeacher(teacher);
+            Class savedClass = classRepository.save(classDB);
+
+            ClassResponse classResponse = modelMapper.map(savedClass, ClassResponse.class);
+            classResponse.setClassShifts(mapClassShifts(savedClass));
+            int studentCount = countActiveStudents(classResponse.getId());
+            int total = studentCount * classResponse.getMonthlyFee();
+
+            // Tính collected và revenue từ payments có direction = INCOME trong tháng hiện tại
+            Instant currentMonth = getCurrentMonthStart();
+            Long collectedLong = paymentRepository.sumByClassIdAndDirectionAndMonth(classResponse.getId(), PaymentDirection.INCOME, currentMonth);
+            Long revenueLong = paymentRepository.sumByClassIdAndDirectionAndMonth(classResponse.getId(), PaymentDirection.INCOME, currentMonth);
+
+            int collected = collectedLong != null ? collectedLong.intValue() : 0;
+            int revenue = revenueLong != null ? revenueLong.intValue() : 0;
+
+            classResponse.setTotal(total);
+            classResponse.setCollected(collected);
+            classResponse.setRevenue(revenue);
+            classResponse.setStudentCount(studentCount);
+            assignedClasses.add(classResponse);
+        }
+
+        return assignedClasses;
     }
 }

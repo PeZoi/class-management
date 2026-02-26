@@ -59,6 +59,7 @@ export const queryKeys = {
     listPaginated: (search: string, filters?: Record<string, unknown>) => ['teachers', 'list', 'paginated', search, filters] as const,
     details: () => ['teachers', 'detail'] as const,
     detail: (id: string) => ['teachers', 'detail', id] as const,
+    classes: (teacherId: string) => ['teachers', 'classes', teacherId] as const,
   },
 
   // Payment queries

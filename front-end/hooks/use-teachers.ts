@@ -12,6 +12,7 @@ import {
 } from '@/lib/queryHelpers';
 import { teacherService } from '@/services/teacher-service';
 import { TeacherRequest, TeacherType, PageResponse } from '@/types';
+import { ClassType } from '@/types/class-type';
 import { useDebounce } from './use-debounce';
 
 /**
@@ -26,7 +27,7 @@ export function useTeachers(
   search: string = '',
   filters: {
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
-    status?: 'ACTIVE' | 'INACTIVE';
+    status?: 'ACTIVE' | 'DELETED' | 'BLOCKED';
   } = {}
 ) {
   const debouncedSearch = useDebounce(search, 500);
@@ -156,4 +157,138 @@ export function useResetTeacherPassword() {
   });
 }
 
+/**
+ * Hook để xoá (mềm) teacher
+ */
+export function useDeleteTeacher() {
+  const queryClient = useQueryClient();
+  const tNotif = useTranslations('notifications');
 
+  return useMutation({
+    mutationFn: (teacherId: string) => teacherService.deleteTeacher(teacherId),
+    onSuccess: (response, teacherId) => {
+      if (response.status === 204 || response.status === 200) {
+        invalidateTeacherLists(queryClient);
+        invalidateTeacher(queryClient, teacherId);
+        invalidateClassesByTeacher(queryClient, teacherId);
+        invalidateClassLists(queryClient);
+        invalidateDashboard(queryClient);
+        toast.success(tNotif('successDeleteTeacher'));
+      }
+    },
+    onError: (error) => {
+      console.error('Error deleting teacher:', error);
+      toast.error(tNotif('errorDeleteTeacher'));
+    },
+  });
+}
+
+/**
+ * Hook để khôi phục teacher đã bị xoá
+ */
+export function useRestoreTeacher() {
+  const queryClient = useQueryClient();
+  const tNotif = useTranslations('notifications');
+
+  return useMutation({
+    mutationFn: async (teacherId: string) => {
+      const response = await teacherService.restoreTeacher(teacherId);
+      if (response.status !== 200 || !response.data) {
+        throw new Error('Failed to restore teacher');
+      }
+      return response.data;
+    },
+    onSuccess: (teacher, teacherId) => {
+      // Invalidate teacher detail & lists
+      invalidateTeacher(queryClient, teacherId);
+      invalidateTeacherLists(queryClient);
+      invalidateDashboard(queryClient);
+
+      // Invalidate class-related data if teacher has classes
+      if (teacher.classList && teacher.classList.length > 0) {
+        teacher.classList.forEach((clazz) => {
+          invalidateClassesByTeacher(queryClient, teacherId);
+          invalidateClassLists(queryClient);
+        });
+      }
+
+      toast.success(tNotif('successRestoreTeacher'));
+    },
+    onError: (error) => {
+      console.error('Error restoring teacher:', error);
+      toast.error(tNotif('errorRestoreTeacher'));
+    },
+  });
+}
+
+/**
+ * Hook để lấy classes của teacher
+ */
+export function useTeacherClasses(teacherId: string, enabled: boolean = true) {
+  return useQuery<ClassType[]>({
+    queryKey: queryKeys.teachers.classes(teacherId),
+    queryFn: async () => {
+      const response = await teacherService.getTeacherClasses(teacherId);
+      if (response.status === 200 && response.data) {
+        return response.data;
+      }
+      throw new Error('Failed to fetch teacher classes');
+    },
+    enabled: enabled && !!teacherId,
+  });
+}
+
+/**
+ * Hook để lấy unassigned classes
+ */
+export function useUnassignedClasses(enabled: boolean = true) {
+  return useQuery<ClassType[]>({
+    queryKey: ['unassigned-classes'],
+    queryFn: async () => {
+      const response = await teacherService.getUnassignedClasses();
+      if (response.status === 200 && response.data) {
+        return response.data;
+      }
+      throw new Error('Failed to fetch unassigned classes');
+    },
+    enabled: enabled,
+  });
+}
+
+/**
+ * Hook để assign classes cho teacher
+ */
+export function useAssignClassesToTeacher() {
+  const queryClient = useQueryClient();
+  const tNotif = useTranslations('notifications');
+
+  return useMutation({
+    mutationFn: async ({ teacherId, classIds }: { teacherId: string; classIds: string[] }) => {
+      const response = await teacherService.assignClassesToTeacher(teacherId, classIds);
+      if (response.status !== 200 || !response.data) {
+        throw new Error('Failed to assign classes');
+      }
+      return response.data;
+    },
+    onSuccess: (classes, variables) => {
+      // Invalidate teacher classes
+      queryClient.invalidateQueries({ queryKey: queryKeys.teachers.classes(variables.teacherId) });
+      // Invalidate unassigned classes
+      queryClient.invalidateQueries({ queryKey: ['unassigned-classes'] });
+      // Invalidate teacher lists
+      invalidateTeacherLists(queryClient);
+      // Invalidate teacher detail
+      invalidateTeacher(queryClient, variables.teacherId);
+      // Invalidate class lists
+      invalidateClassLists(queryClient);
+      // Invalidate dashboard
+      invalidateDashboard(queryClient);
+
+      toast.success(tNotif('successAssignClasses'));
+    },
+    onError: (error) => {
+      console.error('Error assigning classes:', error);
+      toast.error(tNotif('errorAssignClasses'));
+    },
+  });
+}

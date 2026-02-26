@@ -27,6 +27,15 @@ interface DataTableProps<TData, TValue> {
   pageSize?: number;
   pageSizeOptions?: number[];
   getRowClassName?: (row: TData) => string;
+  /**
+   * Enable manual/server-side pagination. When true, the table will use the
+   * provided pageIndex/pageSize/totalItems and call callbacks on change.
+   */
+  manualPagination?: boolean;
+  pageIndex?: number;
+  totalItems?: number;
+  onPageChange?: (pageIndex: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 }
 
 export function DataTable<TData, TValue>({ 
@@ -36,24 +45,69 @@ export function DataTable<TData, TValue>({
   pageSize = 10,
   pageSizeOptions = [5, 10, 20, 30, 50, 100],
   getRowClassName,
+  manualPagination = false,
+  pageIndex,
+  totalItems,
+  onPageChange,
+  onPageSizeChange,
 }: DataTableProps<TData, TValue>) {
   const t = useTranslations('common');
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [internalPagination, setInternalPagination] = React.useState({
+    pageIndex: 0,
+    pageSize,
+  });
+
+  const isManual = manualPagination && typeof pageIndex === 'number';
+
+  const pagination = isManual
+    ? {
+        pageIndex: pageIndex ?? 0,
+        pageSize: pageSize,
+      }
+    : internalPagination;
+
+  const handlePaginationChange = (updater: unknown) => {
+    // Updater is PaginationState | ((old: PaginationState) => PaginationState)
+    const current = pagination;
+    const next =
+      typeof updater === 'function'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? (updater as any)(current)
+        : (updater as { pageIndex: number; pageSize: number });
+
+    if (isManual) {
+      if (next.pageIndex !== current.pageIndex) {
+        onPageChange?.(next.pageIndex);
+      }
+      if (next.pageSize !== current.pageSize) {
+        onPageSizeChange?.(next.pageSize);
+      }
+    } else {
+      setInternalPagination(next);
+    }
+  };
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: isManual,
+    pageCount:
+      isManual && typeof totalItems === 'number'
+        ? Math.max(1, Math.ceil(totalItems / pagination.pageSize))
+        : undefined,
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onPaginationChange: handlePaginationChange,
     initialState: {
       pagination: {
         pageSize: pageSize,
@@ -64,8 +118,25 @@ export function DataTable<TData, TValue>({
       columnFilters,
       columnVisibility,
       rowSelection,
+      pagination,
     },
   });
+
+  const totalCount =
+    isManual && typeof totalItems === 'number'
+      ? totalItems
+      : table.getFilteredRowModel().rows.length;
+
+  const currentPageIndex = table.getState().pagination.pageIndex;
+  const currentPageSize = table.getState().pagination.pageSize;
+  const currentPageRowCount = table.getRowModel().rows.length;
+
+  const startItem =
+    totalCount === 0 ? 0 : currentPageIndex * currentPageSize + 1;
+  const endItem =
+    totalCount === 0
+      ? 0
+      : Math.min(currentPageIndex * currentPageSize + currentPageRowCount, totalCount);
 
   return (
     <div className={cn('w-full space-y-4', className)}>
@@ -127,18 +198,15 @@ export function DataTable<TData, TValue>({
           <p className="text-sm text-slate-600 dark:text-slate-400">
             {t('showing')}{' '}
             <span className="font-medium text-slate-900 dark:text-slate-100">
-              {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}
+              {startItem}
             </span>{' '}
             {t('to')}{' '}
             <span className="font-medium text-slate-900 dark:text-slate-100">
-              {Math.min(
-                (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-                table.getFilteredRowModel().rows.length,
-              )}
+              {endItem}
             </span>{' '}
             {t('of')}{' '}
             <span className="font-medium text-slate-900 dark:text-slate-100">
-              {table.getFilteredRowModel().rows.length}
+              {totalCount}
             </span>{' '}
             {t('results')}
           </p>

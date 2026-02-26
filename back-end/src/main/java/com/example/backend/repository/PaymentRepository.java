@@ -169,11 +169,12 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
      * Tìm kiếm payments với pagination và filtering support
      * Filter theo: paymentId, direction, paymentType, status, student name, teacher name
      */
-    @Query("""
-        SELECT p FROM Payment p
-        LEFT JOIN FETCH p.student s
-        LEFT JOIN FETCH p.teacher t
-        LEFT JOIN FETCH p.clazz c
+    @Query(
+        value = """
+        SELECT DISTINCT p FROM Payment p
+        LEFT JOIN p.student s
+        LEFT JOIN p.teacher t
+        LEFT JOIN p.clazz c
         WHERE (:search IS NULL OR :search = ''
                OR LOWER(p.paymentId) LIKE LOWER(CONCAT('%', :search, '%'))
                OR LOWER(s.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
@@ -186,7 +187,25 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
         AND (:startDate IS NULL OR p.createdAt >= :startDate)
         AND (:endDate IS NULL OR p.createdAt <= :endDate)
         ORDER BY p.createdAt DESC
-    """)
+    """,
+        countQuery = """
+        SELECT COUNT(DISTINCT p) FROM Payment p
+        LEFT JOIN p.student s
+        LEFT JOIN p.teacher t
+        LEFT JOIN p.clazz c
+        WHERE (:search IS NULL OR :search = ''
+               OR LOWER(p.paymentId) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(s.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(t.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+        AND (:direction IS NULL OR p.direction = :direction)
+        AND (:paymentType IS NULL OR p.paymentType = :paymentType)
+        AND (:paymentStatus IS NULL OR p.paymentStatus = :paymentStatus)
+        AND (:paymentMethod IS NULL OR p.paymentMethod = :paymentMethod)
+        AND (:startDate IS NULL OR p.createdAt >= :startDate)
+        AND (:endDate IS NULL OR p.createdAt <= :endDate)
+    """
+    )
     Page<Payment> findAllWithFilters(
         @Param("search") String search,
         @Param("direction") PaymentDirection direction,

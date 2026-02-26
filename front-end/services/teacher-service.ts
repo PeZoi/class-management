@@ -1,6 +1,7 @@
 import http from "@/lib/http";
 import { TeacherRequest, TeacherType, PageResponse } from "@/types";
 import { ResponseType } from "@/types/response-type";
+import { ClassType } from "@/types/class-type";
 
 export const teacherService = {
   getAllTeachers: (
@@ -9,7 +10,7 @@ export const teacherService = {
     search: string,
     filters?: {
       gender?: 'MALE' | 'FEMALE' | 'OTHER';
-      status?: 'ACTIVE' | 'INACTIVE';
+      status?: 'ACTIVE' | 'DELETED' | 'BLOCKED';
     }
   ) => {
     const params = new URLSearchParams();
@@ -68,5 +69,20 @@ export const teacherService = {
   },
   resetPassword: (id: string) => {
     return http.put<ResponseType<TeacherType, TeacherType>>(`/api/teacher/reset-password/${id}`, { id });
+  },
+  deleteTeacher: (id: string) => {
+    return http.delete<ResponseType<TeacherType, TeacherType>>(`/api/teacher/delete/${id}`);
+  },
+  restoreTeacher: (id: string) => {
+    return http.post<ResponseType<TeacherType, TeacherType>>(`/api/teacher/restore/${id}`, {});
+  },
+  getTeacherClasses: (id: string) => {
+    return http.get<ResponseType<ClassType[], ClassType[]>>(`/api/teacher/${id}/classes`);
+  },
+  getUnassignedClasses: () => {
+    return http.get<ResponseType<ClassType[], ClassType[]>>(`/api/teacher/unassigned-classes`);
+  },
+  assignClassesToTeacher: (id: string, classIds: string[]) => {
+    return http.post<ResponseType<ClassType[], ClassType[]>>(`/api/teacher/${id}/assign-classes`, classIds);
   },
 };

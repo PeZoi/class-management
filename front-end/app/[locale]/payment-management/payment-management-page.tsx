@@ -5,14 +5,12 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { PaymentTable } from './_components/payment-table';
 import { PaymentFilter } from './_components/payment-filter';
 import { PersonDetailDrawer } from './_components/person-detail-drawer';
-import { PaymentResponse, PaymentItem, PaymentFilterState } from '@/types';
+import { PaymentResponse, PaymentItem, PaymentFilterState, PageResponse } from '@/types';
 import { PageLoading } from '@/components/page-loading';
 import { useLocale, useTranslations } from 'next-intl';
-import { usePayments } from '@/hooks/use-payments';
+import { usePaymentsPaginated } from '@/hooks/use-payments';
 import { useStudent } from '@/hooks/use-students';
 import { useTeacher } from '@/hooks/use-teachers';
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
 
 // Helper function to parse URL params into filter state
 const parseFiltersFromURL = (searchParams: URLSearchParams): PaymentFilterState => {
@@ -51,12 +49,20 @@ export default function PaymentManagementPage() {
   const [filters, setFilters] = useState<PaymentFilterState>(() => 
     parseFiltersFromURL(searchParams)
   );
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
   const t = useTranslations('payment-management');
-  const tCommon = useTranslations('common');
   const tNotif = useTranslations('notifications');
   const isUpdatingFromURL = useRef(false);
+
+  const handleFilterChange = (newFilters: PaymentFilterState) => {
+    setFilters(newFilters);
+    // Reset pagination when user changes filters from UI
+    setPageIndex(0);
+    setPageSize(10);
+  };
 
   // Build filters object for pagination
   const paginationFilters = useMemo(() => ({
@@ -68,13 +74,20 @@ export default function PaymentManagementPage() {
                    filters.paymentMethod === 'e_wallet' ? 'E_WALLET' as const : undefined,
   }), [filters.type, filters.status, filters.paymentMethod]);
 
-  const paymentsQuery = usePayments(filters.searchQuery, paginationFilters);
-  
-  // Flatten all pages into single array
+  const paymentsQuery = usePaymentsPaginated(
+    filters.searchQuery,
+    paginationFilters,
+    pageIndex,
+    pageSize,
+  );
+
+  const paymentsPage = paymentsQuery.data as PageResponse<PaymentResponse> | undefined;
+
+  // Current page data
   const paymentsData = useMemo(() => {
-    if (!paymentsQuery.data) return [];
-    return paymentsQuery.data.pages.flatMap(page => page.content);
-  }, [paymentsQuery.data]);
+    if (!paymentsPage) return [];
+    return paymentsPage.content;
+  }, [paymentsPage]);
 
   // Sync filters with URL params when filters change
   useEffect(() => {
@@ -270,7 +283,7 @@ export default function PaymentManagementPage() {
       {/* Filter and Search */}
       <PaymentFilter
         filters={filters}
-        onFilterChange={setFilters}
+        onFilterChange={handleFilterChange}
         availableClasses={availableClasses}
       />
 
@@ -279,31 +292,19 @@ export default function PaymentManagementPage() {
         payments={filteredPayments}
         onPersonClick={handlePersonClick}
         showActions={true}
-        isLoading={false}
+        isLoading={paymentsQuery.isLoading}
         error={errorMessage || undefined}
+        pageIndex={pageIndex}
+        pageSize={pageSize}
+        totalItems={paymentsPage?.totalElements}
+        onPageChange={(newPage) => {
+          setPageIndex(newPage);
+        }}
+        onPageSizeChange={(newSize) => {
+          setPageIndex(0);
+          setPageSize(newSize);
+        }}
       />
-
-      {/* Load More Button */}
-      {paymentsQuery.hasNextPage && (
-        <div className="flex justify-center">
-          <Button
-            onClick={() => paymentsQuery.fetchNextPage()}
-            disabled={paymentsQuery.isFetchingNextPage}
-            variant="outline"
-            size="lg"
-            className="gap-2"
-          >
-            {paymentsQuery.isFetchingNextPage ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                {tCommon('loading')}
-              </>
-            ) : (
-              tCommon('loadMore')
-            )}
-          </Button>
-        </div>
-      )}
 
       {/* Person Detail Drawer */}
       <PersonDetailDrawer

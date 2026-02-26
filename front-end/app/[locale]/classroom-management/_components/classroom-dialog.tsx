@@ -46,7 +46,7 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave, isSubmi
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         name: classItem.name || '',
-        teacherId: classItem.teacher.id || '',
+        teacherId: classItem.teacher?.id || '',
         monthlyFee: classItem.monthlyFee || 0,
       });
     } else {
