@@ -1,23 +1,25 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { DatePickerRange } from '@/components/ui/date-range-picker';
+import { FloatingLabelSelect } from '@/components/ui/floating-label-select';
 import { Input } from '@/components/ui/input';
 import { SelectItem } from '@/components/ui/select';
-import { FloatingLabelSelect } from '@/components/ui/floating-label-select';
 import { cn } from '@/lib/utils';
+import { PaymentFilterState } from '@/types/payment-type';
 import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Banknote,
   CheckCircle,
   CreditCard,
   Search,
   SortAsc,
-  X,
-  ArrowDownRight,
-  ArrowUpRight,
   Wallet,
-  Banknote,
+  X,
+  Calendar,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { PaymentFilterState } from '@/types/payment-type';
 
 interface PaymentFilterProps {
   filters: PaymentFilterState;
@@ -54,6 +56,10 @@ export function PaymentFilter({
     onFilterChange({ ...filters, sortBy: value as PaymentFilterState['sortBy'] });
   };
 
+  const handleDateRangeChange = (value: { startDate: string, endDate: string }) => {
+    onFilterChange({ ...filters, startDate: value.startDate, endDate: value.endDate });
+  };
+
   const handleSortOrderToggle = () => {
     onFilterChange({
       ...filters,
@@ -70,6 +76,8 @@ export function PaymentFilter({
       paymentMethod: 'all',
       sortBy: 'createdDate',
       sortOrder: 'desc',
+      startDate: undefined,
+      endDate: undefined,
     });
   };
 
@@ -78,7 +86,9 @@ export function PaymentFilter({
     filters.type !== 'all' ||
     filters.status !== 'all' ||
     filters.className !== 'all' ||
-    filters.paymentMethod !== 'all';
+    filters.paymentMethod !== 'all' ||
+    !!filters.startDate ||
+    !!filters.endDate;
 
   // Config objects for active filter pills and matching select styles
   const typeFilterConfig = {
@@ -254,6 +264,14 @@ export function PaymentFilter({
           </SelectItem>
         </FloatingLabelSelect>
 
+        <DatePickerRange
+          label={t('filterByDate')}
+          placeholder={t('filterByDatePlaceholder')}
+          startDate={filters.startDate}
+          endDate={filters.endDate}
+          onChangeValue={handleDateRangeChange}
+        />
+
         {/* Divider */}
         <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
 
@@ -376,6 +394,21 @@ export function PaymentFilter({
                 </div>
               );
             })()
+          )}
+          {(filters.startDate || filters.endDate) && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 text-xs font-medium">
+              <Calendar className="size-3" />
+              <span>
+                {filters.startDate && filters.endDate
+                  ? t('dateFilter_range', {
+                      start: filters.startDate,
+                      end: filters.endDate,
+                    })
+                  : filters.startDate
+                  ? t('dateFilter_from', { date: filters.startDate })
+                  : t('dateFilter_to', { date: filters.endDate ?? '' })}
+              </span>
+            </div>
           )}
         </div>
       )}

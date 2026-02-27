@@ -1020,7 +1020,12 @@
     "packagePaymentLabel": "Payment package:",
     "packageLabel": "Package {number}",
     "sessionRangeLabel": "Session range:",
-    "sessionRange": "Session {start} - {end}"
+    "sessionRange": "Session {start} - {end}",
+    "filterByDate": "Filter by date",
+    "filterByDatePlaceholder": "Select date range",
+    "dateFilter_range": "{start} - {end}",
+    "dateFilter_from": "From {date}",
+    "dateFilter_to": "To {date}"
   },
   "notFound": {
     "title": "Page Not Found",

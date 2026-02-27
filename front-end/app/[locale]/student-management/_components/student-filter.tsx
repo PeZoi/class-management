@@ -1,24 +1,23 @@
 import { Button } from '@/components/ui/button';
+import { FloatingLabelSelect } from '@/components/ui/floating-label-select';
 import { Input } from '@/components/ui/input';
 import { SelectItem } from '@/components/ui/select';
-import { FloatingLabelSelect } from '@/components/ui/floating-label-select';
 import { cn } from '@/lib/utils';
+import { FilterState } from '@/types/student-type';
 import {
-  Search,
-  X,
-  SortAsc,
+  Ban,
   CheckCircle,
   Clock,
-  XCircle,
-  UserCheck,
-  Timer,
   GraduationCap,
-  UserX,
-  Ban,
+  Search,
+  SortAsc,
+  Timer,
   User,
+  UserCheck,
+  X,
+  XCircle
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { FilterState } from '@/types/student-type';
 
 interface StudentFilterProps {
   filters: FilterState;

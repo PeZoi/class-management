@@ -1,17 +1,17 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 import { StudentType } from '@/types';
+import { OverdueStudentItem } from '@/types/student-type';
 import { formatDate } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
-import { BookOpen, Calendar, CheckCircle, Clock, CreditCard, DollarSign, Mail, Package, Phone, PartyPopper, User, Users } from 'lucide-react';
+import { BookOpen, Calendar, CheckCircle, Clock, CreditCard, DollarSign, Mail, Package, Phone, User, Users } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { OverdueStudentItem } from '@/types/student-type';
 
 interface OverdueStudentsTableProps {
   students: StudentType[];

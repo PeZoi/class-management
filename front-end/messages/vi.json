@@ -917,7 +917,7 @@
     "filter_all_status": "Tất cả trạng thái",
     "filter_all_status_payment": "Tất cả trạng thái",
     "filter_status_paid": "Hoàn thành",
-    "filter_status_partial": "Chưa đủ",
+    "filter_status_partial": "Đóng một phần",
     "filter_all_classes": "Tất cả các lớp",
     "filter_all_methods": "Tất cả phương thức",
     "sortBy": "Sắp xếp theo",
@@ -968,7 +968,7 @@
     "remaining": "Còn lại",
     "totalSum": "Tổng cộng",
     "completed": "hoàn thành",
-    "incomplete": "chưa đủ",
+    "incomplete": "Đóng một phần",
     "personalInfo": "Thông Tin Cá Nhân",
     "phoneNumber": "Số điện thoại",
     "birthDate": "Ngày sinh",
@@ -1026,7 +1026,12 @@
     "packagePaymentLabel": "Gói thanh toán:",
     "packageLabel": "Gói {number}",
     "sessionRangeLabel": "Phạm vi buổi học:",
-    "sessionRange": "Buổi {start} - {end}"
+    "sessionRange": "Buổi {start} - {end}",
+    "filterByDate": "Lọc theo ngày",
+    "filterByDatePlaceholder": "Chọn khoảng ngày",
+    "dateFilter_range": "{start} - {end}",
+    "dateFilter_from": "Từ {date}",
+    "dateFilter_to": "Đến {date}"
   },
   "notFound": {
     "title": "Trang Không Tìm Thấy",

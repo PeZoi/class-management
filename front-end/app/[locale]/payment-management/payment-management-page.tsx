@@ -22,6 +22,8 @@ const parseFiltersFromURL = (searchParams: URLSearchParams): PaymentFilterState 
     paymentMethod: (searchParams.get('method') as PaymentFilterState['paymentMethod']) || 'all',
     sortBy: (searchParams.get('sortBy') as PaymentFilterState['sortBy']) || 'createdDate',
     sortOrder: (searchParams.get('sortOrder') as PaymentFilterState['sortOrder']) || 'desc',
+    startDate: searchParams.get('startDate')?.split('-').join('/') || '',
+    endDate: searchParams.get('endDate')?.split('-').join('/') || '',
   };
 };
 
@@ -34,6 +36,8 @@ const filtersToURLParams = (filters: PaymentFilterState): URLSearchParams => {
   if (filters.status !== 'all') params.set('status', filters.status);
   if (filters.className !== 'all') params.set('class', filters.className);
   if (filters.paymentMethod !== 'all') params.set('method', filters.paymentMethod);
+  if (filters.startDate) params.set('startDate', filters.startDate?.split('/').join('-'));
+  if (filters.endDate) params.set('endDate', filters.endDate?.split('/').join('-'));
   if (filters.sortBy !== 'createdDate') params.set('sortBy', filters.sortBy);
   if (filters.sortOrder !== 'desc') params.set('sortOrder', filters.sortOrder);
   
@@ -64,15 +68,72 @@ export default function PaymentManagementPage() {
     setPageSize(10);
   };
 
+  // Helper to convert UI date (dd/MM/yyyy) to ISO string for backend filtering
+  const toIsoDateTime = (dateStr?: string, isEndOfDay: boolean = false): string | undefined => {
+    if (!dateStr) return undefined;
+
+    const [day, month, year] = dateStr.split('/');
+    if (!day || !month || !year) return undefined;
+
+    const date = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      isEndOfDay ? 23 : 0,
+      isEndOfDay ? 59 : 0,
+      isEndOfDay ? 59 : 0,
+      isEndOfDay ? 999 : 0,
+    );
+
+    if (Number.isNaN(date.getTime())) return undefined;
+
+    return date.toISOString();
+  };
+
   // Build filters object for pagination
-  const paginationFilters = useMemo(() => ({
-    direction: filters.type === 'income' ? 'INCOME' as const : filters.type === 'expense' ? 'EXPENSE' as const : undefined,
-    paymentStatus: filters.status === 'paid' ? 'COMPLETED' as const : filters.status === 'partial' ? 'INCOMPLETE' as const : undefined,
-    paymentMethod: filters.paymentMethod === 'cash' ? 'CASH' as const : 
-                   filters.paymentMethod === 'bank_transfer' ? 'BANK_TRANSFER' as const :
-                   filters.paymentMethod === 'credit_card' ? 'CREDIT_CARD' as const :
-                   filters.paymentMethod === 'e_wallet' ? 'E_WALLET' as const : undefined,
-  }), [filters.type, filters.status, filters.paymentMethod]);
+  const paginationFilters = useMemo(
+    () => ({
+      direction:
+        filters.type === 'income'
+          ? ('INCOME' as const)
+          : filters.type === 'expense'
+          ? ('EXPENSE' as const)
+          : undefined,
+      paymentStatus:
+        filters.status === 'paid'
+          ? ('COMPLETED' as const)
+          : filters.status === 'partial'
+          ? ('INCOMPLETE' as const)
+          : undefined,
+      className: filters.className !== 'all' ? filters.className : undefined,
+      paymentMethod:
+        filters.paymentMethod === 'cash'
+          ? ('CASH' as const)
+          : filters.paymentMethod === 'bank_transfer'
+          ? ('BANK_TRANSFER' as const)
+          : filters.paymentMethod === 'credit_card'
+          ? ('CREDIT_CARD' as const)
+          : filters.paymentMethod === 'e_wallet'
+          ? ('E_WALLET' as const)
+          : undefined,
+      // Convert UI date (dd/MM/yyyy) to ISO for backend (@DateTimeFormat ISO.DATE_TIME)
+      startDate: toIsoDateTime(filters.startDate, false),
+      endDate: toIsoDateTime(filters.endDate, true),
+      // Sorting from UI -> pass directly; mapping to BE fields is handled in paymentService / backend
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
+    }),
+    [
+      filters.type,
+      filters.status,
+      filters.paymentMethod,
+      filters.className,
+      filters.startDate,
+      filters.endDate,
+      filters.sortBy,
+      filters.sortOrder,
+    ],
+  );
 
   const paymentsQuery = usePaymentsPaginated(
     filters.searchQuery,
@@ -238,39 +299,11 @@ export default function PaymentManagementPage() {
   }, [payments]);
 
   // Filter and sort payments
-  // Note: type, status, search, and paymentMethod are handled by backend pagination
-  // We only need to apply client-side filtering for className (not supported by backend yet)
+  // Note: type, status, search, paymentMethod, className, and sorting are handled by backend pagination
+  // We keep this memo mainly to avoid re-renders and potential future client-only filters
   const filteredPayments = useMemo(() => {
-    let result = [...payments];
-
-    // Apply class filter (client-side only, backend doesn't support this yet)
-    if (filters.className !== 'all') {
-      result = result.filter((payment) => payment.className === filters.className);
-    }
-
-    // Apply sorting
-    result.sort((a, b) => {
-      let comparison = 0;
-
-      switch (filters.sortBy) {
-        case 'studentName':
-          const nameA = a.studentName || a.teacherName || '';
-          const nameB = b.studentName || b.teacherName || '';
-          comparison = nameA.localeCompare(nameB, 'vi');
-          break;
-        case 'createdDate':
-          comparison = new Date(a.createdDate).getTime() - new Date(b.createdDate).getTime();
-          break;
-        case 'amount':
-          comparison = a.totalAmount - b.totalAmount;
-          break;
-      }
-
-      return filters.sortOrder === 'asc' ? comparison : -comparison;
-    });
-
-    return result;
-  }, [payments, filters]);
+    return [...payments];
+  }, [payments]);
 
   if (paymentsQuery.isLoading) {
     return <PageLoading message={t('loading')} />;

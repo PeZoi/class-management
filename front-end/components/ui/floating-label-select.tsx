@@ -1,15 +1,14 @@
 'use client';
 
-import * as React from 'react';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
-  SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import * as React from 'react';
 
 interface FloatingLabelSelectProps {
   label: string;

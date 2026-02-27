@@ -24,8 +24,9 @@ export function usePayments(
     paymentType?: 'STUDENT_FEE' | 'TEACHER_SALARY' | 'REFUND';
     paymentStatus?: 'COMPLETED' | 'INCOMPLETE' | 'CANCELLED';
     paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CREDIT_CARD' | 'E_WALLET';
-    startDate?: string;
-    endDate?: string;
+    className?: string;
+    // startDate?: string;
+    // endDate?: string;
   } = {},
 ) {
   const debouncedSearch = useDebounce(search, 500);
@@ -33,7 +34,7 @@ export function usePayments(
   return useInfiniteQuery<PageResponse<PaymentResponse>>({
     queryKey: queryKeys.payments.listPaginated({ ...filters, search: debouncedSearch }),
     queryFn: async ({ pageParam = 0 }) => {
-      const response = await paymentService.getPaymentsPaginated(
+      const response = await paymentService.getAllPayments(
         pageParam as number,
         10,
         debouncedSearch,
@@ -59,13 +60,18 @@ export function usePaymentsPaginated(
     paymentType?: 'STUDENT_FEE' | 'TEACHER_SALARY' | 'REFUND';
     paymentStatus?: 'COMPLETED' | 'INCOMPLETE' | 'CANCELLED';
     paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CREDIT_CARD' | 'E_WALLET';
+    className?: string;
     startDate?: string;
     endDate?: string;
+    sortBy?: 'createdDate' | 'amount' | 'studentName';
+    sortOrder?: 'asc' | 'desc';
   } = {},
   page: number = 0,
   size: number = 10,
 ) {
   const debouncedSearch = useDebounce(search, 500);
+
+  console.log({filters});
 
   return useQuery<PageResponse<PaymentResponse>>({
     queryKey: queryKeys.payments.listPaginated({
@@ -75,7 +81,7 @@ export function usePaymentsPaginated(
       size,
     }),
     queryFn: async () => {
-      const response = await paymentService.getPaymentsPaginated(
+      const response = await paymentService.getAllPayments(
         page,
         size,
         debouncedSearch,

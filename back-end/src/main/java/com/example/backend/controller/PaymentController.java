@@ -57,6 +57,8 @@ public class PaymentController {
      * @param paymentMethod Filter by payment method: CASH, BANK_TRANSFER, CREDIT_CARD, E_WALLET (optional)
      * @param startDate Filter by created date from (ISO format) (optional)
      * @param endDate Filter by created date to (ISO format) (optional)
+     * @param sortBy Sort field: createdAt, amount, studentName (optional, default: createdAt)
+     * @param sortDirection Sort direction: ASC or DESC (optional, default: DESC)
      * @return PageResponse with payments and pagination metadata
      */
     @GetMapping
@@ -68,11 +70,15 @@ public class PaymentController {
             @RequestParam(required = false) PaymentType paymentType,
             @RequestParam(required = false) PaymentStatus paymentStatus,
             @RequestParam(required = false) PaymentMethod paymentMethod,
+            @RequestParam(required = false) String className,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate,
+            @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
+            @RequestParam(required = false, defaultValue = "DESC") String sortDirection
     ) {
         PageResponse<PaymentResponse> response = paymentService.getAllPaginated(
-                page, size, search, direction, paymentType, paymentStatus, paymentMethod, startDate, endDate
+                page, size, search, direction, paymentType, paymentStatus, paymentMethod, className, startDate, endDate,
+                sortBy, sortDirection
         );
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

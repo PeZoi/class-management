@@ -507,6 +507,8 @@ public class PaymentService {
      * @param paymentMethod Filter by payment method (optional)
      * @param startDate Filter by created date from (optional)
      * @param endDate Filter by created date to (optional)
+     * @param sortBy Sort field (createdAt, amount, studentName)
+     * @param sortDirection Sort direction (ASC, DESC)
      * @return PageResponse containing payments and pagination metadata
      */
     @Transactional(readOnly = true)
@@ -518,12 +520,32 @@ public class PaymentService {
             PaymentType paymentType,
             PaymentStatus paymentStatus,
             PaymentMethod paymentMethod,
+            String className,
             Instant startDate,
-            Instant endDate
+            Instant endDate,
+            String sortBy,
+            String sortDirection
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        // Map sortBy from FE (createdDate | amount | studentName) to entity fields
+        String sortField;
+        if ("amount".equalsIgnoreCase(sortBy)) {
+            sortField = "feeSnapshot"; // totalAmount on FE maps to feeSnapshot
+        } else if ("studentName".equalsIgnoreCase(sortBy)) {
+            sortField = "student.fullName";
+        } else {
+            sortField = "createdAt";
+        }
+
+        // Determine sort direction
+        org.springframework.data.domain.Sort.Direction directionSort =
+                "ASC".equalsIgnoreCase(sortDirection)
+                        ? org.springframework.data.domain.Sort.Direction.ASC
+                        : org.springframework.data.domain.Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by(directionSort, sortField));
         Page<Payment> paymentPage = paymentRepository.findAllWithFilters(
-                search, direction, paymentType, paymentStatus, paymentMethod, startDate, endDate, pageable
+                search, direction, paymentType, paymentStatus, paymentMethod, className, startDate, endDate, pageable
         );
 
         List<PaymentResponse> content = paymentPage.getContent().stream()

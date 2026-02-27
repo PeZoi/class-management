@@ -116,12 +116,6 @@ export const paymentService = {
     return http.get<ResponseType<PaymentResponse[], PaymentResponse[]>>(`/api/payment/teacher/${teacherId}`);
   },
 
-  getAllPayments: () => {
-    // Note: Backend now returns PageResponse, but this method kept for backward compatibility
-    // If you need paginated data, use getPaymentsPaginated instead
-    return http.get<ResponseType<PageResponse<PaymentResponse>, PageResponse<PaymentResponse>>>('/api/payment?page=0&size=10');
-  },
-
   /**
    * Get payments with pagination and filtering - OPTIMIZED
    * @param page Page number (0-based)
@@ -130,7 +124,7 @@ export const paymentService = {
    * @param filters Object containing optional filters
    * @returns PageResponse with payments and pagination metadata
    */
-  getPaymentsPaginated: async (
+  getAllPayments: async (
     page: number,
     size: number,
     search: string,
@@ -139,8 +133,11 @@ export const paymentService = {
       paymentType?: 'STUDENT_FEE' | 'TEACHER_SALARY' | 'REFUND';
       paymentStatus?: 'COMPLETED' | 'INCOMPLETE' | 'CANCELLED';
       paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CREDIT_CARD' | 'E_WALLET';
+      className?: string;
       startDate?: string;
       endDate?: string;
+      sortBy?: 'createdDate' | 'amount' | 'studentName';
+      sortOrder?: 'asc' | 'desc';
     } = {},
   ) => {
     const params = new URLSearchParams();
@@ -151,8 +148,21 @@ export const paymentService = {
     if (filters.paymentType) params.append('paymentType', filters.paymentType);
     if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
     if (filters.paymentMethod) params.append('paymentMethod', filters.paymentMethod);
+    if (filters.className) params.append('className', filters.className);
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.sortBy) {
+      // Backend expects: createdAt | amount | studentName
+      const sortByMap: Record<string, string> = {
+        createdDate: 'createdAt',
+        amount: 'amount',
+        studentName: 'studentName',
+      };
+      params.append('sortBy', sortByMap[filters.sortBy] || 'createdAt');
+    }
+    if (filters.sortOrder) {
+      params.append('sortDirection', filters.sortOrder.toUpperCase());
+    }
 
     return await http.get<ResponseType<PageResponse<PaymentResponse>, PageResponse<PaymentResponse>>>(
       `/api/payment?${params.toString()}`,

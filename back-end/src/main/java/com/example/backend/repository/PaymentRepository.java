@@ -184,9 +184,9 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
         AND (:paymentType IS NULL OR p.paymentType = :paymentType)
         AND (:paymentStatus IS NULL OR p.paymentStatus = :paymentStatus)
         AND (:paymentMethod IS NULL OR p.paymentMethod = :paymentMethod)
+        AND (:className IS NULL OR p.clazz.name = :className)
         AND (:startDate IS NULL OR p.createdAt >= :startDate)
         AND (:endDate IS NULL OR p.createdAt <= :endDate)
-        ORDER BY p.createdAt DESC
     """,
         countQuery = """
         SELECT COUNT(DISTINCT p) FROM Payment p
@@ -202,6 +202,7 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
         AND (:paymentType IS NULL OR p.paymentType = :paymentType)
         AND (:paymentStatus IS NULL OR p.paymentStatus = :paymentStatus)
         AND (:paymentMethod IS NULL OR p.paymentMethod = :paymentMethod)
+        AND (:className IS NULL OR p.clazz.name = :className)
         AND (:startDate IS NULL OR p.createdAt >= :startDate)
         AND (:endDate IS NULL OR p.createdAt <= :endDate)
     """
@@ -212,6 +213,7 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
         @Param("paymentType") PaymentType paymentType,
         @Param("paymentStatus") PaymentStatus paymentStatus,
         @Param("paymentMethod") PaymentMethod paymentMethod,
+        @Param("className")  String className,
         @Param("startDate") Instant startDate,
         @Param("endDate") Instant endDate,
         Pageable pageable

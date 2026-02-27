@@ -173,9 +173,11 @@ export interface PaymentFilterState {
   searchQuery: string;
   type: 'all' | 'income' | 'expense';
   status: 'all' | 'paid' | 'partial';
-  className: string;
+  className: 'all' | string;
   paymentMethod: 'all' | 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet';
   sortBy: 'createdDate' | 'amount' | 'studentName';
+  startDate?: string;
+  endDate?: string;
   sortOrder: 'asc' | 'desc';
 }
 
