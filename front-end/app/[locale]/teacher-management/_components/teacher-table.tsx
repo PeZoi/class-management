@@ -52,6 +52,13 @@ interface TeacherTableProps {
   description?: string;
   showActions?: boolean;
   className?: string;
+  pageIndex?: number;
+  pageSize?: number;
+  totalItems?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
+  isLoading?: boolean;
+  error?: string;
 }
 
 export function TeacherTable({
@@ -67,6 +74,13 @@ export function TeacherTable({
   description,
   showActions = true,
   className,
+  pageIndex,
+  pageSize,
+  totalItems,
+  onPageChange,
+  onPageSizeChange,
+  isLoading,
+  error,
 }: TeacherTableProps) {
   const t = useTranslations('teacher-management');
   const locale = useLocale();
@@ -416,12 +430,31 @@ export function TeacherTable({
         </div>
       </CardHeader>
       <CardContent>
-        {teachers.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {t('loading')}
+            </p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-red-500">{error}</p>
+          </div>
+        ) : teachers.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('noTeachersFound')}</p>
           </div>
         ) : (
-          <DataTable columns={columns} data={teachers} />
+          <DataTable
+            columns={columns}
+            data={teachers}
+            pageSize={pageSize}
+            manualPagination={typeof pageIndex === 'number' && typeof totalItems === 'number'}
+            pageIndex={pageIndex}
+            totalItems={totalItems}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
         )}
       </CardContent>
     </Card>

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { StudentType } from '@/types';
 import { formatDate } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
-import { BookOpen, Calendar, CheckCircle, Clock, CreditCard, DollarSign, Mail, Package, Phone, User, Users } from 'lucide-react';
+import { BookOpen, Calendar, CheckCircle, Clock, CreditCard, DollarSign, Mail, Package, Phone, PartyPopper, User, Users } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { OverdueStudentItem } from '@/types/student-type';
@@ -359,11 +359,14 @@ export function OverdueStudentsTable({ students, formatCurrency, onPayment }: Ov
       </CardHeader>
       <CardContent>
         {mappedStudents.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('noOverdueStudents')}</p>
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <div className="rounded-full bg-slate-100 dark:bg-slate-900/30 p-4">
+              <User className="size-10" />
+            </div>
+            <p className="text-base font-medium text-gray-500 dark:text-gray-300">{t('noOverdueStudents')}</p>
           </div>
         ) : (
-          <DataTable columns={columns} data={mappedStudents} />
+          <DataTable columns={columns} data={mappedStudents} pageSize={10} />
         )}
       </CardContent>
     </Card>

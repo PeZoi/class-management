@@ -4,6 +4,7 @@ import { PageLoading } from '@/components/page-loading';
 import { useCreateStudent, useStudents, useUpdateStudent, useDeleteStudents, useRestoreStudent } from '@/hooks/use-students';
 import { StudentRequest, StudentType, FilterState, StudentItem } from '@/types/student-type';
 import { SessionPaymentStatus } from '@/types/payment-type';
+import { PageResponse } from '@/types';
 import { useTranslations } from 'next-intl';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -11,8 +12,6 @@ import { PaymentCalendarDialog } from './_components/payment-calendar-dialog';
 import { StudentDialog } from './_components/student-dialog';
 import { StudentFilter } from './_components/student-filter';
 import { StudentTable } from './_components/student-table';
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
 
 const NO_CLASS_FILTER_VALUE = '__no_class__';
 
@@ -151,43 +150,65 @@ export default function StudentManagementPage() {
   const [filters, setFilters] = useState<FilterState>(() => 
     parseFiltersFromURL(searchParams)
   );
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const isUpdatingFromURL = useRef(false);
 
-  // TanStack Query hooks - use infinite query with pagination
-  const {
-    data: studentPages,
-    isLoading,
-    error: studentsError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useStudents(filters.searchQuery);
+  // Build filters object for pagination
+  const paginationFilters = useMemo(() => {
+    const genderMap: Record<'male' | 'female' | 'other' | 'all', 'MALE' | 'FEMALE' | 'OTHER' | undefined> = {
+      male: 'MALE',
+      female: 'FEMALE',
+      other: 'OTHER',
+      all: undefined,
+    };
+    const statusMap: Record<string, 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED' | undefined> = {
+      ACTIVE: 'ACTIVE',
+      INACTIVE: 'INACTIVE',
+      GRADUATED: 'GRADUATED',
+      DELETED: 'DELETED',
+      all: undefined,
+    };
+    
+    return {
+      gender: genderMap[filters.gender as 'male' | 'female' | 'other' | 'all'] || undefined,
+      status: statusMap[filters.studentStatus || 'all'] || undefined,
+      classId: filters.className !== 'all' ? filters.className : undefined,
+    };
+  }, [filters.gender, filters.studentStatus, filters.className]);
+
+  // TanStack Query hooks - use paginated query
+  const studentsQuery = useStudents(
+    filters.searchQuery,
+    paginationFilters,
+    pageIndex,
+    pageSize,
+  );
   
   const createStudent = useCreateStudent();
   const updateStudent = useUpdateStudent();
   const deleteStudents = useDeleteStudents();
   const restoreStudent = useRestoreStudent();
   
-  // Flatten all pages into single array
+  const studentsPage = studentsQuery.data as PageResponse<StudentType> | undefined;
+
+  // Current page data
   const studentsData = useMemo(() => {
-    if (!studentPages) return [];
-    return studentPages.pages.flatMap(page => page.content);
-  }, [studentPages]);
+    if (!studentsPage) return [];
+    return studentsPage.content;
+  }, [studentsPage]);
 
   // Map API students -> UI students
   const students = useMemo(() => {
-    return studentsData.map((student) => mapStudentTypeToStudentItem(student));
+    return studentsData.map((student: StudentType) => mapStudentTypeToStudentItem(student));
   }, [studentsData]);
 
-  // Show error toast if fetch students fail
-  useEffect(() => {
-    if (studentsError) {
-      // Dùng thông báo generic để tránh leak chi tiết lỗi
-      // (toast key đã có trong notifications)
-      // Không throw để UI vẫn hiển thị được state rỗng
-      console.error('Error fetching students:', studentsError);
-    }
-  }, [studentsError]);
+  // Handle filter change - reset pagination
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    setPageIndex(0);
+    setPageSize(10);
+  };
 
   // Sync filters with URL params when filters change
   useEffect(() => {
@@ -320,58 +341,32 @@ export default function StudentManagementPage() {
     return options;
   }, [students, tCommon]);
 
-  // Filter and sort students
+  // Filter and sort students (client-side for payment status and sorting only)
+  // Note: search, gender, status, classId are handled by backend pagination
   const filteredStudents = useMemo(() => {
     let result = [...students];
 
-    // Apply search filter
-    if (filters.searchQuery) {
-      const query = filters.searchQuery.toLowerCase();
-      result = result.filter(
-        (student) =>
-          student.fullName.toLowerCase().includes(query) ||
-          student.email.toLowerCase().includes(query) ||
-          student.phoneNumber.includes(query) ||
-          student.fullNameParent.toLowerCase().includes(query) ||
-          (student.class?.name || '').toLowerCase().includes(query),
-      );
-    }
-
-    // Apply payment status filter
+    // Apply payment status filter (client-side only, backend doesn't support this yet)
     if (filters.paymentStatus !== 'all') {
       result = result.filter((student) => student.paymentStatus === filters.paymentStatus);
     }
 
-    // Apply student status filter
-    if (filters.studentStatus && filters.studentStatus !== 'all') {
-      result = result.filter((student) => student.status === filters.studentStatus);
-    }
-
-    // Apply class filter
-    if (filters.className !== 'all') {
+    // Apply class filter (client-side only if className is not 'all' but not in backend filter)
+    // This is a fallback for when className filter is applied but backend doesn't support it
+    if (filters.className !== 'all' && !paginationFilters.classId) {
       result = result.filter((student) => {
         const classValue = student.class?.name ? student.class.name : NO_CLASS_FILTER_VALUE;
         return classValue === filters.className;
       });
     }
 
-    // Apply gender filter
-    if (filters.gender !== 'all') {
-      const genderMap: Record<'male' | 'female' | 'other', 'MALE' | 'FEMALE' | 'OTHER'> = {
-        male: 'MALE',
-        female: 'FEMALE',
-        other: 'OTHER',
-      };
-      result = result.filter((student) => student.gender === genderMap[filters.gender as 'male' | 'female' | 'other']);
-    }
-
     // Apply sorting
     result.sort((a, b) => {
       // First: Sort by student status if "all" is selected (ACTIVE -> INACTIVE -> GRADUATED -> DELETED)
       if (!filters.studentStatus || filters.studentStatus === 'all') {
-        const statusOrder = { ACTIVE: 0, INACTIVE: 1, GRADUATED: 2, DELETED: 3 };
-        const statusA = a.status ? statusOrder[a.status] ?? 99 : 99;
-        const statusB = b.status ? statusOrder[b.status] ?? 99 : 99;
+        const statusOrder: Record<'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED', number> = { ACTIVE: 0, INACTIVE: 1, GRADUATED: 2, DELETED: 3 };
+        const statusA = a.status && (a.status in statusOrder) ? statusOrder[a.status as keyof typeof statusOrder] : 99;
+        const statusB = b.status && (b.status in statusOrder) ? statusOrder[b.status as keyof typeof statusOrder] : 99;
         
         if (statusA !== statusB) {
           return statusA - statusB;
@@ -397,16 +392,18 @@ export default function StudentManagementPage() {
     });
 
     return result;
-  }, [students, filters.searchQuery, filters.paymentStatus, filters.studentStatus, filters.className, filters.gender, filters.sortBy, filters.sortOrder]);
+  }, [students, filters.paymentStatus, filters.className, filters.studentStatus, filters.sortBy, filters.sortOrder, paginationFilters.classId]);
 
-  if (isLoading) {
+  if (studentsQuery.isLoading) {
     return <PageLoading message={tCommon('loadingStudents')} />;
   }
+
+  const errorMessage = studentsQuery.isError ? tCommon('errorLoadData') : null;
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
       {/* Filter and Search */}
-      <StudentFilter filters={filters} onFilterChange={setFilters} availableClasses={availableClasses} />
+      <StudentFilter filters={filters} onFilterChange={handleFilterChange} availableClasses={availableClasses} />
 
       {/* Student Table */}
       <StudentTable
@@ -417,29 +414,19 @@ export default function StudentManagementPage() {
         onAdd={handleAdd}
         onPayment={handlePayment}
         showActions={true}
+        pageIndex={pageIndex}
+        pageSize={pageSize}
+        totalItems={studentsPage?.totalElements}
+        onPageChange={(newPage) => {
+          setPageIndex(newPage);
+        }}
+        onPageSizeChange={(newSize) => {
+          setPageIndex(0);
+          setPageSize(newSize);
+        }}
+        isLoading={studentsQuery.isLoading}
+        error={errorMessage || undefined}
       />
-
-      {/* Load More Button */}
-      {hasNextPage && (
-        <div className="flex justify-center">
-          <Button
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            variant="outline"
-            size="lg"
-            className="gap-2"
-          >
-            {isFetchingNextPage ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                {tCommon('loading')}
-              </>
-            ) : (
-              tCommon('loadMore')
-            )}
-          </Button>
-        </div>
-      )}
 
       {/* Student Dialog */}
       <StudentDialog

@@ -17,12 +17,21 @@ import { toast } from 'react-toastify';
 import { useDebounce } from './use-debounce';
 
 /**
- * Hook để lấy tất cả students với pagination, filtering và infinite scroll
- * Sử dụng useInfiniteQuery để load thêm data khi scroll
+ * Hook để lấy tất cả students với pagination và filtering
+ * Hỗ trợ cả infinite scroll và paginated query:
+ * - Nếu không truyền page/size → dùng useInfiniteQuery (infinite scroll)
+ * - Nếu truyền page/size → dùng useQuery (paginated query cho DataTable)
+ * 
+ * LƯU Ý: Phải gọi cả 2 hooks (useQuery và useInfiniteQuery) để tuân thủ React Hooks Rules:
+ * - React Hooks phải được gọi trong cùng một thứ tự ở mọi lần render
+ * - Không thể gọi hooks có điều kiện (if/else)
+ * - Giải pháp: gọi cả 2 hooks nhưng chỉ enable một trong hai bằng `enabled` option
  * 
  * @param search Search term (debounced automatically)
  * @param filters Object containing optional filters (gender, status, classId)
- * @returns Infinite query result với pages data
+ * @param page Optional page number (0-based). Nếu có → dùng paginated query
+ * @param size Optional page size. Nếu có → dùng paginated query
+ * @returns Infinite query result (nếu không có page/size) hoặc Query result (nếu có page/size)
  */
 export function useStudents(
   search: string = '',
@@ -30,11 +39,34 @@ export function useStudents(
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
     status?: 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED';
     classId?: string;
-  } = {}
+  } = {},
+  page?: number,
+  size?: number,
 ) {
   const debouncedSearch = useDebounce(search, 500);
   
-  return useInfiniteQuery<PageResponse<StudentType>>({
+  const usePaginated = typeof page === 'number' && typeof size === 'number';
+  
+  // PHẢI gọi cả 2 hooks để tuân thủ React Hooks Rules
+  // Hook bị disabled sẽ không thực thi query, chỉ tốn một chút memory cho state
+  const paginatedQuery = useQuery<PageResponse<StudentType>>({
+    queryKey: queryKeys.students.listPaginated(debouncedSearch, { ...filters, page, size }),
+    queryFn: async () => {
+      const response = await studentService.getStudents(
+        page!,
+        size!,
+        debouncedSearch,
+        filters,
+      );
+      if (response.status === 200 && response.data) {
+        return response.data;
+      }
+      throw new Error('Failed to fetch students');
+    },
+    enabled: usePaginated, // Chỉ chạy khi usePaginated = true
+  });
+  
+  const infiniteQuery = useInfiniteQuery<PageResponse<StudentType>>({
     queryKey: queryKeys.students.listPaginated(debouncedSearch, filters),
     queryFn: async ({ pageParam = 0 }) => {
       const response = await studentService.getStudents(
@@ -50,7 +82,11 @@ export function useStudents(
     },
     getNextPageParam: (lastPage) => lastPage.hasNext ? lastPage.page + 1 : undefined,
     initialPageParam: 0,
+    enabled: !usePaginated, // Chỉ chạy khi usePaginated = false
   });
+  
+  // Return query tương ứng với mode được chọn
+  return usePaginated ? paginatedQuery : infiniteQuery;
 }
 
 /**

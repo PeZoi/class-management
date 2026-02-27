@@ -2,7 +2,7 @@
 
 import { PageLoading } from '@/components/page-loading';
 import { useCreateTeacher, useDeleteTeacher, useResetTeacherPassword, useRestoreTeacher, useTeachers, useUpdateTeacher, useAssignClassesToTeacher } from '@/hooks/use-teachers';
-import { TeacherFilterState, TeacherRequest, TeacherType } from '@/types';
+import { TeacherFilterState, TeacherRequest, TeacherType, PageResponse } from '@/types';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -11,8 +11,6 @@ import { TeacherDialog } from './_components/teacher-dialog';
 import { TeacherTable } from './_components/teacher-table';
 import { TeacherFilter } from './_components/teacher-filter';
 import { TeacherAssignClassesDialog } from './_components/teacher-assign-classes-dialog';
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
 
 // Map UI gender filter -> API filter
 const genderMap: Record<'all' | 'male' | 'female' | 'other', 'MALE' | 'FEMALE' | 'OTHER' | undefined> = {
@@ -68,20 +66,20 @@ export default function TeacherManagementPage() {
   const [filters, setFilters] = useState<TeacherFilterState>(() => 
     parseFiltersFromURL(searchParams)
   );
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const isUpdatingFromURL = useRef(false);
 
-  // Use infinite query with pagination + server-side filters
-  const {
-    data: teacherPages,
-    isLoading,
-    error: teachersError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useTeachers(filters.searchQuery, {
-    gender: genderMap[filters.gender],
-    status: statusMap[filters.status],
-  });
+  // Use paginated query with server-side filters
+  const teachersQuery = useTeachers(
+    filters.searchQuery,
+    {
+      gender: genderMap[filters.gender],
+      status: statusMap[filters.status],
+    },
+    pageIndex,
+    pageSize,
+  );
   
   const createTeacher = useCreateTeacher();
   const updateTeacher = useUpdateTeacher();
@@ -90,18 +88,20 @@ export default function TeacherManagementPage() {
   const restoreTeacher = useRestoreTeacher();
   const assignClasses = useAssignClassesToTeacher();
 
-  // Flatten all pages into single array
-  const teachersData = useMemo(() => {
-    if (!teacherPages) return [];
-    return teacherPages.pages.flatMap((page) => page.content);
-  }, [teacherPages]);
+  const teachersPage = teachersQuery.data as PageResponse<TeacherType> | undefined;
 
-  useEffect(() => {
-    if (teachersError) {
-      toast.error(tNotif('errorLoadTeachers'));
-      console.error('Error fetching teachers:', teachersError);
-    }
-  }, [teachersError, tNotif]);
+  // Current page data
+  const teachersData = useMemo(() => {
+    if (!teachersPage) return [];
+    return teachersPage.content;
+  }, [teachersPage]);
+
+  // Handle filter change - reset pagination
+  const handleFilterChange = (newFilters: TeacherFilterState) => {
+    setFilters(newFilters);
+    setPageIndex(0);
+    setPageSize(10);
+  };
 
   // Sync filters with URL params when filters change
   useEffect(() => {
@@ -137,25 +137,9 @@ export default function TeacherManagementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.toString()]);
 
-  // Apply local filters (deleted items, gender, sorting)
+  // Apply local sorting (gender and status are handled by backend)
   const teachers = useMemo(() => {
     let result = [...teachersData];
-
-    // Apply gender filter (client-side, in addition to server-side for safety)
-    if (filters.gender !== 'all') {
-      const apiGender = genderMap[filters.gender];
-      if (apiGender) {
-        result = result.filter((t) => t.gender === apiGender);
-      }
-    }
-
-    // Apply status filter (client-side, in addition to server-side for safety)
-    if (filters.status !== 'all') {
-      const apiStatus = statusMap[filters.status];
-      if (apiStatus) {
-        result = result.filter((t) => t.status === apiStatus);
-      }
-    }
 
     // Sorting
     result.sort((a, b) => {
@@ -177,7 +161,7 @@ export default function TeacherManagementPage() {
     });
 
     return result;
-  }, [teachersData, filters.gender, filters.status, filters.sortBy, filters.sortOrder]);
+  }, [teachersData, filters.sortBy, filters.sortOrder]);
 
   const handleAdd = useCallback(() => {
     setSelectedTeacher(null);
@@ -284,14 +268,16 @@ export default function TeacherManagementPage() {
     [assignClasses],
   );
 
-  if (isLoading) {
+  if (teachersQuery.isLoading) {
     return <PageLoading message={tCommon('loadingTeachers')} />;
   }
+
+  const errorMessage = teachersQuery.isError ? tNotif('errorLoadTeachers') : null;
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
       {/* Filter Bar */}
-      <TeacherFilter filters={filters} onFilterChange={setFilters} />
+      <TeacherFilter filters={filters} onFilterChange={handleFilterChange} />
 
       {/* Teacher Table */}
       <TeacherTable
@@ -304,29 +290,19 @@ export default function TeacherManagementPage() {
         onRestore={handleRestore}
         onAssignClasses={handleAssignClasses}
         showActions={true}
+        pageIndex={pageIndex}
+        pageSize={pageSize}
+        totalItems={teachersPage?.totalElements}
+        onPageChange={(newPage) => {
+          setPageIndex(newPage);
+        }}
+        onPageSizeChange={(newSize) => {
+          setPageIndex(0);
+          setPageSize(newSize);
+        }}
+        isLoading={teachersQuery.isLoading}
+        error={errorMessage || undefined}
       />
-
-      {/* Load More Button */}
-      {hasNextPage && (
-        <div className="flex justify-center">
-          <Button
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            variant="outline"
-            size="lg"
-            className="gap-2"
-          >
-            {isFetchingNextPage ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                {tCommon('loading')}
-              </>
-            ) : (
-              tCommon('loadMore')
-            )}
-          </Button>
-        </div>
-      )}
 
       {/* Teacher Dialog */}
       <TeacherDialog

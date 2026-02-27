@@ -53,6 +53,13 @@ interface StudentTableProps {
   description?: string;
   showActions?: boolean;
   className?: string;
+  pageIndex?: number;
+  pageSize?: number;
+  totalItems?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
+  isLoading?: boolean;
+  error?: string;
 }
 
 export function StudentTable({
@@ -66,6 +73,13 @@ export function StudentTable({
   description,
   showActions = true,
   className,
+  pageIndex,
+  pageSize,
+  totalItems,
+  onPageChange,
+  onPageSizeChange,
+  isLoading,
+  error,
 }: StudentTableProps) {
   const t = useTranslations('student-management');
   const tCommon = useTranslations('common');
@@ -545,12 +559,31 @@ export function StudentTable({
         </div>
       </CardHeader>
       <CardContent>
-        {students.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {tCommon('loading')}
+            </p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-red-500">{error}</p>
+          </div>
+        ) : students.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('noStudentsFound')}</p>
           </div>
         ) : (
-          <DataTable columns={columns} data={students} />
+          <DataTable
+            columns={columns}
+            data={students}
+            pageSize={pageSize}
+            manualPagination={typeof pageIndex === 'number' && typeof totalItems === 'number'}
+            pageIndex={pageIndex}
+            totalItems={totalItems}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
         )}
       </CardContent>
     </Card>
