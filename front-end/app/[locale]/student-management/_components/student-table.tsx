@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { cn } from '@/lib/utils';
 import { formatCurrency, formatDate } from '@/utils/helper';
@@ -38,11 +39,17 @@ import {
   Ban,
   Loader2,
   FileX,
+  AlertTriangle,
+  UserMinus,
+  Check,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { StudentItem, StudentStatus } from '@/types/student-type';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { useBulkRemoveStudentsFromClass } from '@/hooks/use-students';
+import { useState, useMemo } from 'react';
+import { toast } from 'react-toastify';
 
 interface StudentTableProps {
   students: StudentItem[];
@@ -50,7 +57,8 @@ interface StudentTableProps {
   onDelete?: (id: string) => void;
   onAdd?: () => void;
   onPayment?: (student: StudentItem) => void;
-   onRestore?: (id: string) => void;
+  onRestore?: (id: string) => void;
+  onStudentsUpdate?: () => void;
   title?: string;
   description?: string;
   showActions?: boolean;
@@ -71,6 +79,7 @@ export function StudentTable({
   onAdd,
   onPayment,
   onRestore,
+  onStudentsUpdate,
   title,
   description,
   showActions = true,
@@ -85,7 +94,14 @@ export function StudentTable({
 }: StudentTableProps) {
   const t = useTranslations('student-management');
   const tCommon = useTranslations('common');
+  const tNotif = useTranslations('notifications');
   const locale = useLocale();
+
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  const bulkRemoveStudentsFromClass = useBulkRemoveStudentsFromClass();
 
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
@@ -169,15 +185,114 @@ export function StudentTable({
     );
   };
 
+  // Handle select/deselect all
+  const handleSelectAll = () => {
+    const allSelected = students.length > 0 && students.every(s => selectedStudentIds.has(s.id));
+    
+    if (allSelected) {
+      setSelectedStudentIds(new Set());
+    } else {
+      setSelectedStudentIds(new Set(students.map(s => s.id)));
+    }
+  };
+
+  // Check if all students are selected
+  const allSelected = students.length > 0 && students.every(s => selectedStudentIds.has(s.id));
+
+  // Handle toggle single student selection
+  const handleToggleStudent = (studentId: string) => {
+    const newSelected = new Set(selectedStudentIds);
+    if (newSelected.has(studentId)) {
+      newSelected.delete(studentId);
+    } else {
+      newSelected.add(studentId);
+    }
+    setSelectedStudentIds(newSelected);
+  };
+
+  // Get selected students grouped by class
+  const selectedStudentsByClass = useMemo(() => {
+    const grouped = new Map<string, string[]>();
+    
+    selectedStudentIds.forEach((studentId) => {
+      const student = students.find(s => s.id === studentId);
+      if (student?.class?.id) {
+        const classId = student.class.id;
+        if (!grouped.has(classId)) {
+          grouped.set(classId, []);
+        }
+        grouped.get(classId)!.push(studentId);
+      }
+    });
+    
+    return grouped;
+  }, [selectedStudentIds, students]);
+
+  // Handle remove students from class
+  const handleRemoveFromClass = async () => {
+    if (selectedStudentIds.size === 0) {
+      toast.warning(tNotif('warningSelectStudents'));
+      return;
+    }
+
+    // Check if all selected students have a class
+    const studentsWithoutClass = Array.from(selectedStudentIds).filter(
+      (id) => !students.find((s) => s.id === id)?.class?.id
+    );
+
+    if (studentsWithoutClass.length > 0) {
+      toast.warning(tNotif('warningSelectStudents'));
+      return;
+    }
+
+    try {
+      setIsRemoving(true);
+      
+      // Remove students from each class
+      const removePromises = Array.from(selectedStudentsByClass.entries()).map(
+        async ([classId, studentIds]) => {
+          const { successCount, errorCount, failedIds } = await bulkRemoveStudentsFromClass.mutateAsync({
+            classId,
+            studentIds,
+          });
+          return { successCount, errorCount, failedIds, classId };
+        }
+      );
+
+      const results = await Promise.all(removePromises);
+      
+      const totalSuccess = results.reduce((sum, r) => sum + r.successCount, 0);
+      const totalError = results.reduce((sum, r) => sum + r.errorCount, 0);
+      const allFailedIds = results.flatMap(r => r.failedIds);
+
+      if (totalSuccess > 0) {
+        toast.success(tNotif('successRemoveStudents', { count: totalSuccess }));
+        setSelectedStudentIds(new Set());
+        setIsRemoveDialogOpen(false);
+        if (onStudentsUpdate) onStudentsUpdate();
+      }
+
+      if (totalError > 0) {
+        console.error('Failed to remove students for studentIds:', allFailedIds);
+        toast.error(tNotif('errorRemoveStudentsFail', { count: totalError }));
+      }
+    } catch (error) {
+      console.error('Error removing students from class', error);
+      toast.error(tNotif('errorRemoveStudents'));
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
   const columns: ColumnDef<StudentItem>[] = [
     {
       id: 'select',
-      header: ({ table }) => (
+      header: () => (
         <div className="flex justify-center">
           <input
             type="checkbox"
-            checked={table.getIsAllPageRowsSelected()}
-            onChange={(e) => table.toggleAllPageRowsSelected(!!e.target.checked)}
+            checked={allSelected}
+            onChange={handleSelectAll}
             className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
             aria-label="Select all"
           />
@@ -187,8 +302,8 @@ export function StudentTable({
         <div className="flex justify-center">
           <input
             type="checkbox"
-            checked={row.getIsSelected()}
-            onChange={(e) => row.toggleSelected(!!e.target.checked)}
+            checked={selectedStudentIds.has(row.original.id)}
+            onChange={() => handleToggleStudent(row.original.id)}
             className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
             aria-label="Select row"
           />
@@ -530,6 +645,21 @@ export function StudentTable({
                     {t('restore')}
                   </DropdownMenuItem>
                 )}
+                {student.class?.id && student.status !== 'DELETED' && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                      onClick={() => {
+                        setSelectedStudentIds(new Set([student.id]));
+                        setIsRemoveDialogOpen(true);
+                      }}
+                    >
+                      <UserMinus className="size-4 mr-2" />
+                      {tCommon('removeFromClass')}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -546,17 +676,53 @@ export function StudentTable({
       )}
     >
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl md:text-2xl font-bold">{displayTitle}</CardTitle>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">{displayDescription}</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl md:text-2xl font-bold">{displayTitle}</CardTitle>
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">{displayDescription}</p>
+            </div>
+            {showActions && onAdd && (
+              <Button onClick={onAdd} className="gap-2">
+                <Plus className="size-4" />
+                <span className="hidden sm:inline">{t('addStudent')}</span>
+                <span className="sm:hidden">{t('addStudentShort')}</span>
+              </Button>
+            )}
           </div>
-          {showActions && onAdd && (
-            <Button onClick={onAdd} className="gap-2">
-              <Plus className="size-4" />
-              <span className="hidden sm:inline">{t('addStudent')}</span>
-              <span className="sm:hidden">{t('addStudentShort')}</span>
-            </Button>
+
+          {/* Selection Toolbar */}
+          {selectedStudentIds.size > 0 && (
+            <div className="flex items-center justify-between gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+                <Check className="size-4" />
+                <span className="font-medium">
+                  {tCommon('selectedCount', { count: selectedStudentIds.size })}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setIsRemoveDialogOpen(true)}
+                  disabled={Array.from(selectedStudentIds).every(
+                    (id) => !students.find((s) => s.id === id)?.class?.id
+                  )}
+                  className="text-xs"
+                >
+                  <UserMinus className="size-3 mr-1" />
+                  {tCommon('removeFromClass')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedStudentIds(new Set())}
+                  className="text-xs"
+                >
+                  {tCommon('deselect')}
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </CardHeader>
@@ -590,6 +756,95 @@ export function StudentTable({
           />
         )}
       </CardContent>
+
+      {/* Dialog xác nhận loại bỏ học sinh */}
+      <Dialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <AlertTriangle className="size-5" />
+              {tCommon('confirmRemoveTitle')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              {(() => {
+                const pluralText = selectedStudentIds.size === 1 
+                  ? tCommon('confirmRemoveMessageSingle') 
+                  : tCommon('confirmRemoveMessagePlural');
+                
+                const count = selectedStudentIds.size;
+                const message = tCommon('confirmRemoveMessage', {
+                  count: count,
+                  plural: pluralText
+                });
+                
+                // Find the position of count number in the message and wrap it with strong tag
+                const countStr = String(count);
+                const index = message.indexOf(countStr);
+                
+                if (index !== -1) {
+                  const before = message.substring(0, index);
+                  const after = message.substring(index + countStr.length);
+                  return (
+                    <>
+                      {before}
+                      <strong>{count}</strong>
+                      {after}
+                    </>
+                  );
+                }
+                
+                // Fallback: render message as is if count not found
+                return message;
+              })()}
+            </p>
+            {selectedStudentIds.size <= 5 && (
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 space-y-1">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
+                  {tCommon('listToRemove')}
+                </p>
+                <ul className="space-y-1">
+                  {Array.from(selectedStudentIds).map((studentId) => {
+                    const student = students.find((s) => s.id === studentId);
+                    return (
+                      <li key={studentId} className="text-xs text-slate-700 dark:text-slate-300">
+                        • {student?.fullName || studentId}
+                        {student?.class?.name && (
+                          <span className="text-slate-500 dark:text-slate-400 ml-2">
+                            ({student.class.name})
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {tCommon('removeWarning')}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsRemoveDialogOpen(false)}
+              disabled={isRemoving}
+            >
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleRemoveFromClass}
+              disabled={isRemoving}
+            >
+              {isRemoving ? tCommon('processing') : tCommon('confirmRemove')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

@@ -859,6 +859,7 @@ export function ClassroomStudentsList({ students, classId, onEditStudent, onPaym
       <CardContent>
         {mappedStudents.length === 0 ? (
           <div className="text-center py-8">
+            <Users className="size-8 text-slate-400 mx-auto mb-4" />
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('noStudentsInClass')}</p>
           </div>
         ) : filteredStudents.length === 0 && hasActiveFilters ? (

@@ -305,10 +305,8 @@ export function ClassroomStudentAttendance({
           </CardTitle>
         </CardHeader>
         <CardContent className="py-12 text-center">
-          <Users className="size-12 text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-600 dark:text-slate-400">
-            {t('noStudentsForAttendance')}
-          </p>
+          <Users className="size-8 text-slate-400 mx-auto mb-4" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('noStudentsForAttendance')}</p>
         </CardContent>
       </Card>
     );

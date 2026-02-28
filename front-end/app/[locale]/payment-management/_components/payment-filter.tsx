@@ -12,10 +12,8 @@ import {
   ArrowUpRight,
   Banknote,
   CheckCircle,
-  CreditCard,
   Search,
   SortAsc,
-  Wallet,
   X,
   Calendar,
 } from 'lucide-react';
@@ -129,16 +127,6 @@ export function PaymentFilter({
       className: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
       label: t('method_bank_transfer'),
     },
-    credit_card: {
-      icon: CreditCard,
-      className: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300',
-      label: t('method_credit_card'),
-    },
-    e_wallet: {
-      icon: Wallet,
-      className: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
-      label: t('method_e_wallet'),
-    },
   } as const;
 
   return (
@@ -249,18 +237,6 @@ export function PaymentFilter({
             <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 dark:text-blue-300">
               <ArrowDownRight className="size-3" />
               {t('method_bank_transfer')}
-            </span>
-          </SelectItem>
-          <SelectItem value="credit_card">
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-700 dark:text-purple-300">
-              <CreditCard className="size-3" />
-              {t('method_credit_card')}
-            </span>
-          </SelectItem>
-          <SelectItem value="e_wallet">
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-700 dark:text-indigo-300">
-              <Wallet className="size-3" />
-              {t('method_e_wallet')}
             </span>
           </SelectItem>
         </FloatingLabelSelect>
@@ -380,7 +356,7 @@ export function PaymentFilter({
             (() => {
               const cfg =
                 methodFilterConfig[
-                  filters.paymentMethod as 'cash' | 'bank_transfer' | 'credit_card' | 'e_wallet'
+                  filters.paymentMethod as 'cash' | 'bank_transfer'
                 ];
               if (!cfg) return null;
               const Icon = cfg.icon;
