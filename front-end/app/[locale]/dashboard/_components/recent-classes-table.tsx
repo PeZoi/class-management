@@ -7,8 +7,6 @@ import { ArrowUpRight, BookOpen, Calendar, DollarSign, Package, User, Users, Wal
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ClassType } from '@/types/class-type';
-import { useMemo } from 'react';
-import { useClassesDebt } from '@/hooks/use-class-debt';
 
 interface RecentClassesTableProps {
   topClasses: ClassType[];
@@ -21,10 +19,6 @@ export function RecentClassesTable({ topClasses, formatCurrency, className }: Re
   const tClassroom = useTranslations('classroom-management');
   const tCommon = useTranslations('common');
   const locale = useLocale();
-
-  // Fetch debt information for all classes
-  const classIds = useMemo(() => topClasses.map((c) => c.id), [topClasses]);
-  const { data: classesDebt = {}, isLoading: isLoadingDebt } = useClassesDebt(classIds);
 
   return (
     <Card
@@ -152,23 +146,15 @@ export function RecentClassesTable({ topClasses, formatCurrency, className }: Re
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
-                    {isLoadingDebt ? (
-                      <div className="text-slate-400 dark:text-slate-500 text-sm">...</div>
-                    ) : (
-                      <Badge variant="outline" className="font-semibold flex items-center justify-center gap-1.5 w-fit mx-auto">
-                        <Package className="size-3.5" />
-                        {classesDebt[classItem.id]?.totalUnpaidPackages ?? 0}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="font-semibold flex items-center justify-center gap-1.5 w-fit mx-auto">
+                      <Package className="size-3.5" />
+                      {classItem.totalUnpaidPackages ?? 0}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {isLoadingDebt ? (
-                      <div className="text-slate-400 dark:text-slate-500 text-sm">...</div>
-                    ) : (
-                      <span className="font-bold text-red-600 dark:text-red-400">
-                        {formatCurrency(classesDebt[classItem.id]?.totalDebtAmount ?? 0)}
-                      </span>
-                    )}
+                    <span className="font-bold text-red-600 dark:text-red-400">
+                      {formatCurrency(classItem.totalDebtAmount ?? 0)}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right">
                     <span className="font-bold text-slate-900 dark:text-slate-100">

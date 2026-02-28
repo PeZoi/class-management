@@ -5,6 +5,7 @@ import com.example.backend.dto.classroom.ClassResponse;
 import com.example.backend.dto.classroom.ClassRevenueDataResponse;
 import com.example.backend.dto.classroom.ClassShiftResponse;
 import com.example.backend.dto.classroom.ClassSingleRevenueDataResponse;
+import com.example.backend.dto.student.SessionPaymentStatusDTO;
 import com.example.backend.entity.Class;
 import com.example.backend.entity.ClassShift;
 import com.example.backend.entity.User;
@@ -29,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -43,6 +46,7 @@ public class ClassService {
     private final UserRepository userRepository;
     private final StudentClassRepository studentClassRepository;
     private final PaymentRepository paymentRepository;
+    private final SessionPaymentService sessionPaymentService;
     private final ModelMapper modelMapper;
 
     // Lấy ra số lượng học viên đang học ở trong lớp
@@ -58,6 +62,113 @@ public class ClassService {
         LocalDate now = LocalDate.now();
         LocalDate firstDayOfMonth = now.withDayOfMonth(1);
         return firstDayOfMonth.atStartOfDay(ZoneOffset.UTC).toInstant();
+    }
+
+    /**
+     * Tính toán tổng số gói nợ và tổng số tiền nợ cho một class
+     * Chỉ tính các gói từ đầu đến gói hiện tại của mỗi học viên
+     * Logic tương tự DashboardService.getStudentsWithUnpaidFees
+     * Sử dụng JOIN FETCH để tránh LazyInitializationException
+     */
+    @Transactional(readOnly = true)
+    private ClassDebtInfo calculateClassDebt(String classId) {
+        // Lấy danh sách StudentClass với JOIN FETCH để tránh LazyInitializationException
+        List<StudentClass> studentClasses = studentClassRepository.findActiveByClassIdWithFetches(
+                classId, 
+                StudentClassStatus.STUDYING, 
+                StudentStatus.ACTIVE
+        );
+
+        int totalUnpaidPackages = 0;
+        long totalDebtAmount = 0L;
+
+        for (StudentClass studentClass : studentClasses) {
+            Student student = studentClass.getStudent();
+            Class classDB = studentClass.getClazz();
+            
+            // Đảm bảo classDB không null và đúng classId (đã được JOIN FETCH nên không gây LazyInitializationException)
+            if (classDB == null || !classDB.getId().equals(classId)) {
+                continue;
+            }
+            
+            // Tính toán sessionPaymentStatuses cho học sinh này
+            List<SessionPaymentStatusDTO> sessionPaymentStatuses = sessionPaymentService.calculateSessionPaymentStatuses(
+                    student.getId(),
+                    classId,
+                    studentClass.getJoinedAt(),
+                    classDB.getMonthlyFee()
+            );
+
+            if (sessionPaymentStatuses == null || sessionPaymentStatuses.isEmpty()) {
+                continue;
+            }
+
+            // Tìm gói hiện tại (isCurrent = true)
+            Optional<Integer> currentPackageNumberOpt = sessionPaymentStatuses.stream()
+                    .filter(s -> Boolean.TRUE.equals(s.getIsCurrent()))
+                    .map(SessionPaymentStatusDTO::getPackageNumber)
+                    .findFirst();
+
+            int maxPackageNumber = sessionPaymentStatuses.stream()
+                    .map(SessionPaymentStatusDTO::getPackageNumber)
+                    .filter(Objects::nonNull)
+                    .mapToInt(Integer::intValue)
+                    .max()
+                    .orElse(0);
+
+            int currentPackageNumber = currentPackageNumberOpt.orElse(maxPackageNumber);
+
+            if (currentPackageNumber > 0) {
+                // Lọc các gói từ đầu đến gói hiện tại (<= currentPackageNumber)
+                List<SessionPaymentStatusDTO> packagesUpToCurrent = sessionPaymentStatuses.stream()
+                        .filter(s -> s.getPackageNumber() != null && s.getPackageNumber() <= currentPackageNumber)
+                        .collect(Collectors.toList());
+
+                // Đếm số gói nợ (UNPAID hoặc PARTIAL)
+                long unpaidCount = packagesUpToCurrent.stream()
+                        .filter(s -> s.getStatus() != null && 
+                                (s.getStatus().name().equals("UNPAID") || s.getStatus().name().equals("PARTIAL")))
+                        .count();
+                totalUnpaidPackages += unpaidCount;
+
+                // Tính tổng số tiền nợ (remainingAmount)
+                long debtAmount = packagesUpToCurrent.stream()
+                        .map(SessionPaymentStatusDTO::getRemainingAmount)
+                        .filter(Objects::nonNull)
+                        .mapToLong(Long::longValue)
+                        .sum();
+                totalDebtAmount += debtAmount;
+            } else {
+                // Nếu không có gói hiện tại, tính tất cả các gói
+                long unpaidCount = sessionPaymentStatuses.stream()
+                        .filter(s -> s.getStatus() != null && 
+                                (s.getStatus().name().equals("UNPAID") || s.getStatus().name().equals("PARTIAL")))
+                        .count();
+                totalUnpaidPackages += unpaidCount;
+
+                long debtAmount = sessionPaymentStatuses.stream()
+                        .map(SessionPaymentStatusDTO::getRemainingAmount)
+                        .filter(Objects::nonNull)
+                        .mapToLong(Long::longValue)
+                        .sum();
+                totalDebtAmount += debtAmount;
+            }
+        }
+
+        return new ClassDebtInfo(totalUnpaidPackages, totalDebtAmount);
+    }
+
+    /**
+     * Inner class để chứa thông tin nợ của một class
+     */
+    private static class ClassDebtInfo {
+        final int totalUnpaidPackages;
+        final long totalDebtAmount;
+
+        ClassDebtInfo(int totalUnpaidPackages, long totalDebtAmount) {
+            this.totalUnpaidPackages = totalUnpaidPackages;
+            this.totalDebtAmount = totalDebtAmount;
+        }
     }
 
     private List<ClassShiftResponse> mapClassShifts(Class classroom) {
@@ -105,6 +216,7 @@ public class ClassService {
         return classResponse;
     }
 
+    @Transactional(readOnly = true)
     public List<ClassResponse> getAllClasses() {
         List<ClassResponse> classResponses = new ArrayList<>();
         // Dùng findAllWithClassShifts để fetch join classShifts, tránh lazy loading, chỉ lấy lớp chưa bị xoá
@@ -124,10 +236,15 @@ public class ClassService {
             int collected = collectedLong != null ? collectedLong.intValue() : 0;
             int revenue = revenueLong != null ? revenueLong.intValue() : 0;
             
+            // Tính toán nợ cho class này
+            ClassDebtInfo debtInfo = calculateClassDebt(classResponse.getId());
+            
             classResponse.setTotal(total);
             classResponse.setCollected(collected);
             classResponse.setRevenue(revenue);
             classResponse.setStudentCount(studentCount);
+            classResponse.setTotalUnpaidPackages(debtInfo.totalUnpaidPackages);
+            classResponse.setTotalDebtAmount(debtInfo.totalDebtAmount);
             classResponses.add(classResponse);
         }
 
@@ -170,6 +287,7 @@ public class ClassService {
         return classResponse;
     }
 
+    @Transactional(readOnly = true)
     public List<ClassResponse> getClassesByTeacherId(String teacherId) {
         List<ClassResponse> classResponses = new ArrayList<>();
         User teacherDB = userRepository.findById(teacherId).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
@@ -190,16 +308,22 @@ public class ClassService {
             int collected = collectedLong != null ? collectedLong.intValue() : 0;
             int revenue = revenueLong != null ? revenueLong.intValue() : 0;
             
+            // Tính toán nợ cho class này
+            ClassDebtInfo debtInfo = calculateClassDebt(classResponse.getId());
+            
             classResponse.setTotal(total);
             classResponse.setCollected(collected);
             classResponse.setRevenue(revenue);
             classResponse.setStudentCount(studentCount);
+            classResponse.setTotalUnpaidPackages(debtInfo.totalUnpaidPackages);
+            classResponse.setTotalDebtAmount(debtInfo.totalDebtAmount);
             classResponses.add(classResponse);
         }
 
         return classResponses;
     }
 
+    @Transactional(readOnly = true)
     public List<ClassResponse> getClassesByCurrentTeacher() {
         String username = SecurityUtil.getCurrentUserLogin()
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy thông tin người dùng"));
@@ -210,6 +334,7 @@ public class ClassService {
         return getClassesByTeacherId(currentUser.getId());
     }
 
+    @Transactional(readOnly = true)
     public ClassResponse getClassById(String classId, boolean checkTeacherAccess) {
         // Dùng findByIdWithClassShifts để fetch join classShifts
         Class classDB = classRepository.findByIdWithClassShifts(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy " +
@@ -242,10 +367,15 @@ public class ClassService {
         int collected = collectedLong != null ? collectedLong.intValue() : 0;
         int revenue = revenueLong != null ? revenueLong.intValue() : 0;
         
+        // Tính toán nợ cho class này
+        ClassDebtInfo debtInfo = calculateClassDebt(classResponse.getId());
+        
         classResponse.setTotal(total);
         classResponse.setCollected(collected);
         classResponse.setRevenue(revenue);
         classResponse.setStudentCount(studentCount);
+        classResponse.setTotalUnpaidPackages(debtInfo.totalUnpaidPackages);
+        classResponse.setTotalDebtAmount(debtInfo.totalDebtAmount);
 
         return classResponse;
     }
@@ -377,6 +507,7 @@ public class ClassService {
     }
 
     // Lấy top 3 lớp có doanh thu cao nhất theo tháng hiện tại
+    @Transactional(readOnly = true)
     public List<ClassResponse> getTop3ClassesByRevenue() {
         Instant currentMonth = getCurrentMonthStart();
         // Dùng findAllWithClassShifts để fetch join classShifts, chỉ lấy lớp chưa bị xoá
@@ -404,10 +535,15 @@ public class ClassService {
             );
             int collected = collectedLong != null ? collectedLong.intValue() : 0;
 
+            // Tính toán nợ cho class này
+            ClassDebtInfo debtInfo = calculateClassDebt(classResponse.getId());
+            
             classResponse.setTotal(total);
             classResponse.setCollected(collected);
             classResponse.setRevenue(revenue);
             classResponse.setStudentCount(studentCount);
+            classResponse.setTotalUnpaidPackages(debtInfo.totalUnpaidPackages);
+            classResponse.setTotalDebtAmount(debtInfo.totalDebtAmount);
 
             classResponsesWithRevenue.add(classResponse);
         }
@@ -476,6 +612,7 @@ public class ClassService {
      * Lấy danh sách classes không có teacher (chưa được gán giáo viên)
      * @return List of ClassResponse với classShifts
      */
+    @Transactional(readOnly = true)
     public List<ClassResponse> getUnassignedClasses() {
         List<ClassResponse> classResponses = new ArrayList<>();
         // Dùng findAllUnassignedClassesWithClassShifts để fetch join classShifts
@@ -495,10 +632,15 @@ public class ClassService {
             int collected = collectedLong != null ? collectedLong.intValue() : 0;
             int revenue = revenueLong != null ? revenueLong.intValue() : 0;
             
+            // Tính toán nợ cho class này
+            ClassDebtInfo debtInfo = calculateClassDebt(classResponse.getId());
+            
             classResponse.setTotal(total);
             classResponse.setCollected(collected);
             classResponse.setRevenue(revenue);
             classResponse.setStudentCount(studentCount);
+            classResponse.setTotalUnpaidPackages(debtInfo.totalUnpaidPackages);
+            classResponse.setTotalDebtAmount(debtInfo.totalDebtAmount);
             classResponses.add(classResponse);
         }
 
@@ -562,10 +704,15 @@ public class ClassService {
             int collected = collectedLong != null ? collectedLong.intValue() : 0;
             int revenue = revenueLong != null ? revenueLong.intValue() : 0;
 
+            // Tính toán nợ cho class này
+            ClassDebtInfo debtInfo = calculateClassDebt(classResponse.getId());
+            
             classResponse.setTotal(total);
             classResponse.setCollected(collected);
             classResponse.setRevenue(revenue);
             classResponse.setStudentCount(studentCount);
+            classResponse.setTotalUnpaidPackages(debtInfo.totalUnpaidPackages);
+            classResponse.setTotalDebtAmount(debtInfo.totalDebtAmount);
             assignedClasses.add(classResponse);
         }
 

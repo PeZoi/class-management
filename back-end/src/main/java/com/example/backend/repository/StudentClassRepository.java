@@ -86,4 +86,20 @@ public interface StudentClassRepository extends JpaRepository<StudentClass,Long>
             @Param("classId") String classId,
             @Param("status") com.example.backend.enums.StudentClassStatus status
     );
+
+    @Query("""
+        SELECT sc
+        FROM StudentClass sc
+        JOIN FETCH sc.student s
+        JOIN FETCH sc.clazz c
+        WHERE sc.clazz.id = :classId
+        AND sc.leftAt IS NULL
+        AND sc.status = :classStatus
+        AND s.status = :studentStatus
+    """)
+    List<StudentClass> findActiveByClassIdWithFetches(
+            @Param("classId") String classId,
+            @Param("classStatus") StudentClassStatus classStatus,
+            @Param("studentStatus") StudentStatus studentStatus
+    );
 }

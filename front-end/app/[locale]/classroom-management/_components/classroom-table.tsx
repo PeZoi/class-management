@@ -31,8 +31,6 @@ import {
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
-import { useMemo } from 'react';
-import { useClassesDebt } from '@/hooks/use-class-debt';
 
 interface ClassroomTableProps {
   classes: ClassType[];
@@ -64,10 +62,6 @@ export function ClassroomTable({
 
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
-
-  // Fetch debt information for all classes
-  const classIds = useMemo(() => classes.map((c) => c.id), [classes]);
-  const { data: classesDebt = {}, isLoading: isLoadingDebt } = useClassesDebt(classIds);
 
   const columns: ColumnDef<ClassType>[] = [
     {
@@ -219,17 +213,7 @@ export function ClassroomTable({
         </div>
       ),
       cell: ({ row }) => {
-        const classId = row.original.id;
-        const debtInfo = classesDebt[classId];
-        const totalUnpaidPackages = debtInfo?.totalUnpaidPackages ?? 0;
-        
-        if (isLoadingDebt) {
-          return (
-            <div className="text-center text-slate-400 dark:text-slate-500 text-sm">
-              ...
-            </div>
-          );
-        }
+        const totalUnpaidPackages = row.original.totalUnpaidPackages ?? 0;
 
         return (
           <div className="text-center">
@@ -241,10 +225,8 @@ export function ClassroomTable({
         );
       },
       sortingFn: (rowA, rowB) => {
-        const classIdA = rowA.original.id;
-        const classIdB = rowB.original.id;
-        const debtA = classesDebt[classIdA]?.totalUnpaidPackages ?? 0;
-        const debtB = classesDebt[classIdB]?.totalUnpaidPackages ?? 0;
+        const debtA = rowA.original.totalUnpaidPackages ?? 0;
+        const debtB = rowB.original.totalUnpaidPackages ?? 0;
         return debtA - debtB;
       },
     },
@@ -259,17 +241,7 @@ export function ClassroomTable({
         </div>
       ),
       cell: ({ row }) => {
-        const classId = row.original.id;
-        const debtInfo = classesDebt[classId];
-        const totalDebtAmount = debtInfo?.totalDebtAmount ?? 0;
-        
-        if (isLoadingDebt) {
-          return (
-            <div className="text-right text-slate-400 dark:text-slate-500 text-sm">
-              ...
-            </div>
-          );
-        }
+        const totalDebtAmount = row.original.totalDebtAmount ?? 0;
 
         return (
           <div className="text-right">
@@ -280,10 +252,8 @@ export function ClassroomTable({
         );
       },
       sortingFn: (rowA, rowB) => {
-        const classIdA = rowA.original.id;
-        const classIdB = rowB.original.id;
-        const debtA = classesDebt[classIdA]?.totalDebtAmount ?? 0;
-        const debtB = classesDebt[classIdB]?.totalDebtAmount ?? 0;
+        const debtA = rowA.original.totalDebtAmount ?? 0;
+        const debtB = rowB.original.totalDebtAmount ?? 0;
         return debtA - debtB;
       },
     },

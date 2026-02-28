@@ -22,6 +22,8 @@ public class ClassResponse {
     private int revenue; // Doanh thu
     private int collected; // Số tiền đã nhận trong tháng này
     private int total; // Tổng số tiền phải nhận trong tháng này
+    private int totalUnpaidPackages; // Tổng số gói nợ (từ đầu đến gói hiện tại)
+    private long totalDebtAmount; // Tổng số tiền nợ (từ đầu đến gói hiện tại)
     private TeacherResponse teacher;
     // Danh sách ca học của lớp (được trả thẳng về để FE không phải gọi API riêng theo từng lớp)
     private List<ClassShiftResponse> classShifts;

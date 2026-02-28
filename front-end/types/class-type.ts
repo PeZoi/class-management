@@ -24,6 +24,8 @@ export interface ClassType {
   revenue: number;
   collected: number;
   total: number;
+  totalUnpaidPackages?: number; // Tổng số gói nợ (từ đầu đến gói hiện tại)
+  totalDebtAmount?: number; // Tổng số tiền nợ (từ đầu đến gói hiện tại)
   teacher?: TeacherType;
   // Danh sách ca học trả luôn trong response lớp để tránh gọi /api/class-shift/by-class cho từng lớp
   classShifts?: ClassShiftType[];
