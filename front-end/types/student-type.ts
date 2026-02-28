@@ -92,7 +92,7 @@ export interface FilterState {
   studentStatus: 'all' | 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED';
   className: string;
   gender: 'all' | 'male' | 'female' | 'other';
-  sortBy: 'name' | 'joinedDate' | 'monthlyFee';
+  sortBy: 'name' | 'joinedDate' | 'unpaidPackages';
   sortOrder: 'asc' | 'desc';
 }
 

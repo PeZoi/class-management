@@ -1,7 +1,7 @@
 'use client';
 
-import { PageLoading } from '@/components/page-loading';
 import { useCreateStudent, useStudents, useUpdateStudent, useDeleteStudents, useRestoreStudent } from '@/hooks/use-students';
+import { useClasses } from '@/hooks/use-classes';
 import { StudentRequest, StudentType, FilterState, StudentItem } from '@/types/student-type';
 import { SessionPaymentStatus } from '@/types/payment-type';
 import { PageResponse } from '@/types';
@@ -13,7 +13,7 @@ import { StudentDialog } from './_components/student-dialog';
 import { StudentFilter } from './_components/student-filter';
 import { StudentTable } from './_components/student-table';
 
-const NO_CLASS_FILTER_VALUE = '__no_class__';
+export const NO_CLASS_FILTER_VALUE = '__no_class__';
 
 // Helper function to get current month payment status
 const getCurrentMonthPaymentStatus = (
@@ -112,7 +112,7 @@ const parseFiltersFromURL = (searchParams: URLSearchParams): FilterState => {
   return {
     searchQuery: searchParams.get('search') || '',
     paymentStatus: (searchParams.get('paymentStatus') as FilterState['paymentStatus']) || 'all',
-    studentStatus: (searchParams.get('studentStatus') as FilterState['studentStatus']) || 'all',
+    studentStatus: (searchParams.get('studentStatus') as FilterState['studentStatus']) || 'ACTIVE',
     className: searchParams.get('class') || 'all',
     gender: (searchParams.get('gender') as FilterState['gender']) || 'all',
     sortBy: (searchParams.get('sortBy') as FilterState['sortBy']) || 'name',
@@ -126,7 +126,7 @@ const filtersToURLParams = (filters: FilterState): URLSearchParams => {
   
   if (filters.searchQuery) params.set('search', filters.searchQuery);
   if (filters.paymentStatus !== 'all') params.set('paymentStatus', filters.paymentStatus);
-  if (filters.studentStatus && filters.studentStatus !== 'all') params.set('studentStatus', filters.studentStatus);
+  if (filters.studentStatus && filters.studentStatus !== 'ACTIVE') params.set('studentStatus', filters.studentStatus);
   if (filters.className !== 'all') params.set('class', filters.className);
   if (filters.gender !== 'all') params.set('gender', filters.gender);
   if (filters.sortBy !== 'name') params.set('sortBy', filters.sortBy);
@@ -154,6 +154,9 @@ export default function StudentManagementPage() {
   const [pageSize, setPageSize] = useState(10);
   const isUpdatingFromURL = useRef(false);
 
+  // Get all classes from database for filter
+  const classesQuery = useClasses();
+
   // Build filters object for pagination
   const paginationFilters = useMemo(() => {
     const genderMap: Record<'male' | 'female' | 'other' | 'all', 'MALE' | 'FEMALE' | 'OTHER' | undefined> = {
@@ -170,12 +173,23 @@ export default function StudentManagementPage() {
       all: undefined,
     };
     
+    // Map sortBy from UI to backend field names
+    const sortByMap: Record<string, string> = {
+      name: 'fullName',
+      joinedDate: 'joinAt',
+      unpaidPackages: 'unpaidPackages',
+    };
+    
     return {
       gender: genderMap[filters.gender as 'male' | 'female' | 'other' | 'all'] || undefined,
       status: statusMap[filters.studentStatus || 'all'] || undefined,
-      classId: filters.className !== 'all' ? filters.className : undefined,
+      className: filters.className === NO_CLASS_FILTER_VALUE 
+        ? NO_CLASS_FILTER_VALUE 
+        : (filters.className !== 'all' ? filters.className : undefined),
+      sortBy: sortByMap[filters.sortBy] || 'fullName',
+      sortOrder: filters.sortOrder || 'asc',
     };
-  }, [filters.gender, filters.studentStatus, filters.className]);
+  }, [filters.gender, filters.studentStatus, filters.className, filters.sortBy, filters.sortOrder]);
 
   // TanStack Query hooks - use paginated query
   const studentsQuery = useStudents(
@@ -203,7 +217,7 @@ export default function StudentManagementPage() {
     return studentsData.map((student: StudentType) => mapStudentTypeToStudentItem(student));
   }, [studentsData]);
 
-  // Handle filter change - reset pagination
+  // Handle filter change - reset pagination when filters change (including sort)
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
     setPageIndex(0);
@@ -318,31 +332,24 @@ export default function StudentManagementPage() {
     }
   };
 
-  // Get unique class names for filter
   const availableClasses = useMemo(() => {
+    if (!classesQuery.data) return [];
+    
     // IMPORTANT: don't use translated text as filter "value" (breaks when locale changes)
     // We keep stable values, and only translate labels in the filter UI.
-    const classNames = new Set<string>();
-    let hasNoClass = false;
+    const options = classesQuery.data
+      .map((cls) => ({ value: cls.name, label: cls.name, id: cls.id }))
+      .filter((opt): opt is { value: string; label: string; id: string } => !!opt.value)
+      .sort((a, b) => a.label.localeCompare(b.label));
 
-    for (const s of students) {
-      if (s.class?.name) classNames.add(s.class.name);
-      else hasNoClass = true;
-    }
-
-    const options = Array.from(classNames)
-      .sort()
-      .map((name) => ({ value: name, label: name }));
-
-    if (hasNoClass) {
-      options.unshift({ value: NO_CLASS_FILTER_VALUE, label: tCommon('noClass') });
-    }
+    // Add "No class" option at the beginning
+    options.unshift({ value: NO_CLASS_FILTER_VALUE, label: tCommon('noClass'), id: '' });
 
     return options;
-  }, [students, tCommon]);
+  }, [classesQuery.data, tCommon]);
 
-  // Filter and sort students (client-side for payment status and sorting only)
-  // Note: search, gender, status, classId are handled by backend pagination
+  // Filter students (client-side for payment status only, sorting is handled by backend)
+  // Note: search, gender, status, className, sortBy, sortOrder are handled by backend pagination
   const filteredStudents = useMemo(() => {
     let result = [...students];
 
@@ -351,58 +358,16 @@ export default function StudentManagementPage() {
       result = result.filter((student) => student.paymentStatus === filters.paymentStatus);
     }
 
-    // Apply class filter (client-side only if className is not 'all' but not in backend filter)
-    // This is a fallback for when className filter is applied but backend doesn't support it
-    if (filters.className !== 'all' && !paginationFilters.classId) {
-      result = result.filter((student) => {
-        const classValue = student.class?.name ? student.class.name : NO_CLASS_FILTER_VALUE;
-        return classValue === filters.className;
-      });
-    }
-
-    // Apply sorting
-    result.sort((a, b) => {
-      // First: Sort by student status if "all" is selected (ACTIVE -> INACTIVE -> GRADUATED -> DELETED)
-      if (!filters.studentStatus || filters.studentStatus === 'all') {
-        const statusOrder: Record<'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED', number> = { ACTIVE: 0, INACTIVE: 1, GRADUATED: 2, DELETED: 3 };
-        const statusA = a.status && (a.status in statusOrder) ? statusOrder[a.status as keyof typeof statusOrder] : 99;
-        const statusB = b.status && (b.status in statusOrder) ? statusOrder[b.status as keyof typeof statusOrder] : 99;
-        
-        if (statusA !== statusB) {
-          return statusA - statusB;
-        }
-      }
-
-      // Second: Apply user-selected sorting
-      let comparison = 0;
-
-      switch (filters.sortBy) {
-        case 'name':
-          comparison = a.fullName.localeCompare(b.fullName, 'vi');
-          break;
-        case 'joinedDate':
-          comparison = new Date(a.class?.joinAt || '').getTime() - new Date(b.class?.joinAt || '').getTime();
-          break;
-        case 'monthlyFee':
-          comparison = a.monthlyFee - b.monthlyFee;
-          break;
-      }
-
-      return filters.sortOrder === 'asc' ? comparison : -comparison;
-    });
+    // Sorting and class filtering are now handled by backend, no client-side filtering needed
 
     return result;
-  }, [students, filters.paymentStatus, filters.className, filters.studentStatus, filters.sortBy, filters.sortOrder, paginationFilters.classId]);
-
-  if (studentsQuery.isLoading) {
-    return <PageLoading message={tCommon('loadingStudents')} />;
-  }
+  }, [students, filters.paymentStatus]);
 
   const errorMessage = studentsQuery.isError ? tCommon('errorLoadData') : null;
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
-      {/* Filter and Search */}
+      {/* Filter and Search - Always visible */}
       <StudentFilter filters={filters} onFilterChange={handleFilterChange} availableClasses={availableClasses} />
 
       {/* Student Table */}

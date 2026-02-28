@@ -11,6 +11,8 @@ export const teacherService = {
     filters?: {
       gender?: 'MALE' | 'FEMALE' | 'OTHER';
       status?: 'ACTIVE' | 'DELETED' | 'BLOCKED';
+      sortBy?: 'name' | 'joinedDate' | 'totalClasses';
+      sortOrder?: 'asc' | 'desc';
     }
   ) => {
     const params = new URLSearchParams();
@@ -19,6 +21,18 @@ export const teacherService = {
     if (search) params.append('search', search);
     if (filters?.gender) params.append('gender', filters.gender);
     if (filters?.status) params.append('status', filters.status);
+    if (filters?.sortBy) {
+      // Map FE sortBy to BE field names
+      const sortByMap: Record<string, string> = {
+        name: 'fullName',
+        joinedDate: 'createdAt',
+        totalClasses: 'totalClasses',
+      };
+      params.append('sortBy', sortByMap[filters.sortBy] || 'fullName');
+    }
+    if (filters?.sortOrder) {
+      params.append('sortDirection', filters.sortOrder.toUpperCase());
+    }
     
     return http.get<ResponseType<PageResponse<TeacherType>, PageResponse<TeacherType>>>(
       `/api/teacher/get-all?${params.toString()}`

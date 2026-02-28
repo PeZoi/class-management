@@ -23,7 +23,9 @@ import {
   DollarSign,
   Edit,
   Eye,
+  FileX,
   Key,
+  Loader2,
   Mail,
   MoreHorizontal,
   Phone,
@@ -432,6 +434,7 @@ export function TeacherTable({
       <CardContent>
         {isLoading ? (
           <div className="text-center py-8">
+            <Loader2 className="size-4 animate-spin mx-auto mb-2" />
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('loading')}
             </p>
@@ -442,6 +445,7 @@ export function TeacherTable({
           </div>
         ) : teachers.length === 0 ? (
           <div className="text-center py-8">
+            <FileX className="size-8 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('noTeachersFound')}</p>
           </div>
         ) : (

@@ -45,7 +45,7 @@ export function TeacherFilter({ filters, onFilterChange, className }: TeacherFil
     onFilterChange({
       searchQuery: '',
       gender: 'all',
-      status: 'all',
+      status: 'active',
       sortBy: 'name',
       sortOrder: 'asc',
     });
@@ -54,7 +54,7 @@ export function TeacherFilter({ filters, onFilterChange, className }: TeacherFil
   const hasActiveFilters =
     filters.searchQuery !== '' ||
     filters.gender !== 'all' ||
-    filters.status !== 'all' ||
+    filters.status !== 'active' ||
     filters.sortBy !== 'name' ||
     filters.sortOrder !== 'asc';
 

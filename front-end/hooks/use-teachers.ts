@@ -37,6 +37,8 @@ export function useTeachers(
   filters: {
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
     status?: 'ACTIVE' | 'DELETED' | 'BLOCKED';
+    sortBy?: 'name' | 'joinedDate' | 'totalClasses';
+    sortOrder?: 'asc' | 'desc';
   } = {},
   page?: number,
   size?: number,

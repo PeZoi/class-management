@@ -32,7 +32,9 @@ export const studentService = {
     filters?: {
       gender?: 'MALE' | 'FEMALE' | 'OTHER';
       status?: 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED';
-      classId?: string;
+      className?: string;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
     }
   ) => {
     const params = new URLSearchParams();
@@ -41,7 +43,9 @@ export const studentService = {
     if (search) params.append('search', search);
     if (filters?.gender) params.append('gender', filters.gender);
     if (filters?.status) params.append('status', filters.status);
-    if (filters?.classId) params.append('classId', filters.classId);
+    if (filters?.className) params.append('className', filters.className);
+    if (filters?.sortBy) params.append('sortBy', filters.sortBy);
+    if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
     
     return http.get<ResponseType<PageResponse<StudentType>, PageResponse<StudentType>>>(
       `/api/student/get-all?${params.toString()}`

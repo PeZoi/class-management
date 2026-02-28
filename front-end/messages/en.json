@@ -24,6 +24,7 @@
     "searchResults": "Search Results",
     "loading": "Loading",
     "loadingData": "Loading data",
+    "errorLoadData": "Failed to load data",
     "loadingMessage": "Please wait, the system is synchronizing the latest information for you.",
     "loadingStudents": "Loading student list...",
     "loadingClasses": "Loading class list...",
@@ -434,6 +435,7 @@
     "noClassesAvailable": "No classes available",
     "saveAssignments": "Save Assignments",
     "noTeachersFound": "No teachers found",
+    "loading": "Loading...",
     "addNewTeacher": "Add New Teacher",
     "editTeacher": "Edit Teacher",
     "addTeacherDescription": "Enter the teacher information below to add a new teacher",
@@ -861,6 +863,7 @@
     "sort_by_name": "Name",
     "sort_by_date": "Joined date",
     "sort_by_fee": "Tuition fee",
+    "sort_by_unpaid_packages": "Unpaid packages",
     "sort_ascending": "Sort ascending",
     "sort_descending": "Sort descending",
     "activeFilters": "Active filters:"

@@ -1,12 +1,10 @@
 'use client';
 
-import { PageLoading } from '@/components/page-loading';
 import { useCreateTeacher, useDeleteTeacher, useResetTeacherPassword, useRestoreTeacher, useTeachers, useUpdateTeacher, useAssignClassesToTeacher } from '@/hooks/use-teachers';
 import { TeacherFilterState, TeacherRequest, TeacherType, PageResponse } from '@/types';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'react-toastify';
 import { TeacherDialog } from './_components/teacher-dialog';
 import { TeacherTable } from './_components/teacher-table';
 import { TeacherFilter } from './_components/teacher-filter';
@@ -33,7 +31,7 @@ const parseFiltersFromURL = (searchParams: URLSearchParams): TeacherFilterState 
   return {
     searchQuery: searchParams.get('search') || '',
     gender: (searchParams.get('gender') as TeacherFilterState['gender']) || 'all',
-    status: (searchParams.get('status') as TeacherFilterState['status']) || 'all',
+    status: (searchParams.get('status') as TeacherFilterState['status']) || 'active',
     sortBy: (searchParams.get('sortBy') as TeacherFilterState['sortBy']) || 'name',
     sortOrder: (searchParams.get('sortOrder') as TeacherFilterState['sortOrder']) || 'asc',
   };
@@ -45,7 +43,7 @@ const filtersToURLParams = (filters: TeacherFilterState): URLSearchParams => {
   
   if (filters.searchQuery) params.set('search', filters.searchQuery);
   if (filters.gender !== 'all') params.set('gender', filters.gender);
-  if (filters.status !== 'all') params.set('status', filters.status);
+  if (filters.status !== 'active') params.set('status', filters.status);
   if (filters.sortBy !== 'name') params.set('sortBy', filters.sortBy);
   if (filters.sortOrder !== 'asc') params.set('sortOrder', filters.sortOrder);
   
@@ -58,7 +56,6 @@ export default function TeacherManagementPage() {
   const pathname = usePathname();
   const locale = useLocale();
   const tNotif = useTranslations('notifications');
-  const tCommon = useTranslations('common');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherType | null>(null);
   const [isAssignClassesDialogOpen, setIsAssignClassesDialogOpen] = useState(false);
@@ -70,12 +67,14 @@ export default function TeacherManagementPage() {
   const [pageSize, setPageSize] = useState(10);
   const isUpdatingFromURL = useRef(false);
 
-  // Use paginated query with server-side filters
+  // Use paginated query with server-side filters and sorting
   const teachersQuery = useTeachers(
     filters.searchQuery,
     {
       gender: genderMap[filters.gender],
       status: statusMap[filters.status],
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
     },
     pageIndex,
     pageSize,
@@ -137,31 +136,10 @@ export default function TeacherManagementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.toString()]);
 
-  // Apply local sorting (gender and status are handled by backend)
+  // Sorting is now handled by backend, no need for client-side sorting
   const teachers = useMemo(() => {
-    let result = [...teachersData];
-
-    // Sorting
-    result.sort((a, b) => {
-      let comparison = 0;
-
-      switch (filters.sortBy) {
-        case 'name':
-          comparison = a.fullName.localeCompare(b.fullName, 'vi');
-          break;
-        case 'joinedDate':
-          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        case 'totalClasses':
-          comparison = (a.classList?.length || 0) - (b.classList?.length || 0);
-          break;
-      }
-
-      return filters.sortOrder === 'asc' ? comparison : -comparison;
-    });
-
-    return result;
-  }, [teachersData, filters.sortBy, filters.sortOrder]);
+    return [...teachersData];
+  }, [teachersData]);
 
   const handleAdd = useCallback(() => {
     setSelectedTeacher(null);
@@ -268,15 +246,11 @@ export default function TeacherManagementPage() {
     [assignClasses],
   );
 
-  if (teachersQuery.isLoading) {
-    return <PageLoading message={tCommon('loadingTeachers')} />;
-  }
-
   const errorMessage = teachersQuery.isError ? tNotif('errorLoadTeachers') : null;
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
-      {/* Filter Bar */}
+      {/* Filter Bar - Always visible, even during loading */}
       <TeacherFilter filters={filters} onFilterChange={handleFilterChange} />
 
       {/* Teacher Table */}

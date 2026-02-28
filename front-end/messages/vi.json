@@ -24,6 +24,7 @@
     "searchResults": "Kết quả tìm kiếm",
     "loading": "Đang tải",
     "loadingData": "Đang tải dữ liệu",
+    "errorLoadData": "Không thể tải dữ liệu",
     "loadingMessage": "Vui lòng đợi trong giây lát, hệ thống đang đồng bộ thông tin mới nhất cho bạn.",
     "loadingStudents": "Đang tải danh sách học viên...",
     "loadingClasses": "Đang tải danh sách lớp học...",
@@ -433,6 +434,7 @@
     "noClassesAvailable": "Không có lớp học nào",
     "saveAssignments": "Lưu Phân Công",
     "noTeachersFound": "Không tìm thấy giảng viên nào",
+    "loading": "Đang tải...",
     "addNewTeacher": "Thêm Giảng Viên Mới",
     "editTeacher": "Chỉnh Sửa Giảng Viên",
     "addTeacherDescription": "Nhập thông tin giảng viên bên dưới để thêm mới",
@@ -660,6 +662,7 @@
     "sort_by_name": "Tên",
     "sort_by_date": "Ngày tham gia",
     "sort_by_fee": "Học phí",
+    "sort_by_unpaid_packages": "Số gói nợ",
     "sort_ascending": "Sắp xếp tăng dần",
     "sort_descending": "Sắp xếp giảm dần",
     "activeFilters": "Bộ lọc đang áp dụng:"

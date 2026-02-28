@@ -38,7 +38,9 @@ export function useStudents(
   filters: {
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
     status?: 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'DELETED';
-    classId?: string;
+    className?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
   } = {},
   page?: number,
   size?: number,

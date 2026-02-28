@@ -33,7 +33,9 @@ public class StudentController {
      * @param search Search term for fullName, email, or phoneNumber (optional)
      * @param gender Filter by gender: MALE, FEMALE, OTHER (optional)
      * @param status Filter by status: ACTIVE, INACTIVE, GRADUATED, DELETED (optional)
-     * @param classId Filter by class ID (optional)
+     * @param className Filter by class name (optional)
+     * @param sortBy Sort field: fullName, joinAt, unpaidPackages (optional, default: fullName)
+     * @param sortOrder Sort direction: asc, desc (optional, default: asc)
      * @return PageResponse with students and pagination metadata
      */
     @GetMapping("/get-all")
@@ -43,10 +45,12 @@ public class StudentController {
             @RequestParam(required = false, defaultValue = "") String search,
             @RequestParam(required = false) Genders gender,
             @RequestParam(required = false) StudentStatus status,
-            @RequestParam(required = false) String classId
+            @RequestParam(required = false) String className,
+            @RequestParam(required = false, defaultValue = "fullName") String sortBy,
+            @RequestParam(required = false, defaultValue = "asc") String sortOrder
     ) {
         PageResponse<StudentResponse> response = studentService.getAllPaginated(
-                page, size, search, gender, status, classId
+                page, size, search, gender, status, className, sortBy, sortOrder
         );
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

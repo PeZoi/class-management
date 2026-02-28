@@ -15,6 +15,7 @@ import com.example.backend.entity.Payment;
 import com.example.backend.entity.Student;
 import com.example.backend.entity.StudentClass;
 import com.example.backend.enums.Genders;
+import com.example.backend.enums.SessionPaymentStatus;
 import com.example.backend.enums.StudentClassStatus;
 import com.example.backend.enums.StudentStatus;
 import com.example.backend.exception.NotFoundException;
@@ -32,6 +33,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -186,27 +188,111 @@ public class StudentService {
             String search,
             Genders gender,
             StudentStatus status,
-            String classId
+            String className,
+            String sortBy,
+            String sortOrder
     ) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Student> studentPage = studentRepository.findAllWithFilters(search, gender, status, classId, pageable);
+        // Handle unpaidPackages sort - it's a calculated field, need to sort in memory
+        boolean sortByUnpaidPackages = "unpaidPackages".equals(sortBy);
         
-        List<StudentResponse> content = new ArrayList<>();
-        for (Student student : studentPage.getContent()) {
-            // Reuse existing logic to build student response with class info
-            StudentResponse studentResponse = buildStudentResponseWithCurrentClass(student.getId());
-            content.add(studentResponse);
+        // If sorting by unpaidPackages, fetch all data without pagination first, then sort and paginate
+        // Otherwise, use normal pagination with database sort
+        if (sortByUnpaidPackages) {
+            // Fetch all matching students without pagination
+            Pageable allPageable = PageRequest.of(0, Integer.MAX_VALUE);
+            Page<Student> allStudentPage = studentRepository.findAllWithFilters(
+                    search, gender, status, className, StudentClassStatus.STUDYING, allPageable);
+            
+            // Build all student responses and calculate unpaidPackages
+            List<StudentResponse> allContent = new ArrayList<>();
+            for (Student student : allStudentPage.getContent()) {
+                StudentResponse studentResponse = buildStudentResponseWithCurrentClass(student.getId());
+                allContent.add(studentResponse);
+            }
+            
+            // Sort by unpaidPackages count
+            allContent.sort((a, b) -> {
+                int countA = calculateUnpaidPackagesCount(a);
+                int countB = calculateUnpaidPackagesCount(b);
+                return "desc".equalsIgnoreCase(sortOrder) ? countB - countA : countA - countB;
+            });
+            
+            // Manual pagination
+            int start = page * size;
+            int end = Math.min(start + size, allContent.size());
+            List<StudentResponse> content = start < allContent.size() 
+                    ? allContent.subList(start, end) 
+                    : new ArrayList<>();
+            
+            return new PageResponse<>(
+                    content,
+                    page,
+                    size,
+                    (long) allContent.size(),
+                    (int) Math.ceil((double) allContent.size() / size),
+                    end < allContent.size(),
+                    page > 0
+            );
+        } else {
+            // Normal sort - use database sorting
+            Sort.Direction direction = "desc".equalsIgnoreCase(sortOrder) ? Sort.Direction.DESC : Sort.Direction.ASC;
+            Sort sort = Sort.by(direction, sortBy);
+            Pageable pageable = PageRequest.of(page, size, sort);
+            Page<Student> studentPage = studentRepository.findAllWithFilters(
+                    search, gender, status, className, StudentClassStatus.STUDYING, pageable);
+            
+            List<StudentResponse> content = new ArrayList<>();
+            for (Student student : studentPage.getContent()) {
+                StudentResponse studentResponse = buildStudentResponseWithCurrentClass(student.getId());
+                content.add(studentResponse);
+            }
+            
+            return new PageResponse<>(
+                    content,
+                    studentPage.getNumber(),
+                    studentPage.getSize(),
+                    studentPage.getTotalElements(),
+                    studentPage.getTotalPages(),
+                    studentPage.hasNext(),
+                    studentPage.hasPrevious()
+            );
+        }
+    }
+    
+    /**
+     * Calculate unpaid packages count for a student
+     * Based on sessionPaymentStatuses - count packages from previous to current that are UNPAID or PARTIAL
+     */
+    private int calculateUnpaidPackagesCount(StudentResponse student) {
+        if (student.getSessionPaymentStatuses() == null || student.getSessionPaymentStatuses().isEmpty()) {
+            return 0;
         }
         
-        return new PageResponse<>(
-                content,
-                studentPage.getNumber(),
-                studentPage.getSize(),
-                studentPage.getTotalElements(),
-                studentPage.getTotalPages(),
-                studentPage.hasNext(),
-                studentPage.hasPrevious()
-        );
+        // Find current package
+        SessionPaymentStatusDTO currentPackage = student.getSessionPaymentStatuses().stream()
+                .filter(pkg -> Boolean.TRUE.equals(pkg.getIsCurrent()))
+                .findFirst()
+                .orElse(null);
+        
+        if (currentPackage == null) {
+            return 0;
+        }
+        
+        Integer currentPackageNumber = currentPackage.getPackageNumber();
+        if (currentPackageNumber == null) {
+            return 0;
+        }
+        
+        // Count unpaid/partial packages from previous to current
+        return (int) student.getSessionPaymentStatuses().stream()
+                .filter(pkg -> {
+                    Integer pkgNumber = pkg.getPackageNumber();
+                    if (pkgNumber == null) return false;
+                    return pkgNumber <= currentPackageNumber 
+                            && (pkg.getStatus() == SessionPaymentStatus.UNPAID 
+                                || pkg.getStatus() == SessionPaymentStatus.PARTIAL);
+                })
+                .count();
     }
 
     @Transactional(readOnly = true)

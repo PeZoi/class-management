@@ -1,3 +1,4 @@
+import { NO_CLASS_FILTER_VALUE } from '@/app/[locale]/student-management/student-management-page';
 import { Button } from '@/components/ui/button';
 import { FloatingLabelSelect } from '@/components/ui/floating-label-select';
 import { Input } from '@/components/ui/input';
@@ -69,7 +70,7 @@ export function StudentFilter({
     onFilterChange({
       searchQuery: '',
       paymentStatus: 'all',
-      studentStatus: 'all',
+      studentStatus: 'ACTIVE',
       className: 'all',
       gender: 'all',
       sortBy: 'name',
@@ -146,7 +147,7 @@ export function StudentFilter({
   const hasActiveFilters =
     filters.searchQuery !== '' ||
     filters.paymentStatus !== 'all' ||
-    (filters.studentStatus && filters.studentStatus !== 'all') ||
+    (filters.studentStatus && filters.studentStatus !== 'ACTIVE') ||
     filters.className !== 'all' ||
     filters.gender !== 'all';
 
@@ -299,7 +300,7 @@ export function StudentFilter({
         >
           <SelectItem value="name">{t('sort_by_name')}</SelectItem>
           <SelectItem value="joinedDate">{t('sort_by_date')}</SelectItem>
-          <SelectItem value="monthlyFee">{t('sort_by_fee')}</SelectItem>
+          <SelectItem value="unpaidPackages">{t('sort_by_unpaid_packages')}</SelectItem>
         </FloatingLabelSelect>
 
         {/* Sort Order Button */}
@@ -364,7 +365,7 @@ export function StudentFilter({
           })()}
 
           {/* Student status pill (match select colors/icons) */}
-          {filters.studentStatus && filters.studentStatus !== 'all' && (() => {
+          {filters.studentStatus && filters.studentStatus !== 'ACTIVE' && (() => {
             const cfg = studentStatusFilterConfig[filters.studentStatus as Exclude<FilterState['studentStatus'], 'all'>];
             if (!cfg) return null;
             const Icon = cfg.icon;
@@ -379,7 +380,7 @@ export function StudentFilter({
           {/* Class pill (keep neutral purple) */}
           {filters.className !== 'all' && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 text-xs font-medium">
-              {filters.className}
+              {filters.className === NO_CLASS_FILTER_VALUE ? "Chưa có lớp" : filters.className}
             </div>
           )}
 
