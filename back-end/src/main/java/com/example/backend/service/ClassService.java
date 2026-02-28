@@ -8,8 +8,11 @@ import com.example.backend.dto.classroom.ClassSingleRevenueDataResponse;
 import com.example.backend.entity.Class;
 import com.example.backend.entity.ClassShift;
 import com.example.backend.entity.User;
+import com.example.backend.entity.StudentClass;
+import com.example.backend.entity.Student;
 import com.example.backend.enums.PaymentDirection;
 import com.example.backend.enums.StudentStatus;
+import com.example.backend.enums.StudentClassStatus;
 import com.example.backend.exception.CustomException;
 import com.example.backend.exception.NotFoundException;
 import com.example.backend.repository.ClassRepository;
@@ -31,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -103,7 +107,7 @@ public class ClassService {
 
     public List<ClassResponse> getAllClasses() {
         List<ClassResponse> classResponses = new ArrayList<>();
-        // Dùng findAllWithClassShifts để fetch join classShifts, tránh lazy loading
+        // Dùng findAllWithClassShifts để fetch join classShifts, tránh lazy loading, chỉ lấy lớp chưa bị xoá
         List<Class> classes = classRepository.findAllWithClassShifts();
 
         for (Class c : classes) {
@@ -248,7 +252,8 @@ public class ClassService {
 
     // Lấy revenue data theo period (3months, 6months, 12months)
     public List<ClassRevenueDataResponse> getRevenueDataByPeriod(String period) {
-        List<Class> allClasses = classRepository.findAll();
+        // Chỉ lấy các lớp chưa bị xoá để hiển thị trên biểu đồ
+        List<Class> allClasses = classRepository.findAllActive();
         // Sắp xếp classes theo id để đảm bảo thứ tự ổn định
         allClasses.sort((c1, c2) -> c1.getId().compareTo(c2.getId()));
         LocalDate now = LocalDate.now();
@@ -374,7 +379,7 @@ public class ClassService {
     // Lấy top 3 lớp có doanh thu cao nhất theo tháng hiện tại
     public List<ClassResponse> getTop3ClassesByRevenue() {
         Instant currentMonth = getCurrentMonthStart();
-        // Dùng findAllWithClassShifts để fetch join classShifts
+        // Dùng findAllWithClassShifts để fetch join classShifts, chỉ lấy lớp chưa bị xoá
         List<Class> allClasses = classRepository.findAllWithClassShifts();
         List<ClassResponse> classResponsesWithRevenue = new ArrayList<>();
 
@@ -413,6 +418,58 @@ public class ClassService {
         // Lấy top 3 (hoặc ít hơn nếu có ít hơn 3 lớp)
         int topCount = Math.min(3, classResponsesWithRevenue.size());
         return classResponsesWithRevenue.subList(0, topCount);
+    }
+
+    /**
+     * Xoá mềm lớp học:
+     * - Đánh dấu isDeleted, deletedAt, deletedBy
+     * - Bỏ gán giáo viên (set teacher = null)
+     * - Loại bỏ tất cả học sinh đang học lớp đó (StudentClass.status = DROPPED, leftAt = now)
+     */
+    @Transactional
+    public void deleteClass(String classId) {
+        Class classDB = classRepository.findById(classId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+
+        // Nếu đã xoá rồi thì bỏ qua
+        if (Boolean.TRUE.equals(classDB.getIsDeleted())) {
+            return;
+        }
+
+        // Bỏ gán giáo viên
+        classDB.setTeacher(null);
+
+        // Cập nhật các bản ghi StudentClass đang học trong lớp này
+        Instant now = Instant.now();
+        List<StudentClass> activeStudentClasses = studentClassRepository.findActiveByClassId(
+                classId,
+                StudentClassStatus.STUDYING
+        );
+
+        // Đồng thời đổi status học viên sang INACTIVE
+        for (StudentClass sc : activeStudentClasses) {
+            Student student = sc.getStudent();
+            if (student != null && student.getStatus() != StudentStatus.DELETED) {
+                student.setStatus(StudentStatus.INACTIVE);
+            }
+            sc.setStatus(StudentClassStatus.DROPPED);
+            sc.setLeftAt(now);
+        }
+        for (StudentClass sc : activeStudentClasses) {
+            sc.setStatus(StudentClassStatus.DROPPED);
+            sc.setLeftAt(now);
+        }
+        if (!activeStudentClasses.isEmpty()) {
+            studentClassRepository.saveAll(activeStudentClasses);
+        }
+
+        // Đánh dấu xoá mềm cho Class
+        classDB.setIsDeleted(true);
+        classDB.setDeletedAt(now);
+        String username = SecurityUtil.getCurrentUserLogin().orElse(null);
+        classDB.setDeletedBy(username);
+
+        classRepository.save(classDB);
     }
 
     /**

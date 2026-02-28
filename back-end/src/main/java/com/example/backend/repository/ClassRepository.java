@@ -12,19 +12,23 @@ import java.util.List;
 public interface ClassRepository extends JpaRepository<Class,String> {
     List<Class> findAllByTeacher(User teacher);
     
-    // Fetch join classShifts để tránh lazy loading khi map sang DTO
-    @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts")
+    // Fetch join classShifts để tránh lazy loading khi map sang DTO, chỉ lấy lớp chưa bị xoá
+    @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts WHERE c.isDeleted IS NULL OR c.isDeleted = false")
     List<Class> findAllWithClassShifts();
     
-    // Fetch join classShifts cho một class cụ thể
-    @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts WHERE c.id = :id")
+    // Fetch join classShifts cho một class cụ thể (chỉ lấy lớp chưa bị xoá)
+    @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts WHERE c.id = :id AND (c.isDeleted IS NULL OR c.isDeleted = false)")
     java.util.Optional<Class> findByIdWithClassShifts(String id);
     
-    // Fetch join classShifts cho classes của một teacher
-    @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts WHERE c.teacher = :teacher")
+    // Fetch join classShifts cho classes của một teacher (chỉ lấy lớp chưa bị xoá)
+    @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts WHERE c.teacher = :teacher AND (c.isDeleted IS NULL OR c.isDeleted = false)")
     List<Class> findAllByTeacherWithClassShifts(User teacher);
     
-    // Lấy tất cả classes không có teacher (teacher is null)
-    @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts WHERE c.teacher IS NULL")
+    // Lấy tất cả classes không có teacher (teacher is null) và chưa bị xoá
+    @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts WHERE c.teacher IS NULL AND (c.isDeleted IS NULL OR c.isDeleted = false)")
     List<Class> findAllUnassignedClassesWithClassShifts();
+
+    // Lấy tất cả classes chưa bị xoá (dùng cho biểu đồ doanh thu)
+    @Query("SELECT c FROM Class c WHERE c.isDeleted IS NULL OR c.isDeleted = false")
+    List<Class> findAllActive();
 }

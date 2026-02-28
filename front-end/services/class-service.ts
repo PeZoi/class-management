@@ -16,4 +16,5 @@ export const classService = {
     http.get<ResponseType<ClassSingleRevenueDataResponse[], ClassSingleRevenueDataResponse[]>>(`/api/class/${classId}/revenue-data/${period}`),
   getTop3ClassesByRevenue: () =>
     http.get<ResponseType<ClassType[], ClassType[]>>('/api/class/top-3-revenue'),
+  deleteClass: (id: string) => http.post<ResponseType<null, null>>(`/api/class/delete/${id}`, {}),
 };

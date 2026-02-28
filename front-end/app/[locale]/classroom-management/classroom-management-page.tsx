@@ -7,6 +7,7 @@ import {
   useClassRevenueData,
   useCreateClass,
   useUpdateClass,
+  useDeleteClass,
 } from '@/hooks/use-classes';
 import { ClassRequest, ClassRevenueDataResponse, ClassType } from '@/types/class-type';
 import { formatCurrency } from '@/utils/helper';
@@ -71,6 +72,7 @@ export default function ClassroomManagementPage() {
 
   const createClass = useCreateClass();
   const updateClass = useUpdateClass();
+  const deleteClassMutation = useDeleteClass();
 
   // Hiển thị error toast nếu có lỗi
   useEffect(() => {
@@ -112,11 +114,12 @@ export default function ClassroomManagementPage() {
     setIsDialogOpen(true);
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    // Chỉ xóa khỏi UI, không có API delete
-    // Nếu có API delete sau này, có thể thêm mutation ở đây
-    console.log('Delete class:', id);
-  }, []);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      await deleteClassMutation.mutateAsync(id);
+    },
+    [deleteClassMutation]
+  );
 
   const handleSave = useCallback(
     async (formData: ClassRequest, id?: string) => {

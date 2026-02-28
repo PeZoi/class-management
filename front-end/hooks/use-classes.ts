@@ -182,6 +182,30 @@ export function useUpdateClass() {
 }
 
 /**
+ * Hook để xoá class (soft delete)
+ */
+export function useDeleteClass() {
+  const queryClient = useQueryClient();
+  const tNotif = useTranslations('notifications');
+
+  return useMutation({
+    mutationFn: (id: string) => classService.deleteClass(id),
+    onSuccess: (response) => {
+      if (response.status === 200 || response.status === 204) {
+        invalidateClassLists(queryClient);
+        invalidateTop3ClassesByRevenue(queryClient);
+        invalidateDashboard(queryClient);
+        toast.success(tNotif('successDeleteClass'));
+      }
+    },
+    onError: (error) => {
+      console.error('Error deleting class:', error);
+      toast.error(tNotif('errorDeleteClassFail'));
+    },
+  });
+}
+
+/**
  * Hook để lấy class shifts theo class ID
  */
 export function useClassShiftsByClass(

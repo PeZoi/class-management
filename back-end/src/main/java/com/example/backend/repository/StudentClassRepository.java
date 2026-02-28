@@ -74,4 +74,16 @@ public interface StudentClassRepository extends JpaRepository<StudentClass,Long>
 
     // Tìm tất cả bản ghi StudentClass đang gắn với một ca học cụ thể
     List<StudentClass> findByClassShift_Id(String classShiftId);
+
+    @Query("""
+        SELECT sc
+        FROM StudentClass sc
+        WHERE sc.clazz.id = :classId
+        AND sc.leftAt IS NULL
+        AND sc.status = :status
+    """)
+    List<StudentClass> findActiveByClassId(
+            @Param("classId") String classId,
+            @Param("status") com.example.backend.enums.StudentClassStatus status
+    );
 }

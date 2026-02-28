@@ -17,7 +17,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/class")
@@ -81,5 +83,19 @@ public class ClassController {
     public ResponseEntity<List<ClassResponse>> getTop3ClassesByRevenue() {
         List<ClassResponse> topClasses = classService.getTop3ClassesByRevenue();
         return new ResponseEntity<>(topClasses, HttpStatus.OK);
+    }
+
+    @PostMapping("/delete/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<Map<String, Object>> delete(@PathVariable(value = "id") String classId) {
+        classService.deleteClass(classId);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("status", HttpStatus.OK.value());
+        body.put("error", null);
+        body.put("message", "Delete class successfully");
+        body.put("data", null);
+
+        return new ResponseEntity<>(body, HttpStatus.OK);
     }
 }

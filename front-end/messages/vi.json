@@ -1102,6 +1102,8 @@
     "errorUpdateClass": "Cập nhật lớp học thất bại",
     "successCreateClass": "Thêm lớp học thành công",
     "errorCreateClass": "Thêm lớp học thất bại",
+    "successDeleteClass": "Xóa lớp học thành công",
+    "errorDeleteClassFail": "Không thể xóa lớp học",
     "errorPaySalary": "Trả lương thất bại. Vui lòng thử lại.",
     "errorLoadTeachers": "Không thể tải danh sách giáo viên",
     "successUpdateTeacher": "Cập nhật giảng viên thành công",

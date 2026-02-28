@@ -16,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,4 +50,14 @@ public class Class extends Auditable {
     // Danh sách các ca học của lớp (1 lớp có nhiều ca)
     @OneToMany(mappedBy = "clazz", cascade = CascadeType.ALL)
     private List<ClassShift> classShifts = new ArrayList<>();
+
+    // ===== SOFT DELETE FIELDS =====
+    @Column(name = "is_deleted")
+    private Boolean isDeleted = false;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @Column(name = "deleted_by")
+    private String deletedBy;
 }

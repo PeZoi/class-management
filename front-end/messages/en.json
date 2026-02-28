@@ -1096,6 +1096,8 @@
     "errorUpdateClass": "Failed to update class",
     "successCreateClass": "Class added successfully",
     "errorCreateClass": "Failed to add class",
+    "successDeleteClass": "Class deleted successfully",
+    "errorDeleteClassFail": "Failed to delete class",
     "errorPaySalary": "Failed to pay salary. Please try again.",
     "errorLoadTeachers": "Cannot load teacher list",
     "successUpdateTeacher": "Teacher updated successfully",
