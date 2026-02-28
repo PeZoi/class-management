@@ -168,12 +168,13 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     /**
      * Tìm kiếm payments với pagination và filtering support
      * Filter theo: paymentId, direction, paymentType, status, student name, teacher name
+     * Note: Sử dụng FETCH JOIN cho student và teacher để hỗ trợ ORDER BY trên các field của chúng
      */
     @Query(
         value = """
         SELECT DISTINCT p FROM Payment p
-        LEFT JOIN p.student s
-        LEFT JOIN p.teacher t
+        LEFT JOIN FETCH p.student s
+        LEFT JOIN FETCH p.teacher t
         LEFT JOIN p.clazz c
         WHERE (:search IS NULL OR :search = ''
                OR LOWER(p.paymentId) LIKE LOWER(CONCAT('%', :search, '%'))
@@ -184,7 +185,7 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
         AND (:paymentType IS NULL OR p.paymentType = :paymentType)
         AND (:paymentStatus IS NULL OR p.paymentStatus = :paymentStatus)
         AND (:paymentMethod IS NULL OR p.paymentMethod = :paymentMethod)
-        AND (:className IS NULL OR p.clazz.name = :className)
+        AND (:className IS NULL OR c.name = :className)
         AND (:startDate IS NULL OR p.createdAt >= :startDate)
         AND (:endDate IS NULL OR p.createdAt <= :endDate)
     """,
@@ -202,12 +203,66 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
         AND (:paymentType IS NULL OR p.paymentType = :paymentType)
         AND (:paymentStatus IS NULL OR p.paymentStatus = :paymentStatus)
         AND (:paymentMethod IS NULL OR p.paymentMethod = :paymentMethod)
-        AND (:className IS NULL OR p.clazz.name = :className)
+        AND (:className IS NULL OR c.name = :className)
         AND (:startDate IS NULL OR p.createdAt >= :startDate)
         AND (:endDate IS NULL OR p.createdAt <= :endDate)
     """
     )
     Page<Payment> findAllWithFilters(
+        @Param("search") String search,
+        @Param("direction") PaymentDirection direction,
+        @Param("paymentType") PaymentType paymentType,
+        @Param("paymentStatus") PaymentStatus paymentStatus,
+        @Param("paymentMethod") PaymentMethod paymentMethod,
+        @Param("className")  String className,
+        @Param("startDate") Instant startDate,
+        @Param("endDate") Instant endDate,
+        Pageable pageable
+    );
+
+    /**
+     * Tìm kiếm payments với pagination và filtering support (không dùng DISTINCT)
+     * Dùng cho trường hợp sort theo studentName hoặc teacherName để tránh lỗi DISTINCT với ORDER BY
+     */
+    @Query(
+        value = """
+        SELECT p FROM Payment p
+        LEFT JOIN FETCH p.student s
+        LEFT JOIN FETCH p.teacher t
+        LEFT JOIN p.clazz c
+        WHERE (:search IS NULL OR :search = ''
+               OR LOWER(p.paymentId) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(s.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(t.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+        AND (:direction IS NULL OR p.direction = :direction)
+        AND (:paymentType IS NULL OR p.paymentType = :paymentType)
+        AND (:paymentStatus IS NULL OR p.paymentStatus = :paymentStatus)
+        AND (:paymentMethod IS NULL OR p.paymentMethod = :paymentMethod)
+        AND (:className IS NULL OR c.name = :className)
+        AND (:startDate IS NULL OR p.createdAt >= :startDate)
+        AND (:endDate IS NULL OR p.createdAt <= :endDate)
+    """,
+        countQuery = """
+        SELECT COUNT(DISTINCT p) FROM Payment p
+        LEFT JOIN p.student s
+        LEFT JOIN p.teacher t
+        LEFT JOIN p.clazz c
+        WHERE (:search IS NULL OR :search = ''
+               OR LOWER(p.paymentId) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(s.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(t.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+        AND (:direction IS NULL OR p.direction = :direction)
+        AND (:paymentType IS NULL OR p.paymentType = :paymentType)
+        AND (:paymentStatus IS NULL OR p.paymentStatus = :paymentStatus)
+        AND (:paymentMethod IS NULL OR p.paymentMethod = :paymentMethod)
+        AND (:className IS NULL OR c.name = :className)
+        AND (:startDate IS NULL OR p.createdAt >= :startDate)
+        AND (:endDate IS NULL OR p.createdAt <= :endDate)
+    """
+    )
+    Page<Payment> findAllWithFiltersWithoutDistinct(
         @Param("search") String search,
         @Param("direction") PaymentDirection direction,
         @Param("paymentType") PaymentType paymentType,

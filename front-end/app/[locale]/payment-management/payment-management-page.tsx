@@ -6,14 +6,17 @@ import { PaymentTable } from './_components/payment-table';
 import { PaymentFilter } from './_components/payment-filter';
 import { PersonDetailDrawer } from './_components/person-detail-drawer';
 import { PaymentResponse, PaymentItem, PaymentFilterState, PageResponse } from '@/types';
-import { PageLoading } from '@/components/page-loading';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePaymentsPaginated } from '@/hooks/use-payments';
 import { useStudent } from '@/hooks/use-students';
 import { useTeacher } from '@/hooks/use-teachers';
+import { useClasses } from '@/hooks/use-classes';
 
 // Helper function to parse URL params into filter state
 const parseFiltersFromURL = (searchParams: URLSearchParams): PaymentFilterState => {
+  const startDateParam = searchParams.get('startDate');
+  const endDateParam = searchParams.get('endDate');
+  
   return {
     searchQuery: searchParams.get('search') || '',
     type: (searchParams.get('type') as PaymentFilterState['type']) || 'all',
@@ -22,8 +25,8 @@ const parseFiltersFromURL = (searchParams: URLSearchParams): PaymentFilterState 
     paymentMethod: (searchParams.get('method') as PaymentFilterState['paymentMethod']) || 'all',
     sortBy: (searchParams.get('sortBy') as PaymentFilterState['sortBy']) || 'createdDate',
     sortOrder: (searchParams.get('sortOrder') as PaymentFilterState['sortOrder']) || 'desc',
-    startDate: searchParams.get('startDate')?.split('-').join('/') || '',
-    endDate: searchParams.get('endDate')?.split('-').join('/') || '',
+    startDate: startDateParam ? startDateParam.split('-').join('/') : undefined,
+    endDate: endDateParam ? endDateParam.split('-').join('/') : undefined,
   };
 };
 
@@ -57,7 +60,6 @@ export default function PaymentManagementPage() {
   const [pageSize, setPageSize] = useState(10);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
-  const t = useTranslations('payment-management');
   const tNotif = useTranslations('notifications');
   const isUpdatingFromURL = useRef(false);
 
@@ -291,12 +293,14 @@ export default function PaymentManagementPage() {
     setIsDrawerOpen(true);
   };
 
-
-  // Get unique class names for filter
+  // Get all classes from database for filter
+  const classesQuery = useClasses();
   const availableClasses = useMemo(() => {
-    const classes = [...new Set(payments.map((p) => p.className).filter((c): c is string => !!c))];
-    return classes.sort();
-  }, [payments]);
+    if (!classesQuery.data) return [];
+    // Lấy tất cả tên lớp từ database và sắp xếp
+    const classNames = classesQuery.data.map((cls) => cls.name).filter((name): name is string => !!name);
+    return [...new Set(classNames)].sort();
+  }, [classesQuery.data]);
 
   // Filter and sort payments
   // Note: type, status, search, paymentMethod, className, and sorting are handled by backend pagination
@@ -305,15 +309,11 @@ export default function PaymentManagementPage() {
     return [...payments];
   }, [payments]);
 
-  if (paymentsQuery.isLoading) {
-    return <PageLoading message={t('loading')} />;
-  }
-
   const errorMessage = paymentsQuery.isError ? tNotif('errorLoadPaymentData') : null;
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
-      {/* Filter and Search */}
+      {/* Filter and Search - Always visible */}
       <PaymentFilter
         filters={filters}
         onFilterChange={handleFilterChange}

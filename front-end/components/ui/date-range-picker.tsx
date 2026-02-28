@@ -37,10 +37,14 @@ export function DatePickerRange({
 
   React.useEffect(() => {
     if (startDate && endDate) {
-      setDate({ from: parse(startDate, "dd/MM/yyyy", new Date()), to: parse(endDate, "dd/MM/yyyy", new Date()) })
-    }
-
-    if (!startDate && !endDate) {
+      try {
+        setDate({ from: parse(startDate, "dd/MM/yyyy", new Date()), to: parse(endDate, "dd/MM/yyyy", new Date()) })
+      } catch {
+        // Invalid date format, reset to undefined
+        setDate(undefined)
+      }
+    } else {
+      // Reset khi không có cả startDate và endDate
       setDate(undefined)
     }
   }, [startDate, endDate])

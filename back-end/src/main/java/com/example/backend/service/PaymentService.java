@@ -528,9 +528,11 @@ public class PaymentService {
     ) {
         // Map sortBy from FE (createdDate | amount | studentName) to entity fields
         String sortField;
+        boolean sortByStudentName = "studentName".equalsIgnoreCase(sortBy);
+        
         if ("amount".equalsIgnoreCase(sortBy)) {
             sortField = "feeSnapshot"; // totalAmount on FE maps to feeSnapshot
-        } else if ("studentName".equalsIgnoreCase(sortBy)) {
+        } else if (sortByStudentName) {
             sortField = "student.fullName";
         } else {
             sortField = "createdAt";
@@ -544,9 +546,34 @@ public class PaymentService {
 
         Pageable pageable = PageRequest.of(page, size,
                 org.springframework.data.domain.Sort.by(directionSort, sortField));
-        Page<Payment> paymentPage = paymentRepository.findAllWithFilters(
-                search, direction, paymentType, paymentStatus, paymentMethod, className, startDate, endDate, pageable
-        );
+        
+        // Khi sort theo studentName, không dùng DISTINCT để tránh lỗi ORDER BY với DISTINCT
+        Page<Payment> paymentPage;
+        if (sortByStudentName) {
+            paymentPage = paymentRepository.findAllWithFiltersWithoutDistinct(
+                    search, direction, paymentType, paymentStatus, paymentMethod, className, startDate, endDate, pageable
+            );
+            // Loại bỏ duplicate payments sau khi query (giữ thứ tự dựa trên payment ID)
+            java.util.LinkedHashSet<String> seenIds = new java.util.LinkedHashSet<>();
+            List<Payment> distinctPayments = paymentPage.getContent().stream()
+                    .filter(p -> {
+                        if (p.getId() != null && seenIds.add(p.getId())) {
+                            return true;
+                        }
+                        return false;
+                    })
+                    .collect(Collectors.toList());
+            // Tạo Page mới với distinct payments, giữ nguyên totalElements từ count query
+            paymentPage = new org.springframework.data.domain.PageImpl<>(
+                    distinctPayments,
+                    pageable,
+                    paymentPage.getTotalElements()
+            );
+        } else {
+            paymentPage = paymentRepository.findAllWithFilters(
+                    search, direction, paymentType, paymentStatus, paymentMethod, className, startDate, endDate, pageable
+            );
+        }
 
         List<PaymentResponse> content = paymentPage.getContent().stream()
                 .map(this::mapToPaymentResponse)

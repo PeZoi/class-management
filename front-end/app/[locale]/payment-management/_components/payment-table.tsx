@@ -32,6 +32,8 @@ import {
   Download,
   Edit,
   FileText,
+  FileX,
+  Loader2,
   MessageSquare,
   MoreHorizontal,
   Plus,
@@ -573,6 +575,7 @@ export function PaymentTable({
       <CardContent>
         {isLoading ? (
           <div className="text-center py-8">
+            <Loader2 className="size-4 animate-spin mx-auto mb-2" />
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('loading')}
             </p>
@@ -583,6 +586,7 @@ export function PaymentTable({
           </div>
         ) : payments.length === 0 ? (
           <div className="text-center py-8">
+            <FileX className="size-8 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('noPaymentsFound')}</p>
           </div>
         ) : (

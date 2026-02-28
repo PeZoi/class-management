@@ -68,6 +68,7 @@ export function PaymentFilter({
   };
 
   const handleResetFilters = () => {
+    // Reset tất cả về mặc định, bao gồm cả sort
     onFilterChange({
       searchQuery: '',
       type: 'all',
@@ -277,6 +278,7 @@ export function PaymentFilter({
 
         {/* Sort By */}
         <FloatingLabelSelect
+          key={`sortBy-${filters.sortBy}`}
           label={t('sortBy')}
           value={filters.sortBy}
           onValueChange={handleSortByChange}
