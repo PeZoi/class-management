@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface ClassroomTableProps {
   classes: ClassType[];
@@ -59,6 +62,8 @@ export function ClassroomTable({
   const tDashboard = useTranslations('dashboard');
   const tCommon = useTranslations('common');
   const locale = useLocale();
+
+  const [confirmDeleteClassId, setConfirmDeleteClassId] = useState<string | null>(null);
 
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
@@ -314,9 +319,7 @@ export function ClassroomTable({
                 {onDelete && (
                   <DropdownMenuItem
                     onClick={() => {
-                      if (confirm(t('confirmDelete'))) {
-                        onDelete(classItem.id);
-                      }
+                      setConfirmDeleteClassId(classItem.id);
                     }}
                     className="cursor-pointer text-red-600 dark:text-red-400"
                   >
@@ -363,6 +366,27 @@ export function ClassroomTable({
           <DataTable columns={columns} data={classes} />
         )}
       </CardContent>
+
+      {onDelete && (
+        <ConfirmDialog
+          open={confirmDeleteClassId !== null}
+          title={t('confirmDelete')}
+          confirmText={t('delete')}
+          cancelText={tCommon('cancel')}
+          variant="destructive"
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setConfirmDeleteClassId(null);
+            }
+          }}
+          onConfirm={() => {
+            if (confirmDeleteClassId && onDelete) {
+              onDelete(confirmDeleteClassId);
+            }
+            setConfirmDeleteClassId(null);
+          }}
+        />
+      )}
     </Card>
   );
 }

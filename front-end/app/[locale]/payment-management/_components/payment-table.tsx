@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
@@ -83,8 +84,10 @@ export function PaymentTable({
   onPageSizeChange,
 }: PaymentTableProps) {
   const t = useTranslations('payment-management');
+  const tCommon = useTranslations('common');
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<string>('');
+  const [confirmDeletePaymentId, setConfirmDeletePaymentId] = useState<number | null>(null);
 
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
@@ -533,9 +536,7 @@ export function PaymentTable({
                   <DropdownMenuItem
                     className="cursor-pointer text-red-600 dark:text-red-400"
                     onClick={() => {
-                      if (window.confirm(t('confirmDelete'))) {
-                        onDelete(payment.id);
-                      }
+                      setConfirmDeletePaymentId(payment.id);
                     }}
                   >
                     <Trash2 className="size-4 mr-2" />
@@ -629,6 +630,27 @@ export function PaymentTable({
           </div>
         </DialogContent>
       </Dialog>
+
+      {onDelete && (
+        <ConfirmDialog
+          open={confirmDeletePaymentId !== null}
+          title={t('confirmDelete')}
+          confirmText={t('delete')}
+          cancelText={tCommon('cancel')}
+          variant="destructive"
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setConfirmDeletePaymentId(null);
+            }
+          }}
+          onConfirm={() => {
+            if (confirmDeletePaymentId !== null) {
+              onDelete(confirmDeletePaymentId);
+            }
+            setConfirmDeletePaymentId(null);
+          }}
+        />
+      )}
     </Card>
   );
 }

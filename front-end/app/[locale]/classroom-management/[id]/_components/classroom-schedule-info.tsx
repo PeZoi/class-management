@@ -10,6 +10,7 @@ import { useClassShiftsByClass, useCreateClassShift, useUpdateClassShift, useDel
 import { useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { ClassShiftType } from '@/types/class-type';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface ClassroomScheduleInfoProps {
   classId: string;
@@ -29,6 +30,7 @@ export function ClassroomScheduleInfo({ classId, isTeacher = false }: ClassroomS
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<ClassShiftType | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmDeleteShiftId, setConfirmDeleteShiftId] = useState<string | null>(null);
 
   // Form state
   type ShiftType = 'MORNING' | 'EVENING';
@@ -178,10 +180,6 @@ export function ClassroomScheduleInfo({ classId, isTeacher = false }: ClassroomS
   };
 
   const handleDelete = async (shiftId: string) => {
-    if (!window.confirm(tNotif('confirmDeleteShift'))) {
-      return;
-    }
-
     try {
       await deleteShiftMutation.mutateAsync(shiftId);
       // Success toast is handled by the mutation hook
@@ -269,7 +267,7 @@ export function ClassroomScheduleInfo({ classId, isTeacher = false }: ClassroomS
                         size="icon"
                         variant="ghost"
                         className="size-7 text-red-500 hover:text-red-700 dark:hover:text-red-400"
-                        onClick={() => handleDelete(shift.id)}
+                        onClick={() => setConfirmDeleteShiftId(shift.id)}
                         type="button"
                       >
                         <Trash2 className="size-4" />
@@ -379,6 +377,26 @@ export function ClassroomScheduleInfo({ classId, isTeacher = false }: ClassroomS
           </form>
         </DialogContent>
       </Dialog>
+
+      {confirmDeleteShiftId && (
+        <ConfirmDialog
+          open={!!confirmDeleteShiftId}
+          title={tNotif('confirmDeleteShift')}
+          confirmText={tCommon('confirmRemove')}
+          cancelText={tCommon('cancel')}
+          variant="destructive"
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setConfirmDeleteShiftId(null);
+            }
+          }}
+          onConfirm={() => {
+            if (!confirmDeleteShiftId) return;
+            void handleDelete(confirmDeleteShiftId);
+            setConfirmDeleteShiftId(null);
+          }}
+        />
+      )}
     </>
   );
 }

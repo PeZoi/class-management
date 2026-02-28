@@ -23,6 +23,7 @@ import { useCreateClassShift, useDeleteClassShift, useUpdateClassShift } from '@
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { useStudentsByClassShift } from '@/hooks/use-students';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface ClassroomShiftsSectionProps {
   classId: string;
@@ -40,6 +41,7 @@ export function ClassroomShiftsSection({ classId, shifts, isLoading, onRefresh }
   const [open, setOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<ClassShiftType | null>(null);
   const [openShiftId, setOpenShiftId] = useState<string | null>(null);
+  const [confirmDeleteShiftId, setConfirmDeleteShiftId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
   const createShiftMutation = useCreateClassShift();
@@ -459,9 +461,6 @@ export function ClassroomShiftsSection({ classId, shifts, isLoading, onRefresh }
   };
 
   const handleDeleteShift = async (shiftId: string) => {
-    const confirmDelete = window.confirm(tNotif('confirmDeleteShift'));
-    if (!confirmDelete) return;
-
     try {
       await deleteShiftMutation.mutateAsync(shiftId);
 
@@ -539,7 +538,7 @@ export function ClassroomShiftsSection({ classId, shifts, isLoading, onRefresh }
                       setOpenShiftId(isOpen ? shift.id : (openShiftId === shift.id ? null : openShiftId));
                     }}
                     onEdit={handleEditShift}
-                    onDelete={handleDeleteShift}
+                    onDelete={(shiftId) => setConfirmDeleteShiftId(shiftId)}
                   />
                 ))}
               </ul>
@@ -648,6 +647,26 @@ export function ClassroomShiftsSection({ classId, shifts, isLoading, onRefresh }
           </form>
         </DialogContent>
       </Dialog>
+
+      {confirmDeleteShiftId && (
+        <ConfirmDialog
+          open={!!confirmDeleteShiftId}
+          title={tNotif('confirmDeleteShift')}
+          confirmText={tCommon('confirmRemove')}
+          cancelText={tCommon('cancel')}
+          variant="destructive"
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setConfirmDeleteShiftId(null);
+            }
+          }}
+          onConfirm={async () => {
+            if (!confirmDeleteShiftId) return;
+            await handleDeleteShift(confirmDeleteShiftId);
+            setConfirmDeleteShiftId(null);
+          }}
+        />
+      )}
 
     </>
   );

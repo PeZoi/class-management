@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,6 +42,7 @@ import {
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface TeacherTableProps {
   teachers: TeacherType[];
@@ -85,7 +88,13 @@ export function TeacherTable({
   error,
 }: TeacherTableProps) {
   const t = useTranslations('teacher-management');
+  const tCommon = useTranslations('common');
   const locale = useLocale();
+
+  const [confirmDialogState, setConfirmDialogState] = useState<{
+    type: 'resetPassword' | 'delete' | 'restore';
+    teacher: TeacherType;
+  } | null>(null);
 
   const displayTitle = title || t('title');
   const displayDescription = description || t('description');
@@ -364,9 +373,10 @@ export function TeacherTable({
                       <DropdownMenuItem
                         className="cursor-pointer"
                         onClick={() => {
-                          if (window.confirm(t('confirmResetPassword'))) {
-                            onResetPassword(teacher);
-                          }
+                          setConfirmDialogState({
+                            type: 'resetPassword',
+                            teacher,
+                          });
                         }}
                       >
                         <Key className="size-4 mr-2" />
@@ -377,9 +387,10 @@ export function TeacherTable({
                       <DropdownMenuItem
                         className="cursor-pointer text-red-600 dark:text-red-400"
                         onClick={() => {
-                          if (window.confirm(t('confirmDelete'))) {
-                            onDelete(teacher.id);
-                          }
+                          setConfirmDialogState({
+                            type: 'delete',
+                            teacher,
+                          });
                         }}
                       >
                         <Trash2 className="size-4 mr-2" />
@@ -392,9 +403,10 @@ export function TeacherTable({
                   <DropdownMenuItem
                     className="cursor-pointer text-emerald-600 dark:text-emerald-400"
                     onClick={() => {
-                      if (window.confirm(t('confirmRestore'))) {
-                        onRestore(teacher.id);
-                      }
+                      setConfirmDialogState({
+                        type: 'restore',
+                        teacher,
+                      });
                     }}
                   >
                     <RotateCcw className="size-4 mr-2" />
@@ -461,6 +473,50 @@ export function TeacherTable({
           />
         )}
       </CardContent>
+
+      {confirmDialogState && (
+        <ConfirmDialog
+          open={!!confirmDialogState}
+          title={
+            confirmDialogState.type === 'delete'
+              ? t('confirmDelete')
+              : confirmDialogState.type === 'restore'
+                ? t('confirmRestore')
+                : t('confirmResetPassword')
+          }
+          confirmText={
+            confirmDialogState.type === 'delete'
+              ? t('delete')
+              : confirmDialogState.type === 'restore'
+                ? t('restore')
+                : t('resetPassword')
+          }
+          cancelText={tCommon('cancel')}
+          variant={confirmDialogState.type === 'delete' ? 'destructive' : 'default'}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setConfirmDialogState(null);
+            }
+          }}
+          onConfirm={() => {
+            if (!confirmDialogState) return;
+
+            if (confirmDialogState.type === 'resetPassword' && onResetPassword) {
+              onResetPassword(confirmDialogState.teacher);
+            }
+
+            if (confirmDialogState.type === 'delete' && onDelete) {
+              onDelete(confirmDialogState.teacher.id);
+            }
+
+            if (confirmDialogState.type === 'restore' && onRestore) {
+              onRestore(confirmDialogState.teacher.id);
+            }
+
+            setConfirmDialogState(null);
+          }}
+        />
+      )}
     </Card>
   );
 }

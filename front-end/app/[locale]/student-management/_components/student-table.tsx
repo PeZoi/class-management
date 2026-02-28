@@ -50,6 +50,7 @@ import { Badge } from '@/components/ui/badge';
 import { useBulkRemoveStudentsFromClass } from '@/hooks/use-students';
 import { useState, useMemo } from 'react';
 import { toast } from 'react-toastify';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface StudentTableProps {
   students: StudentItem[];
@@ -100,6 +101,10 @@ export function StudentTable({
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [confirmDialogState, setConfirmDialogState] = useState<{
+    type: 'delete' | 'restore';
+    studentId: string;
+  } | null>(null);
 
   const bulkRemoveStudentsFromClass = useBulkRemoveStudentsFromClass();
 
@@ -623,9 +628,10 @@ export function StudentTable({
                   <DropdownMenuItem
                     className="cursor-pointer text-red-600 dark:text-red-400"
                     onClick={() => {
-                      if (window.confirm(t('confirmDelete'))) {
-                        onDelete(student.id);
-                      }
+                      setConfirmDialogState({
+                        type: 'delete',
+                        studentId: student.id,
+                      });
                     }}
                   >
                     <Trash2 className="size-4 mr-2" />
@@ -636,9 +642,10 @@ export function StudentTable({
                   <DropdownMenuItem
                     className="cursor-pointer text-emerald-600 dark:text-emerald-400"
                     onClick={() => {
-                      if (window.confirm(t('confirmRestore'))) {
-                        onRestore(student.id);
-                      }
+                      setConfirmDialogState({
+                        type: 'restore',
+                        studentId: student.id,
+                      });
                     }}
                   >
                     <Ban className="size-4 mr-2 rotate-180" />
@@ -845,6 +852,43 @@ export function StudentTable({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog xác nhận chung cho xoá / khôi phục học sinh */}
+      {confirmDialogState && (
+        <ConfirmDialog
+          open={!!confirmDialogState}
+          title={
+            confirmDialogState.type === 'delete'
+              ? t('confirmDelete')
+              : t('confirmRestore')
+          }
+          confirmText={
+            confirmDialogState.type === 'delete'
+              ? t('delete')
+              : t('restore')
+          }
+          cancelText={tCommon('cancel')}
+          variant={confirmDialogState.type === 'delete' ? 'destructive' : 'default'}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setConfirmDialogState(null);
+            }
+          }}
+          onConfirm={() => {
+            if (!confirmDialogState) return;
+
+            if (confirmDialogState.type === 'delete' && onDelete) {
+              onDelete(confirmDialogState.studentId);
+            }
+
+            if (confirmDialogState.type === 'restore' && onRestore) {
+              onRestore(confirmDialogState.studentId);
+            }
+
+            setConfirmDialogState(null);
+          }}
+        />
+      )}
     </Card>
   );
 }
