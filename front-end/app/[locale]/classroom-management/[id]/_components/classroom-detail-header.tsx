@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -45,7 +44,6 @@ export function ClassroomDetailHeader({ classData }: ClassroomDetailHeaderProps)
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100">{classData.name}</h1>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{classData.description}</p>
-            <Badge className="mt-2 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Active</Badge>
           </div>
         </div>
       </div>

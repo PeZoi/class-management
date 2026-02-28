@@ -107,7 +107,7 @@ export function ClassroomTable({
         const teacher = row.original.teacher;
         if (!teacher) {
           return (
-            <div className="font-medium text-slate-500 dark:text-slate-400 italic">
+            <div className="flex items-center gap-1.5 italic text-sm text-slate-600 dark:text-slate-400">
               {tCommon('noTeacher')}
             </div>
           );

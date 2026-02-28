@@ -16,6 +16,7 @@ import lombok.Setter;
 public class ClassResponse {
     private String id;
     private String name;
+    private String description;
     private int monthlyFee;
     private int studentCount; // Số lượng học sinh trong lớp hiện tại
     private int revenue; // Doanh thu

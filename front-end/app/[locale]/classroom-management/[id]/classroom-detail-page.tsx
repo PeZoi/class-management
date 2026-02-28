@@ -159,7 +159,7 @@ export default function ClassroomDetailPage() {
       monthlyFee: data.monthlyFee || 0,
       collected: data.collected || 0,
       total: data.total || 0,
-      description: data.name || '', // Dùng name làm description
+      description: data.description || data.name || '',
       color: '#3b82f6', // Dữ liệu tĩnh
     };
   }, [tCommon]);

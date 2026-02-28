@@ -76,7 +76,11 @@ public class ClassService {
     }
 
     public ClassResponse create(ClassRequest classRequest) {
-        User teacher = userRepository.findById(classRequest.getTeacherId()).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+        User teacher = null;
+        if (classRequest.getTeacherId() != null && !classRequest.getTeacherId().trim().isEmpty()) {
+            teacher = userRepository.findById(classRequest.getTeacherId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+        }
         Class classroom = modelMapper.map(classRequest, Class.class);
         classroom.setTeacher(teacher);
 
@@ -128,10 +132,16 @@ public class ClassService {
 
     public ClassResponse update(String classId, ClassRequest classRequest) {
         Class classDB = classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
-        User TeacherDB = userRepository.findById(classRequest.getTeacherId()).orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
         classDB.setName(classRequest.getName());
+        classDB.setDescription(classRequest.getDescription());
         classDB.setMonthlyFee(classRequest.getMonthlyFee());
-        classDB.setTeacher(TeacherDB);
+        if (classRequest.getTeacherId() != null && !classRequest.getTeacherId().trim().isEmpty()) {
+            User teacherDB = userRepository.findById(classRequest.getTeacherId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy giáo viên"));
+            classDB.setTeacher(teacherDB);
+        } else {
+            classDB.setTeacher(null);
+        }
         Class savedClass = classRepository.save(classDB);
         ClassResponse classResponse = modelMapper.map(savedClass, ClassResponse.class);
         classResponse.setClassShifts(mapClassShifts(savedClass));

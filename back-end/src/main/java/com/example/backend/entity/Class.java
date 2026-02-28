@@ -33,6 +33,9 @@ public class Class extends Auditable {
     @Column(length = 45, nullable = false, unique = true)
     private String name;
 
+    @Column(name = "description", length = 255)
+    private String description;
+
     @Column(name = "monthly_fee", nullable = false)
     private int monthlyFee;
 

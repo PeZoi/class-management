@@ -2,7 +2,8 @@ import { TeacherType } from "@/types/teacher-type";
 
 export interface ClassRequest {
   name: string;
-  teacherId: string;
+  description?: string;
+  teacherId?: string | null;
   monthlyFee: number;
 }
 
@@ -16,6 +17,7 @@ export interface ClassShiftType {
 export interface ClassType {
   id: string;
   name: string;
+  description?: string;
   teacherId: string;
   monthlyFee: number;
   studentCount: number;

@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useTeachersSimple } from '@/hooks/use-teachers';
 import { ClassRequest, ClassType, TeacherType } from '@/types';
 import { useTranslations } from 'next-intl';
@@ -35,7 +36,8 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave, isSubmi
   
   const [formData, setFormData] = useState<ClassRequest>({
     name: '',
-    teacherId: '',
+    description: '',
+    teacherId: null,
     monthlyFee: 0,
   });
 
@@ -46,13 +48,15 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave, isSubmi
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         name: classItem.name || '',
-        teacherId: classItem.teacher?.id || '',
+        description: classItem.description || '',
+        teacherId: classItem.teacher?.id || null,
         monthlyFee: classItem.monthlyFee || 0,
       });
     } else {
       setFormData({
         name: '',
-        teacherId: '',
+        description: '',
+        teacherId: null,
         monthlyFee: 0,
       });
     }
@@ -60,11 +64,17 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave, isSubmi
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Chỉ truyền formData và id (nếu đang edit)
-    onSave(formData, classItem?.id);
+    // Chuyển empty string thành null cho teacherId
+    const submitData: ClassRequest = {
+      ...formData,
+      teacherId: formData.teacherId && typeof formData.teacherId === 'string' && formData.teacherId.trim() !== '' 
+        ? formData.teacherId 
+        : null,
+    };
+    onSave(submitData, classItem?.id);
   };
 
-  const handleChange = (field: keyof ClassRequest, value: string | number) => {
+  const handleChange = (field: keyof ClassRequest, value: string | number | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -91,17 +101,32 @@ export function ClassroomDialog({ open, onOpenChange, classItem, onSave, isSubmi
               />
             </div>
 
+            {/* Mô tả lớp học */}
+            <div className="space-y-2">
+              <Label htmlFor="description">{t('classDescription')}</Label>
+              <Textarea
+                id="description"
+                value={formData.description || ''}
+                onChange={(e) => handleChange('description', e.target.value)}
+                placeholder={t('classDescriptionPlaceholder')}
+              />
+            </div>
+
             {/* Giảng viên - Select */}
             <div className="flex gap-2">
               <div className="space-y-2">
                 <Label htmlFor="teacher">
-                  {t('teacher')} <span className="text-red-500">{t('required')}</span>
+                  {t('teacher')}
                 </Label>
-                <Select value={formData.teacherId} onValueChange={(value) => handleChange('teacherId', value)} required>
+                <Select 
+                  value={formData.teacherId || '__none__'} 
+                  onValueChange={(value) => handleChange('teacherId', value === '__none__' ? null : value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder={t('teacherPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__none__" className='text-xs italic'>{t('noTeacherOption')}</SelectItem>
                     {teachers.map((teacher: TeacherType) => (
                       <SelectItem key={teacher.id} value={teacher.id}>
                         {teacher.fullName} ({teacher.gender === 'MALE' ? 'Nam' : 'Nữ'})
