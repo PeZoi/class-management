@@ -99,7 +99,11 @@
     "close": "Close",
     "save": "Save",
     "update": "Update",
-    "takeAttendance": "Take Attendance"
+    "takeAttendance": "Take Attendance",
+    "viewStatistics": "View Statistics",
+    "statistics": "Class Statistics",
+    "attendanceStatistics": "Attendance Statistics",
+    "back": "Back"
   },
   "attendance": {
     "title": "Class Attendance",
@@ -370,6 +374,11 @@
     "notes": "Notes",
     "attendanceInfo": "This month has {totalSessions} classes (2 classes per week)",
     "attendanceRate": "Rate",
+    "attendanceRateChart": "Attendance Rate Over Time",
+    "attendanceStatusChart": "Attendance Status Distribution",
+    "attendanceByStudentChart": "Attendance Rate by Student",
+    "attendanceByShiftChart": "Attendance by Shift",
+    "count": "Count",
     "session": "Session",
     "month1": "January",
     "month2": "February",

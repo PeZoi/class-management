@@ -28,12 +28,17 @@ export function ClassroomDetailRevenueChart({
     <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg">
       <CardHeader>
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <CardTitle
-            className="text-xl md:text-2xl font-bold text-transparent bg-clip-text"
-            style={{ backgroundImage: 'linear-gradient(to right, #2563eb, #9333ea)' }}
-          >
-            {t('revenueChart')}
-          </CardTitle>
+          <div className='flex flex-col gap-1'>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {t('revenue') || 'Revenue'}
+            </p>
+            <CardTitle
+              className="text-lg md:text-xl font-bold text-transparent bg-clip-text"
+              style={{ backgroundImage: 'linear-gradient(to right, #4f46e5, #06b6d4)' }}
+            >
+              {t('revenueChart')}
+            </CardTitle>
+          </div>
           <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
             <Button
               variant={selectedPeriod === '3months' ? 'default' : 'ghost'}

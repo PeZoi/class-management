@@ -39,7 +39,8 @@ export function LanguageSwitcher() {
     } else {
       segments.unshift(newLocale);
     }
-    router.push(`/${segments.join('/')}`);
+    // Dùng replace để không thêm entry mới vào history, tránh back quay về locale cũ
+    router.replace(`/${segments.join('/')}`);
     router.refresh();
   };
 

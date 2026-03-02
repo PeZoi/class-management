@@ -1,11 +1,10 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   ClassroomDetailHeader,
-  ClassroomDetailRevenueChart,
   ClassroomScheduleInfo,
   ClassroomStatsCards,
   ClassroomStudentsList,
@@ -20,14 +19,13 @@ import { ClassType } from '@/types/class-type';
 import { toast } from 'react-toastify';
 import { PageLoading } from '@/components/page-loading';
 import { HttpError } from '@/lib/http';
-import { useClass, useClassRevenueDataByClassId, useClassShiftsByClass } from '@/hooks/use-classes';
+import { useClass, useClassShiftsByClass } from '@/hooks/use-classes';
 import { useStudentsByClass, useUpdateStudent } from '@/hooks/use-students';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { Button } from '@/components/ui/button';
-import { ClipboardCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { ClipboardCheck, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { TimePeriod } from '@/types/common-type';
 import { useAuthStore } from '@/store';
 
 export default function ClassroomDetailPage() {
@@ -39,7 +37,6 @@ export default function ClassroomDetailPage() {
   const tCommon = useTranslations('common');
   const { user } = useAuthStore();
 
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months');
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentType | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -58,12 +55,6 @@ export default function ClassroomDetailPage() {
     isLoading: isLoadingStudents,
     error: studentsError,
   } = useStudentsByClass(classId);
-
-  const {
-    data: revenueDataResponse = [],
-    isLoading: isLoadingRevenue,
-    error: revenueError,
-  } = useClassRevenueDataByClassId(classId, selectedPeriod);
 
   // Fetch shifts ở component cha để share cache với các component khác
   const {
@@ -110,21 +101,6 @@ export default function ClassroomDetailPage() {
       toast.error(tNotif('errorLoadStudents'));
     }
   }, [studentsError, tNotif]);
-
-  useEffect(() => {
-    if (revenueError) {
-      toast.error(tNotif('errorLoadRevenue'));
-    }
-  }, [revenueError, tNotif]);
-
-  // Map revenue data từ BE sang format mà component cần
-  const revenueData = useMemo(() => {
-    return revenueDataResponse.map((item) => ({
-      month: item.month,
-      label: item.label,
-      revenue: item.revenue || 0,
-    }));
-  }, [revenueDataResponse]);
 
   // Transform ClassType to UI format with additional static fields
   const getClassDataForUI = useCallback((data: ClassType | null) => {
@@ -217,22 +193,25 @@ export default function ClassroomDetailPage() {
       {/* Stats Cards */}
       <ClassroomStatsCards classData={classData ?? null} />
 
+      {/* Statistics Button - Only show for admin */}
+      {!isTeacher && (
+        <div className="flex justify-end">
+          <Button
+            onClick={() => router.push(`/${locale}/classroom-management/${classId}/statistics`)}
+            className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            size="lg"
+          >
+            <BarChart3 className="size-5 mr-2" />
+            {tCommon('viewStatistics') || 'Xem thống kê'}
+          </Button>
+        </div>
+      )}
+
       {/* Class Info & Schedule */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ClassroomTeacherInfo teacher={classData?.teacher as TeacherType} />
         {classId && <ClassroomScheduleInfo classId={classId as string} isTeacher={isTeacher} />}
       </div>
-
-      {/* Revenue Chart - Only show for admin */}
-      {!isTeacher && (
-        <ClassroomDetailRevenueChart
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={setSelectedPeriod}
-          revenueData={revenueData}
-          color={currentClassData.color}
-          isLoading={isLoadingRevenue}
-        />
-      )}
 
       {/* Students List */}
       <ClassroomStudentsList 

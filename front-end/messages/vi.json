@@ -99,7 +99,11 @@
     "close": "Đóng",
     "save": "Lưu",
     "update": "Cập nhật",
-    "takeAttendance": "Điểm danh"
+    "takeAttendance": "Điểm danh",
+    "viewStatistics": "Xem thống kê",
+    "statistics": "Thống kê lớp học",
+    "attendanceStatistics": "Thống Kê Điểm Danh",
+    "back": "Quay lại"
   },
   "attendance": {
     "title": "Điểm Danh Lớp Học",
@@ -369,6 +373,11 @@
     "notes": "Ghi chú",
     "attendanceInfo": "Tháng này có {totalSessions} buổi học (2 buổi/tuần)",
     "attendanceRate": "Tỷ Lệ",
+    "attendanceRateChart": "Tỷ Lệ Điểm Danh Theo Thời Gian",
+    "attendanceStatusChart": "Phân Bố Trạng Thái Điểm Danh",
+    "attendanceByStudentChart": "Tỷ Lệ Điểm Danh Theo Học Viên",
+    "attendanceByShiftChart": "Điểm Danh Theo Ca Học",
+    "count": "Số lượng",
     "session": "Buổi",
     "month1": "Tháng 1",
     "month2": "Tháng 2",
