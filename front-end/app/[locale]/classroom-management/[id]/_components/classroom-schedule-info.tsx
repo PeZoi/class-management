@@ -390,10 +390,9 @@ export function ClassroomScheduleInfo({ classId, isTeacher = false }: ClassroomS
               setConfirmDeleteShiftId(null);
             }
           }}
-          onConfirm={() => {
+          onConfirm={async () => {
             if (!confirmDeleteShiftId) return;
-            void handleDelete(confirmDeleteShiftId);
-            setConfirmDeleteShiftId(null);
+            await handleDelete(confirmDeleteShiftId);
           }}
         />
       )}

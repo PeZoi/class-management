@@ -874,18 +874,16 @@ export function StudentTable({
               setConfirmDialogState(null);
             }
           }}
-          onConfirm={() => {
+          onConfirm={async () => {
             if (!confirmDialogState) return;
 
             if (confirmDialogState.type === 'delete' && onDelete) {
-              onDelete(confirmDialogState.studentId);
+              await onDelete(confirmDialogState.studentId);
             }
 
             if (confirmDialogState.type === 'restore' && onRestore) {
-              onRestore(confirmDialogState.studentId);
+              await onRestore(confirmDialogState.studentId);
             }
-
-            setConfirmDialogState(null);
           }}
         />
       )}

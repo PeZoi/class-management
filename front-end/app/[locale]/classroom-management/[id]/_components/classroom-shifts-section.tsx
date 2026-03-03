@@ -663,7 +663,6 @@ export function ClassroomShiftsSection({ classId, shifts, isLoading, onRefresh }
           onConfirm={async () => {
             if (!confirmDeleteShiftId) return;
             await handleDeleteShift(confirmDeleteShiftId);
-            setConfirmDeleteShiftId(null);
           }}
         />
       )}

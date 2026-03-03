@@ -116,7 +116,13 @@ export default function ClassroomManagementPage() {
 
   const handleDelete = useCallback(
     async (id: string) => {
-      await deleteClassMutation.mutateAsync(id);
+      try {
+        await deleteClassMutation.mutateAsync(id);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Error deleting class:', error);
+        throw error;
+      }
     },
     [deleteClassMutation]
   );

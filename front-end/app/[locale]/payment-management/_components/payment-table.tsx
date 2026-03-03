@@ -643,11 +643,10 @@ export function PaymentTable({
               setConfirmDeletePaymentId(null);
             }
           }}
-          onConfirm={() => {
+          onConfirm={async () => {
             if (confirmDeletePaymentId !== null) {
-              onDelete(confirmDeletePaymentId);
+              await onDelete(confirmDeletePaymentId);
             }
-            setConfirmDeletePaymentId(null);
           }}
         />
       )}

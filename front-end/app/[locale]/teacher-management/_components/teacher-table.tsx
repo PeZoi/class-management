@@ -498,22 +498,20 @@ export function TeacherTable({
               setConfirmDialogState(null);
             }
           }}
-          onConfirm={() => {
+          onConfirm={async () => {
             if (!confirmDialogState) return;
 
             if (confirmDialogState.type === 'resetPassword' && onResetPassword) {
-              onResetPassword(confirmDialogState.teacher);
+              await onResetPassword(confirmDialogState.teacher);
             }
 
             if (confirmDialogState.type === 'delete' && onDelete) {
-              onDelete(confirmDialogState.teacher.id);
+              await onDelete(confirmDialogState.teacher.id);
             }
 
             if (confirmDialogState.type === 'restore' && onRestore) {
-              onRestore(confirmDialogState.teacher.id);
+              await onRestore(confirmDialogState.teacher.id);
             }
-
-            setConfirmDialogState(null);
           }}
         />
       )}

@@ -157,6 +157,7 @@ export default function TeacherManagementPage() {
         await deleteTeacher.mutateAsync(id);
       } catch (error) {
         console.error('Error deleting teacher:', error);
+        throw error;
       }
     },
     [deleteTeacher],
@@ -209,6 +210,7 @@ export default function TeacherManagementPage() {
         await resetPassword.mutateAsync(teacher.id as string);
       } catch (error) {
         console.error('Error resetting password:', error);
+        throw error;
       }
     },
     [resetPassword],
@@ -220,6 +222,7 @@ export default function TeacherManagementPage() {
         await restoreTeacher.mutateAsync(id);
       } catch (error) {
         console.error('Error restoring teacher:', error);
+        throw error;
       }
     },
     [restoreTeacher],

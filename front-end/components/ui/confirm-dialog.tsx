@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type ConfirmDialogVariant = 'default' | 'destructive';
@@ -47,19 +47,34 @@ export function ConfirmDialog({
   onCancel,
   onOpenChange,
 }: ConfirmDialogProps) {
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleCancel = () => {
+    if (isLoading) return;
     onCancel?.();
     onOpenChange?.(false);
   };
 
-  const handleConfirm = () => {
-    void onConfirm();
+  const handleConfirm = async () => {
+    try {
+      setIsLoading(true);
+      await onConfirm();
+      onOpenChange?.(false);
+    } catch (error) {
+      // Keep dialog open on error; errors are handled/toasted by callers
+      // eslint-disable-next-line no-console
+      console.error('ConfirmDialog onConfirm error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(isOpen) => {
+        // Khi đang loading thì không cho đóng dialog bằng overlay/ESC
+        if (isLoading && !isOpen) return;
         if (!isOpen) {
           onCancel?.();
         }
@@ -114,6 +129,7 @@ export function ConfirmDialog({
             type="button"
             variant="outline"
             onClick={handleCancel}
+            disabled={isLoading}
             className={cn(
               'sm:min-w-[96px]',
               'border-slate-200 dark:border-slate-700',
@@ -127,6 +143,7 @@ export function ConfirmDialog({
             type="button"
             variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={handleConfirm}
+            disabled={isLoading}
             className={cn(
               'sm:min-w-[110px]',
               variant === 'destructive'
@@ -136,6 +153,7 @@ export function ConfirmDialog({
               confirmButtonClassName,
             )}
           >
+            {isLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
             {confirmText}
           </Button>
         </DialogFooter>
@@ -143,5 +161,4 @@ export function ConfirmDialog({
     </Dialog>
   );
 }
-
 

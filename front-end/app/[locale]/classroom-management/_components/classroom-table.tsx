@@ -379,11 +379,10 @@ export function ClassroomTable({
               setConfirmDeleteClassId(null);
             }
           }}
-          onConfirm={() => {
+          onConfirm={async () => {
             if (confirmDeleteClassId && onDelete) {
-              onDelete(confirmDeleteClassId);
+              await onDelete(confirmDeleteClassId);
             }
-            setConfirmDeleteClassId(null);
           }}
         />
       )}

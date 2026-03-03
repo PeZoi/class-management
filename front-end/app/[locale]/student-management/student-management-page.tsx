@@ -274,7 +274,8 @@ export default function StudentManagementPage() {
       await deleteStudents.mutateAsync(id);
     } catch (error) {
       console.error('Error deleting student:', error);
-      // Error toast đã được handle trong hook
+      // Error toast đã được handle trong hook, rethrow để ConfirmDialog giữ dialog mở
+      throw error;
     }
   };
 
@@ -283,7 +284,8 @@ export default function StudentManagementPage() {
       await restoreStudent.mutateAsync(id);
     } catch (error) {
       console.error('Error restoring student:', error);
-      // Error toast đã được handle trong hook
+      // Error toast đã được handle trong hook, rethrow để ConfirmDialog giữ dialog mở
+      throw error;
     }
   };
 
