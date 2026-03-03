@@ -9,7 +9,20 @@ import { StudentType } from '@/types';
 import { OverdueStudentItem } from '@/types/student-type';
 import { formatDate } from '@/utils/helper';
 import { ColumnDef } from '@tanstack/react-table';
-import { BookOpen, Calendar, CheckCircle, Clock, CreditCard, DollarSign, Mail, Package, Phone, User, Users } from 'lucide-react';
+import {
+  BookOpen,
+  Calendar,
+  CheckCircle,
+  Clock,
+  CreditCard,
+  DollarSign,
+  Loader2,
+  Mail,
+  Package,
+  Phone,
+  User,
+  Users,
+} from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 
@@ -17,9 +30,27 @@ interface OverdueStudentsTableProps {
   students: StudentType[];
   formatCurrency: (amount: number) => string;
   onPayment?: (student: { id: string; fullName: string }) => void;
+  isLoading?: boolean;
+  error?: string;
+  pageIndex?: number;
+  pageSize?: number;
+  totalItems?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
 }
 
-export function OverdueStudentsTable({ students, formatCurrency, onPayment }: OverdueStudentsTableProps) {
+export function OverdueStudentsTable({
+  students,
+  formatCurrency,
+  onPayment,
+  isLoading,
+  error,
+  pageIndex,
+  pageSize = 10,
+  totalItems,
+  onPageChange,
+  onPageSizeChange,
+}: OverdueStudentsTableProps) {
   const t = useTranslations('dashboard');
   const locale = useLocale();
 
@@ -348,7 +379,7 @@ export function OverdueStudentsTable({ students, formatCurrency, onPayment }: Ov
               <Clock className="size-5 md:size-6 text-red-600 dark:text-red-400" />
               {t('overdueStudents')}
               <span className="text-sm md:text-base font-normal text-slate-500 dark:text-slate-400">
-                ({students.length})
+                ({typeof totalItems === 'number' ? totalItems : students.length})
               </span>
             </CardTitle>
             <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -358,7 +389,16 @@ export function OverdueStudentsTable({ students, formatCurrency, onPayment }: Ov
         </div>
       </CardHeader>
       <CardContent>
-        {mappedStudents.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-8">
+            <Loader2 className="size-5 animate-spin mx-auto mb-2 text-slate-500" />
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('loadingOverdueStudents')}</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-red-500">{error}</p>
+          </div>
+        ) : mappedStudents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <div className="rounded-full bg-slate-100 dark:bg-slate-900/30 p-4">
               <User className="size-10" />
@@ -366,7 +406,16 @@ export function OverdueStudentsTable({ students, formatCurrency, onPayment }: Ov
             <p className="text-base font-medium text-gray-500 dark:text-gray-300">{t('noOverdueStudents')}</p>
           </div>
         ) : (
-          <DataTable columns={columns} data={mappedStudents} pageSize={10} />
+          <DataTable
+            columns={columns}
+            data={mappedStudents}
+            pageSize={pageSize}
+            manualPagination={typeof pageIndex === 'number' && typeof totalItems === 'number'}
+            pageIndex={pageIndex}
+            totalItems={totalItems}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
         )}
       </CardContent>
     </Card>

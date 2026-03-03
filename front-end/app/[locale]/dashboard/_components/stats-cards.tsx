@@ -1,9 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { ArrowUpRight, DollarSign, Users, Wallet, ExternalLink } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { ArrowDownRight, ArrowUpRight, DollarSign, Users, Wallet, ExternalLink } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
 
 interface StatsCardsProps {
   statsData: {
@@ -24,6 +23,15 @@ export function StatsCards({ statsData, formatCurrency, className }: StatsCardsP
   const t = useTranslations('dashboard');
   const locale = useLocale();
 
+  const revenueGrowth = statsData.revenueGrowth ?? 0;
+  const RevenueGrowthIcon = revenueGrowth >= 0 ? ArrowUpRight : ArrowDownRight;
+
+  const salaryExpenseGrowth = statsData.salaryExpenseGrowth ?? 0;
+  const SalaryExpenseGrowthIcon = salaryExpenseGrowth >= 0 ? ArrowUpRight : ArrowDownRight;
+
+  const studentGrowth = statsData.studentGrowth ?? 0;
+  const StudentGrowthIcon = studentGrowth >= 0 ? ArrowUpRight : ArrowDownRight;
+
   return (
     <div className={cn('grid gap-6 md:grid-cols-2 lg:grid-cols-4', className)}>
       {/* Total Revenue */}
@@ -42,8 +50,12 @@ export function StatsCards({ statsData, formatCurrency, className }: StatsCardsP
           </div>
           <div className="mt-2 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
-              <ArrowUpRight className="size-4 text-green-600" />
-              <span className="text-sm font-medium text-green-600">{statsData.revenueGrowth}%</span>
+              <RevenueGrowthIcon className={`size-4 ${revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              <span
+                className={`text-sm font-medium ${revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              >
+                {Math.abs(revenueGrowth).toFixed(0)}%
+              </span>
               <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">{t('vsLastMonth')}</span>
             </div>
             <Link
@@ -71,9 +83,13 @@ export function StatsCards({ statsData, formatCurrency, className }: StatsCardsP
           </div>
           {statsData.salaryExpenseGrowth !== undefined && (
             <div className="flex items-center gap-1 mt-2">
-              <ArrowUpRight className={`size-4 ${statsData.salaryExpenseGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-              <span className={`text-sm font-medium ${statsData.salaryExpenseGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {Math.abs(statsData.salaryExpenseGrowth).toFixed(1)}%
+              <SalaryExpenseGrowthIcon
+                className={`size-4 ${salaryExpenseGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              />
+              <span
+                className={`text-sm font-medium ${salaryExpenseGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              >
+                {Math.abs(salaryExpenseGrowth).toFixed(0)}%
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">{t('vsLastMonth')}</span>
             </div>
@@ -94,8 +110,12 @@ export function StatsCards({ statsData, formatCurrency, className }: StatsCardsP
             {statsData.totalStudents.toLocaleString('vi-VN')}
           </div>
           <div className="flex items-center gap-1 mt-2">
-            <ArrowUpRight className="size-4 text-green-600" />
-            <span className="text-sm font-medium text-green-600">{statsData.studentGrowth}%</span>
+            <StudentGrowthIcon className={`size-4 ${studentGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+            <span
+              className={`text-sm font-medium ${studentGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}
+            >
+              {Math.abs(studentGrowth).toFixed(0)}%
+            </span>
             <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">{t('vsLastMonth')}</span>
           </div>
         </CardContent>

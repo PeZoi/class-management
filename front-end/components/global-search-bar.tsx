@@ -4,8 +4,8 @@ import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';
 import { cn } from '@/lib/utils';
 import { studentService, teacherService } from '@/services';
-import { StudentType, TeacherType } from '@/types';
-import { GraduationCap, Loader2, Search, User, X } from 'lucide-react';
+import { StudentType, TeacherType, StudentStatus } from '@/types';
+import { GraduationCap, Loader2, Search, User, X, UserCheck, Timer, Ban, CheckCircle2, XCircle } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -16,10 +16,13 @@ interface SearchResult {
   email: string;
   type: 'student' | 'teacher';
   avatar?: string;
+  status?: StudentStatus | 'ACTIVE' | 'DELETED' | 'BLOCKED';
 }
 
 export function GlobalSearchBar() {
   const t = useTranslations('common');
+  const tStudent = useTranslations('student-management');
+  const tTeacher = useTranslations('teacher-management');
   const locale = useLocale();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,6 +77,7 @@ export function GlobalSearchBar() {
               name: student.fullName,
               email: student.email,
               type: 'student',
+              status: student.status,
             });
           });
         }
@@ -87,6 +91,7 @@ export function GlobalSearchBar() {
               email: teacher.email,
               type: 'teacher',
               avatar: teacher.avatar,
+              status: teacher.status,
             });
           });
         }
@@ -131,6 +136,81 @@ export function GlobalSearchBar() {
       setIsOpen(false);
       inputRef.current?.blur();
     }
+  };
+
+  // Get student status badge
+  const getStudentStatusBadge = (status?: StudentStatus) => {
+    const statusConfig = {
+      ACTIVE: {
+        label: tStudent('status_ACTIVE') || 'Đang Học',
+        className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+        icon: UserCheck,
+      },
+      INACTIVE: {
+        label: tStudent('status_INACTIVE') || 'Tạm Nghỉ',
+        className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+        icon: Timer,
+      },
+      GRADUATED: {
+        label: tStudent('status_GRADUATED') || 'Đã Tốt Nghiệp',
+        className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        icon: GraduationCap,
+      },
+      DELETED: {
+        label: tStudent('status_DELETED') || 'Đã Xóa',
+        className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        icon: Ban,
+      },
+    } as const;
+
+    if (!status || !statusConfig[status]) {
+      return null;
+    }
+
+    const config = statusConfig[status];
+    const Icon = config.icon;
+
+    return (
+      <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', config.className)}>
+        <Icon className="size-3" />
+        {config.label}
+      </span>
+    );
+  };
+
+  // Get teacher status badge
+  const getTeacherStatusBadge = (status?: 'ACTIVE' | 'DELETED' | 'BLOCKED') => {
+    const statusConfig = {
+      ACTIVE: {
+        label: tTeacher('statusActive') || 'Hoạt Động',
+        className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+        icon: CheckCircle2,
+      },
+      DELETED: {
+        label: tTeacher('statusDeleted') || 'Đã Xóa',
+        className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        icon: XCircle,
+      },
+      BLOCKED: {
+        label: tTeacher('statusBlocked') || 'Đã Khóa',
+        className: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+        icon: Ban,
+      },
+    } as const;
+
+    if (!status || !statusConfig[status]) {
+      return null;
+    }
+
+    const config = statusConfig[status];
+    const Icon = config.icon;
+
+    return (
+      <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', config.className)}>
+        <Icon className="size-3" />
+        {config.label}
+      </span>
+    );
   };
 
   return (
@@ -204,8 +284,14 @@ export function GlobalSearchBar() {
                       </div>
                       <div className="text-xs text-muted-foreground truncate">{result.email}</div>
                     </div>
-                    <div className="text-xs text-muted-foreground shrink-0 px-2 py-0.5 rounded bg-muted">
-                      {result.type === 'student' ? t('student') || 'Học sinh' : t('teacher') || 'Giáo viên'}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-xs text-muted-foreground px-2 py-0.5 rounded bg-muted">
+                        {result.type === 'student' ? t('student') || 'Học sinh' : t('teacher') || 'Giáo viên'}
+                      </div>
+                      {result.type === 'student' 
+                        ? getStudentStatusBadge(result.status as StudentStatus)
+                        : getTeacherStatusBadge(result.status as 'ACTIVE' | 'DELETED' | 'BLOCKED')
+                      }
                     </div>
                   </button>
                 ))}

@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '@/services/dashboard-service';
-import { 
-  DashboardStatsResponse, 
+import {
+  DashboardStatsResponse,
   DashboardRevenueDataResponse,
   RevenueByClassResponse,
   RevenueByPaymentMethodResponse,
-  RevenueByStatusResponse
+  RevenueByStatusResponse,
 } from '@/types/dashboard-type';
-import { StudentType } from '@/types';
+import { PageResponse, StudentType } from '@/types';
 import { queryKeys } from '@/lib/queryKeys';
 import { TimePeriod } from '@/types/common-type';
 
@@ -44,13 +44,13 @@ export function useDashboardRevenueData(period: TimePeriod) {
 }
 
 /**
- * Hook để lấy students với unpaid fees
+ * Hook để lấy students với unpaid fees (có pagination)
  */
-export function useStudentsWithUnpaidFees() {
-  return useQuery<StudentType[]>({
-    queryKey: queryKeys.dashboard.studentsWithUnpaidFees(),
+export function useStudentsWithUnpaidFees(page: number = 0, size: number = 10) {
+  return useQuery<PageResponse<StudentType>>({
+    queryKey: [...queryKeys.dashboard.studentsWithUnpaidFees(), page, size],
     queryFn: async () => {
-      const response = await dashboardService.getStudentsWithUnpaidFees();
+      const response = await dashboardService.getStudentsWithUnpaidFees(page, size);
       if (response.status === 200 && response.data) {
         return response.data;
       }

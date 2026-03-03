@@ -24,6 +24,8 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<{ id: string; fullName: string } | null>(null);
+  const [overduePageIndex, setOverduePageIndex] = useState(0);
+  const [overduePageSize, setOverduePageSize] = useState(10);
 
   // Sử dụng TanStack Query hooks
   const {
@@ -45,10 +47,12 @@ export default function DashboardPage() {
   } = useTop3ClassesByRevenue();
 
   const {
-    data: overdueStudents = [],
+    data: overdueStudentsPage,
     isLoading: isLoadingOverdueStudents,
     error: overdueStudentsError,
-  } = useStudentsWithUnpaidFees();
+  } = useStudentsWithUnpaidFees(overduePageIndex, overduePageSize);
+
+  const overdueStudents = overdueStudentsPage?.content ?? [];
 
   const handleOpenPayment = (student: { id: string; fullName: string }) => {
     setSelectedStudent(student);
@@ -86,9 +90,9 @@ export default function DashboardPage() {
     }
   }, [overdueStudentsError, tNotif]);
 
-  // Loading state - hiển thị loading nếu bất kỳ query nào đang loading
-  const isLoading =
-    isLoadingStats || isLoadingTopClasses || isLoadingOverdueStudents;
+  // Loading state - hiển thị loading cho toàn trang khi các phần chính đang load
+  // Lưu ý: loading của bảng học sinh nợ sẽ được xử lý riêng trong component OverdueStudentsTable
+  const isLoading = isLoadingStats || isLoadingTopClasses;
 
   // Default stats data nếu chưa load được
   const defaultStatsData = {
@@ -139,6 +143,18 @@ export default function DashboardPage() {
         students={overdueStudents}
         formatCurrency={formatCurrency}
         onPayment={handleOpenPayment}
+        isLoading={isLoadingOverdueStudents}
+        error={overdueStudentsError ? tNotif('errorLoadOverdueStudents') : undefined}
+        pageIndex={overduePageIndex}
+        pageSize={overduePageSize}
+        totalItems={overdueStudentsPage?.totalElements}
+        onPageChange={(page) => {
+          setOverduePageIndex(page);
+        }}
+        onPageSizeChange={(size) => {
+          setOverduePageIndex(0);
+          setOverduePageSize(size);
+        }}
       />
 
       <PaymentCalendarDialog

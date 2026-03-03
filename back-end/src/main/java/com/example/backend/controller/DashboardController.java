@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+import com.example.backend.dto.common.PageResponse;
 import com.example.backend.dto.dashboard.DashboardRevenueDataResponse;
 import com.example.backend.dto.dashboard.DashboardStatsResponse;
 import com.example.backend.dto.dashboard.RevenueByClassResponse;
@@ -37,10 +38,11 @@ public class DashboardController {
     }
 
     @GetMapping("/students-with-unpaid-fees")
-    public ResponseEntity<List<StudentResponse>> getStudentsWithUnpaidFees(
-            @RequestParam(defaultValue = "10") int limit
+    public ResponseEntity<PageResponse<StudentResponse>> getStudentsWithUnpaidFees(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
-        List<StudentResponse> students = dashboardService.getStudentsWithUnpaidFees(limit);
+        PageResponse<StudentResponse> students = dashboardService.getStudentsWithUnpaidFeesPaginated(page, size);
         return new ResponseEntity<>(students, HttpStatus.OK);
     }
 

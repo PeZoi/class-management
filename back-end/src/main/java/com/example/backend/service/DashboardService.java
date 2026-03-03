@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.example.backend.dto.common.PageResponse;
 import com.example.backend.dto.dashboard.DashboardRevenueDataResponse;
 import com.example.backend.dto.dashboard.DashboardStatsResponse;
 import com.example.backend.dto.dashboard.RevenueByClassResponse;
@@ -201,19 +202,29 @@ public class DashboardService {
     }
 
     /**
-     * Lấy danh sách học sinh chưa đóng tiền - OPTIMIZED với limit parameter.
-     * Ưu tiên dùng sessionPaymentStatuses (theo gói buổi học) để tính tổng nợ từ quá khứ tới hiện tại.
+     * Lấy danh sách học sinh chưa đóng tiền với pagination.
+     * Ưu tiên dùng sessionPaymentStatuses (theo gói buổi học) để tính tổng nợ từ quá khứ tới gói hiện tại,
+     * tuân thủ yêu cầu chỉ tính nợ từ gói trước tới gói hiện tại.
      * Nếu học viên chưa có sessionPaymentStatuses thì fallback về monthPaymentStatuses như cũ.
      *
-     * @param limit Số lượng học sinh tối đa cần lấy (top N students có nợ nhiều nhất)
-     * @return Danh sách học sinh có nợ, giới hạn theo limit
+     * @param page Số trang (0-based)
+     * @param size Số phần tử mỗi trang
+     * @return PageResponse chứa danh sách học sinh có nợ và metadata phân trang
      */
-    public List<StudentResponse> getStudentsWithUnpaidFees(int limit) {
+    public PageResponse<StudentResponse> getStudentsWithUnpaidFeesPaginated(int page, int size) {
+        // Đảm bảo size hợp lệ
+        if (size <= 0) {
+            size = 10;
+        }
+        if (page < 0) {
+            page = 0;
+        }
+
         // Lấy tất cả học sinh với đầy đủ thông tin payment (monthPaymentStatuses & sessionPaymentStatuses)
         List<StudentResponse> allStudents = studentService.getAll();
 
-        // Filter những học sinh có nợ (remainingAmount > 0)
-        return allStudents.stream()
+        // Tính tổng nợ cho từng học sinh
+        List<Map.Entry<StudentResponse, Long>> studentsWithDebt = allStudents.stream()
                 .map(student -> {
                     long totalDebtBySession = 0L;
 
@@ -236,7 +247,7 @@ public class DashboardService {
                         int currentPackageNumber = currentPackageNumberOpt.orElse(maxPackageNumber);
 
                         if (currentPackageNumber > 0) {
-                            // Tổng nợ = tổng remainingAmount của tất cả package từ trước đến gói hiện tại
+                            // Tổng nợ = tổng remainingAmount của tất cả package từ trước đến gói hiện tại (bao gồm gói hiện tại)
                             totalDebtBySession = sessionStatuses.stream()
                                     .filter(s -> s.getPackageNumber() != null && s.getPackageNumber() <= currentPackageNumber)
                                     .map(SessionPaymentStatusDTO::getRemainingAmount)
@@ -264,11 +275,25 @@ public class DashboardService {
                 .filter(entry -> entry.getValue() > 0)
                 // Sắp xếp giảm dần theo tổng nợ
                 .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()))
-                // OPTIMIZED: Giới hạn số lượng trả về (dashboard chỉ cần top N students)
-                .limit(limit > 0 ? limit : 10)
-                // Trả về danh sách StudentResponse
-                .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
+
+        long totalElements = studentsWithDebt.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, (int) totalElements);
+
+        List<StudentResponse> content = new ArrayList<>();
+        if (fromIndex < toIndex) {
+            content = studentsWithDebt.subList(fromIndex, toIndex).stream()
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
+        }
+
+        boolean hasNext = page + 1 < totalPages;
+        boolean hasPrevious = page > 0;
+
+        return new PageResponse<>(content, page, size, totalElements, totalPages, hasNext, hasPrevious);
     }
 
     /**

@@ -255,7 +255,8 @@
     "parentPhone": "Parent Phone",
     "male": "Male",
     "female": "Female",
-    "other": "Other"
+    "other": "Other",
+    "loadingOverdueStudents": "Loading overdue students..."
   },
   "classroom-management": {
     "title": "Classroom Management",
@@ -291,7 +292,6 @@
     "actions": "Actions",
     "edit": "Edit",
     "delete": "Delete",
-    "restore": "Restore",
     "restore": "Restore",
     "cancel": "Cancel",
     "save": "Save",
