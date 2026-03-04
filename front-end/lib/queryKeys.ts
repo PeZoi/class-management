@@ -91,6 +91,12 @@ export const queryKeys = {
     byStudent: (studentId: string, classId?: string) => ['attendance', 'student', studentId, classId] as const,
     byClass: (classId: string) => ['attendance', 'class', classId] as const,
   },
+
+  // Audit log queries
+  logs: {
+    all: ['logs'] as const,
+    listPaginated: (filters?: Record<string, unknown>) => ['logs', 'list', 'paginated', filters] as const,
+  },
 } as const;
 
 /**

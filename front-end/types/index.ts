@@ -8,3 +8,4 @@ export * from './profile-type';
 export * from './attendance-type';
 export * from './dashboard-type';
 export * from './common-type';
+export * from './log-type';

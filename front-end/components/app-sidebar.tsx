@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { Album, CreditCard, GraduationCap, LayoutDashboard, User } from 'lucide-react';
+import { Album, CreditCard, GraduationCap, LayoutDashboard, ScrollText, User } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -55,6 +55,12 @@ export function AppSidebar() {
       title: t('Payment Management'),
       url: `/${locale}/payment-management`,
       icon: CreditCard,
+      roles: ['ROLE_ADMIN'],
+    },
+    {
+      title: t('Logs Management'),
+      url: `/${locale}/logs-management`,
+      icon: ScrollText,
       roles: ['ROLE_ADMIN'],
     },
   ];

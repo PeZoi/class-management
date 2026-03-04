@@ -103,7 +103,8 @@
     "viewStatistics": "Xem thống kê",
     "statistics": "Thống kê lớp học",
     "attendanceStatistics": "Thống Kê Điểm Danh",
-    "back": "Quay lại"
+    "back": "Quay lại",
+    "Logs Management": "Quản lý logs"
   },
   "attendance": {
     "title": "Điểm Danh Lớp Học",
@@ -1134,5 +1135,74 @@
     "errorLoadOverdueStudents": "Không thể tải danh sách học viên chưa đóng tiền",
     "errorLoadPaymentData": "Không thể tải dữ liệu thanh toán",
     "successPaySalary": "Đã trả lương cho giáo viên thành công"
+  },
+  "logs-management": {
+    "title": "Quản Lý Logs Hệ Thống",
+    "description": "Theo dõi chi tiết các hành động người dùng và API quan trọng trong hệ thống",
+    "createdAt": "Thời Gian",
+    "username": "Người Thực Hiện",
+    "method": "Phương Thức",
+    "path": "Đường Dẫn",
+    "apiDescription": "Mô Tả API",
+    "status": "Trạng Thái",
+    "success": "Thành Công",
+    "failed": "Thất Bại",
+    "unknown": "Không rõ",
+    "ipAddress": "Địa Chỉ IP",
+    "searchPlaceholder": "Tìm theo username, path, mô tả API...",
+    "filterByMethod": "Lọc theo phương thức",
+    "filter_all_methods": "Tất cả phương thức",
+    "filterByStatus": "Lọc theo trạng thái",
+    "filter_all_status": "Tất cả trạng thái",
+    "filter_status_success": "Thành công",
+    "filter_status_failed": "Thất bại",
+    "filterByDate": "Khoảng thời gian",
+    "filterByDatePlaceholder": "Chọn khoảng thời gian",
+    "clearFilters": "Xoá bộ lọc",
+    "activeFilters": "Bộ lọc đang áp dụng:",
+    "noLogs": "Chưa có log nào",
+    "dateFilter_range": "Từ {start} đến {end}",
+    "dateFilter_from": "Từ {date}",
+    "dateFilter_to": "Đến {date}",
+    "copyPath": "Copy đường dẫn",
+    "details": "Chi Tiết",
+    "noDetails": "Không có chi tiết",
+    "detailsTitle": "Chi Tiết Payload",
+    "detailsDescription": "Xem chi tiết payload JSON của request này",
+    "copyDetails": "Copy Chi Tiết",
+    "copyDetailsSuccess": "Đã copy!"
+  },
+  "logs-api": {
+    "AUTH_LOGIN": "Đăng nhập hệ thống",
+    "STUDENT_CREATE": "Tạo học sinh",
+    "STUDENT_UPDATE": "Cập nhật học sinh",
+    "STUDENT_UPDATE_SHIFT": "Cập nhật ca học cho 1 học sinh",
+    "STUDENT_UPDATE_SHIFTS": "Cập nhật ca học hàng loạt",
+    "STUDENT_REMOVE_FROM_CLASS": "Gỡ học sinh khỏi lớp",
+    "STUDENT_DELETE": "Xoá học sinh",
+    "STUDENT_RESTORE": "Khôi phục học sinh",
+
+    "CLASS_CREATE": "Tạo lớp học",
+    "CLASS_UPDATE": "Cập nhật lớp học",
+    "CLASS_DELETE": "Xoá lớp học",
+
+    "CLASS_SHIFT_CREATE": "Tạo ca học",
+    "CLASS_SHIFT_UPDATE": "Cập nhật ca học",
+    "CLASS_SHIFT_DELETE": "Xoá ca học",
+
+    "ATTENDANCE_CREATE": "Tạo điểm danh",
+    "ATTENDANCE_UPDATE": "Cập nhật điểm danh",
+    "ATTENDANCE_DELETE": "Xoá điểm danh",
+
+    "PAYMENT_CREATE": "Tạo giao dịch thanh toán",
+
+    "TEACHER_CREATE": "Tạo giáo viên",
+    "TEACHER_UPDATE": "Cập nhật giáo viên",
+    "TEACHER_RESET_PASSWORD": "Reset mật khẩu giáo viên",
+    "TEACHER_DELETE": "Xoá giáo viên",
+    "TEACHER_RESTORE": "Khôi phục giáo viên",
+    "TEACHER_ASSIGN_CLASSES": "Gán lớp cho giáo viên",
+
+    "PROFILE_UPDATE_ME": "Cập nhật hồ sơ cá nhân"
   }
 }

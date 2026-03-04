@@ -103,7 +103,8 @@
     "viewStatistics": "View Statistics",
     "statistics": "Class Statistics",
     "attendanceStatistics": "Attendance Statistics",
-    "back": "Back"
+    "back": "Back",
+    "Logs Management": "Logs management"
   },
   "attendance": {
     "title": "Class Attendance",
@@ -1127,5 +1128,74 @@
     "errorLoadOverdueStudents": "Cannot load overdue students list",
     "errorLoadPaymentData": "Cannot load payment data",
     "successPaySalary": "Successfully paid salary to teacher"
+  },
+  "logs-management": {
+    "title": "System Logs Management",
+    "description": "Monitor detailed user actions and critical API calls across the system",
+    "createdAt": "Timestamp",
+    "username": "User",
+    "method": "Method",
+    "path": "Path",
+    "apiDescription": "API Description",
+    "status": "Status",
+    "success": "Success",
+    "failed": "Failed",
+    "unknown": "Unknown",
+    "ipAddress": "IP Address",
+    "searchPlaceholder": "Search by username, path, API description...",
+    "filterByMethod": "Filter by method",
+    "filter_all_methods": "All methods",
+    "filterByStatus": "Filter by status",
+    "filter_all_status": "All status",
+    "filter_status_success": "Success",
+    "filter_status_failed": "Failed",
+    "filterByDate": "Date range",
+    "filterByDatePlaceholder": "Select date range",
+    "clearFilters": "Clear filters",
+    "activeFilters": "Active filters:",
+    "noLogs": "No logs found",
+    "dateFilter_range": "From {start} to {end}",
+    "dateFilter_from": "From {date}",
+    "dateFilter_to": "To {date}",
+    "copyPath": "Copy path",
+    "details": "Details",
+    "noDetails": "No details",
+    "detailsTitle": "Payload Details",
+    "detailsDescription": "View the JSON payload details of this request",
+    "copyDetails": "Copy Details",
+    "copyDetailsSuccess": "Copied!"
+  },
+  "logs-api": {
+    "AUTH_LOGIN": "Login to the system",
+    "STUDENT_CREATE": "Create student",
+    "STUDENT_UPDATE": "Update student",
+    "STUDENT_UPDATE_SHIFT": "Update shift for a student",
+    "STUDENT_UPDATE_SHIFTS": "Bulk update shifts for students",
+    "STUDENT_REMOVE_FROM_CLASS": "Remove student from class",
+    "STUDENT_DELETE": "Delete student",
+    "STUDENT_RESTORE": "Restore student",
+
+    "CLASS_CREATE": "Create class",
+    "CLASS_UPDATE": "Update class",
+    "CLASS_DELETE": "Delete class",
+
+    "CLASS_SHIFT_CREATE": "Create class shift",
+    "CLASS_SHIFT_UPDATE": "Update class shift",
+    "CLASS_SHIFT_DELETE": "Delete class shift",
+
+    "ATTENDANCE_CREATE": "Create attendance",
+    "ATTENDANCE_UPDATE": "Update attendance",
+    "ATTENDANCE_DELETE": "Delete attendance",
+
+    "PAYMENT_CREATE": "Create payment transaction",
+
+    "TEACHER_CREATE": "Create teacher",
+    "TEACHER_UPDATE": "Update teacher",
+    "TEACHER_RESET_PASSWORD": "Reset teacher password",
+    "TEACHER_DELETE": "Delete teacher",
+    "TEACHER_RESTORE": "Restore teacher",
+    "TEACHER_ASSIGN_CLASSES": "Assign classes to teacher",
+
+    "PROFILE_UPDATE_ME": "Update my profile"
   }
 }
