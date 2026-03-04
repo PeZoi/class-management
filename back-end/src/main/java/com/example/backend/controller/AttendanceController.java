@@ -23,6 +23,14 @@ public class AttendanceController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @PostMapping("/bulk-upsert")
+    public ResponseEntity<List<AttendanceResponse>> upsertBulkAttendance(
+            @RequestBody @Valid List<AttendanceRequest> requests
+    ) {
+        List<AttendanceResponse> responses = attendanceService.upsertBulkAttendance(requests);
+        return ResponseEntity.ok(responses);
+    }
+
     @GetMapping("/student/{studentId}")
     public ResponseEntity<List<AttendanceResponse>> getAttendanceByStudent(
             @PathVariable String studentId,

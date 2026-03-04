@@ -6,6 +6,13 @@ export const attendanceService = {
     return http.post<ResponseType<Attendance, Attendance>>('/api/attendance/create', data);
   },
 
+  bulkUpsertAttendance: (dataList: CreateAttendanceData[]) => {
+    return http.post<ResponseType<Attendance[], Attendance[]>>(
+      '/api/attendance/bulk-upsert',
+      dataList
+    );
+  },
+
   getAttendanceByStudent: (studentId: string, classId: string) => {
     return http.get<ResponseType<Attendance[], Attendance[]>>(
       `/api/attendance/student/${studentId}?classId=${classId}`

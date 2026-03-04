@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,5 +32,8 @@ public interface AttendanceRepository extends JpaRepository<Attendance, String> 
 
     // Lấy attendance theo class
     List<Attendance> findByClazzIdOrderBySessionDateDesc(String classId);
+
+    // Lấy attendance theo class trong khoảng thời gian (thường dùng để lọc theo 1 ngày)
+    List<Attendance> findByClazzIdAndSessionDateBetween(String classId, Instant start, Instant end);
 }
 

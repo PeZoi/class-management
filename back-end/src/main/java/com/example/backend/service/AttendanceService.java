@@ -16,8 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -70,6 +76,87 @@ public class AttendanceService {
         // để tránh circular dependency
 
         return mapToResponse(savedAttendance);
+    }
+
+    /**
+     * Bulk upsert attendance theo danh sách request.
+     * - Nếu học viên đã có record trong cùng lớp và cùng ngày: update status/notes
+     * - Nếu chưa có: create mới (tính sessionNumber theo sessionDate)
+     */
+    @Transactional
+    public List<AttendanceResponse> upsertBulkAttendance(List<AttendanceRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+
+        // Group theo (classId + localDate) để tối ưu query theo ngày
+        Map<String, List<AttendanceRequest>> grouped = requests.stream()
+                .collect(Collectors.groupingBy(req -> {
+                    LocalDate date = req.getSessionDate().atZone(ZoneId.systemDefault()).toLocalDate();
+                    return req.getClassId() + "|" + date;
+                }));
+
+        List<AttendanceResponse> result = new ArrayList<>();
+
+        for (Map.Entry<String, List<AttendanceRequest>> entry : grouped.entrySet()) {
+            List<AttendanceRequest> groupRequests = entry.getValue();
+            if (groupRequests.isEmpty()) continue;
+
+            String classId = groupRequests.get(0).getClassId();
+            LocalDate localDate = groupRequests.get(0).getSessionDate().atZone(ZoneId.systemDefault()).toLocalDate();
+
+            // Validate class 1 lần / group
+            Class clazz = classRepository.findById(classId)
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+
+            // Load students theo ids (1 query)
+            Set<String> studentIds = groupRequests.stream().map(AttendanceRequest::getStudentId).collect(Collectors.toSet());
+            Map<String, Student> studentMap = studentRepository.findAllById(studentIds).stream()
+                    .collect(Collectors.toMap(Student::getId, Function.identity()));
+            if (studentMap.size() != studentIds.size()) {
+                throw new NotFoundException("Không tìm thấy một hoặc nhiều học viên");
+            }
+
+            // Load existing attendance theo class + ngày (1 query)
+            ZonedDateTime startOfDay = localDate.atStartOfDay(ZoneId.systemDefault());
+            Instant start = startOfDay.toInstant();
+            Instant end = startOfDay.plusDays(1).minusNanos(1).toInstant();
+            List<Attendance> existingForDay = attendanceRepository.findByClazzIdAndSessionDateBetween(classId, start, end);
+            Map<String, Attendance> existingByStudentId = new HashMap<>();
+            for (Attendance att : existingForDay) {
+                existingByStudentId.put(att.getStudent().getId(), att);
+            }
+
+            for (AttendanceRequest req : groupRequests) {
+                Student student = studentMap.get(req.getStudentId());
+
+                Attendance existing = existingByStudentId.get(req.getStudentId());
+                if (existing != null) {
+                    // Update
+                    existing.setStatus(req.getStatus());
+                    existing.setNotes(req.getNotes());
+                    // normalize sessionDate về request (nếu FE gửi time khác nhau)
+                    existing.setSessionDate(req.getSessionDate());
+                    Attendance saved = attendanceRepository.save(existing);
+                    result.add(mapToResponse(saved));
+                } else {
+                    // Create
+                    Integer sessionNumber = calculateSessionNumber(req.getStudentId(), classId, req.getSessionDate());
+                    Attendance attendance = Attendance.builder()
+                            .student(student)
+                            .clazz(clazz)
+                            .sessionDate(req.getSessionDate())
+                            .sessionNumber(sessionNumber)
+                            .status(req.getStatus())
+                            .notes(req.getNotes())
+                            .build();
+                    Attendance saved = attendanceRepository.save(attendance);
+                    result.add(mapToResponse(saved));
+                }
+            }
+        }
+
+        return result;
     }
 
     /**

@@ -71,11 +71,12 @@ export function useCreateBulkAttendance() {
 
   return useMutation({
     mutationFn: async (dataList: CreateAttendanceData[]) => {
-      const promises = dataList.map(data => attendanceService.createAttendance(data));
-      return Promise.all(promises);
+      return attendanceService.bulkUpsertAttendance(dataList);
     },
-    onSuccess: () => {
-      toast.success('Điểm danh thành công');
+    onSuccess: (response) => {
+      if (response.status === 200 || response.status === 201) {
+        toast.success('Điểm danh thành công');
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
     },
@@ -120,27 +121,8 @@ export function useUpsertBulkAttendance() {
       dataList: CreateAttendanceData[]; 
       existingRecords: Attendance[] 
     }) => {
-      // Tạo map để tra cứu nhanh existing records
-      const existingMap = new Map(
-        existingRecords.map(record => [record.studentId, record])
-      );
-
-      const promises = dataList.map(data => {
-        const existingRecord = existingMap.get(data.studentId);
-        
-        if (existingRecord) {
-          // Update nếu đã tồn tại
-          return attendanceService.updateAttendance(existingRecord.id, {
-            id: existingRecord.id,
-            ...data
-          });
-        } else {
-          // Create mới nếu chưa tồn tại
-          return attendanceService.createAttendance(data);
-        }
-      });
-
-      return Promise.all(promises);
+      // Backend sẽ tự upsert theo (classId + ngày + studentId) trong 1 request
+      return attendanceService.bulkUpsertAttendance(dataList);
     },
     onSuccess: (_, variables) => {
       const hasExisting = variables.existingRecords.length > 0;
