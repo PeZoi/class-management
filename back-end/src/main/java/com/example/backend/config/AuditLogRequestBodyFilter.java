@@ -26,8 +26,9 @@ public class AuditLogRequestBodyFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        // Chỉ wrap các request API
-        if (!request.getRequestURI().startsWith("/api/")) {
+        // Chỉ wrap các request API (chuẩn hoá path để không lệch do context-path / trailing slash)
+        String path = normalizePath(request);
+        if (!path.startsWith("/api/")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -36,6 +37,24 @@ public class AuditLogRequestBodyFilter extends OncePerRequestFilter {
 
         // Tiếp tục filter chain; Interceptor sẽ đọc lại body từ wrappedRequest (nếu controller đã đọc body).
         filterChain.doFilter(wrappedRequest, response);
+    }
+
+    private String normalizePath(HttpServletRequest request) {
+        if (request == null) {
+            return "";
+        }
+        String uri = request.getRequestURI();
+        if (uri == null) {
+            uri = "";
+        }
+        String ctx = request.getContextPath();
+        if (ctx != null && !ctx.isBlank() && uri.startsWith(ctx)) {
+            uri = uri.substring(ctx.length());
+        }
+        if (uri.length() > 1 && uri.endsWith("/")) {
+            uri = uri.substring(0, uri.length() - 1);
+        }
+        return uri;
     }
 }
 

@@ -7,6 +7,7 @@ export interface AuditLogType {
   apiDescriptionKey?: string | null;
   ipAddress: string | null;
   success: boolean | null;
+  statusCode: number | null;
   details: string | null;
   createdAt: string;
 }

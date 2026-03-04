@@ -73,7 +73,8 @@ export function StudentFilter({
       studentStatus: 'ACTIVE',
       className: 'all',
       gender: 'all',
-      sortBy: 'name',
+      // Mặc định sort theo ngày tham gia
+      sortBy: 'joinedDate',
       sortOrder: 'asc',
     });
   };

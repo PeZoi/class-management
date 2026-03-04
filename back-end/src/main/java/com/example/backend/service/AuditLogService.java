@@ -41,6 +41,7 @@ public class AuditLogService {
      * @param path           Đường dẫn request
      * @param ipAddress      Địa chỉ IP client
      * @param success        Trạng thái thành công/thất bại
+     * @param statusCode     HTTP status code của response
      * @param apiDescriptionKey Key mô tả API để FE dùng i18n
      * @param details           Payload/request data được format JSON (lưu dạng String)
      */
@@ -49,6 +50,7 @@ public class AuditLogService {
                     String path,
                     String ipAddress,
                     boolean success,
+                    Integer statusCode,
                     String apiDescriptionKey,
                     String details) {
         AuditLog auditLog = new AuditLog();
@@ -60,6 +62,7 @@ public class AuditLogService {
         auditLog.setPath(path);
         auditLog.setIpAddress(ipAddress);
         auditLog.setSuccess(success);
+        auditLog.setStatusCode(statusCode);
         auditLog.setApiDescriptionKey(apiDescriptionKey);
         auditLog.setDetails(details);
 
@@ -96,7 +99,7 @@ public class AuditLogService {
      * @param username   Lọc theo username (contains, ignore case)
      * @param method     Lọc theo HTTP method (exact, ví dụ: GET/POST/PUT/DELETE)
      * @param success    Lọc theo trạng thái thành công/thất bại
-     * @param search     Tìm kiếm toàn văn trên action/path/apiDescriptionKey/username
+     * @param search     Tìm kiếm toàn văn trên action/path/username (KHÔNG còn search theo mô tả API)
      * @param from       createdAt từ thời điểm (>=)
      * @param to         createdAt tới thời điểm (<=)
      */
@@ -137,7 +140,6 @@ public class AuditLogService {
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("action")), likeSearch),
                         cb.like(cb.lower(root.get("path")), likeSearch),
-                        cb.like(cb.lower(root.get("apiDescriptionKey")), likeSearch),
                         cb.like(cb.lower(root.get("username")), likeSearch)
                 ));
             }
@@ -181,6 +183,7 @@ public class AuditLogService {
                 .apiDescriptionKey(entity.getApiDescriptionKey())
                 .ipAddress(entity.getIpAddress())
                 .success(entity.getSuccess())
+                .statusCode(entity.getStatusCode())
                 .details(entity.getDetails())
                 .createdAt(entity.getCreatedAt())
                 .build();

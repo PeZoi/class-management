@@ -20,6 +20,7 @@ public class AuditLogResponse {
     private String apiDescriptionKey;
     private String ipAddress;
     private Boolean success;
+    private Integer statusCode;
     private String details;
     private Instant createdAt;
 }

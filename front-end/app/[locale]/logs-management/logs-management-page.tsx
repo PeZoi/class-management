@@ -12,13 +12,10 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { AuditLogFilterState, AuditLogType, PageResponse } from '@/types';
 import { DataTable, SortableHeader } from '@/components/ui/data-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { FloatingLabelSelect } from '@/components/ui/floating-label-select';
-import { SelectItem } from '@/components/ui/select';
-import { DatePickerRange } from '@/components/ui/date-range-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { LogsFilter } from './_components/logs-filter';
 import {
   Dialog,
   DialogContent,
@@ -36,10 +33,8 @@ import {
   Copy,
   FileText,
   Network,
-  Search,
   ShieldCheck,
   User,
-  X,
   Loader2,
   FileX,
 } from 'lucide-react';
@@ -153,7 +148,9 @@ export default function LogsManagementPage() {
   const [selectedDetails, setSelectedDetails] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [copyPathSuccess, setCopyPathSuccess] = useState<string | null>(null);
+  // Lưu trạng thái copy path theo id của log, không dùng theo path string
+  // để tránh trường hợp nhiều row có cùng path thì tất cả cùng hiển thị "đã copy".
+  const [copiedPathLogId, setCopiedPathLogId] = useState<number | null>(null);
 
   // Detect dark mode
   useEffect(() => {
@@ -248,15 +245,27 @@ export default function LogsManagementPage() {
         ),
         cell: ({ row }) => {
           const key = row.original.apiDescriptionKey;
-          let display = '';
+          const actionFallback = row.original.action || '';
 
-          if (key) {
+          let display = actionFallback;
+
+          // Chỉ cố gắng translate nếu key ở dạng "symbolic" (VIẾT HOA + GẠCH DƯỚI),
+          // ví dụ: AUTH_LOGIN, STUDENT_CREATE,...
+          // Các key fallback kiểu "POST /api/check_hwid" sẽ không gọi i18n để
+          // tránh lỗi MISSING_MESSAGE và hiển thị luôn chuỗi mặc định.
+          const isSymbolicKey = !!key && /^[A-Z0-9_]+$/.test(key);
+
+          if (isSymbolicKey && key) {
             try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               display = tApi(key as any);
             } catch {
-              // Nếu thiếu key trong file i18n, fallback về chính key
-              display = key;
+              // Nếu thiếu key trong file i18n, fallback lần cuối về action hoặc chính key
+              display = actionFallback || key;
             }
+          } else if (!display && key) {
+            // Trường hợp không có action nhưng có key, dùng luôn key
+            display = key;
           }
 
           return (
@@ -323,6 +332,7 @@ export default function LogsManagementPage() {
         ),
         cell: ({ row }) => {
           const path = row.original.path ?? '';
+          const logId = row.original.id;
           return (
             <div className="flex items-start gap-2">
               <Tooltip>
@@ -354,20 +364,20 @@ export default function LogsManagementPage() {
                         size="icon"
                         className={cn(
                           'h-8 w-8 shrink-0 transition-all duration-200',
-                          copyPathSuccess === path &&
+                          copiedPathLogId === logId &&
                             'bg-emerald-50 border-emerald-500 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-400 dark:text-emerald-300',
                         )}
                         onClick={async () => {
                           try {
                             await navigator.clipboard.writeText(path);
-                            setCopyPathSuccess(path);
-                            setTimeout(() => setCopyPathSuccess(null), 2000);
+                            setCopiedPathLogId(logId);
+                            setTimeout(() => setCopiedPathLogId(null), 2000);
                           } catch (e) {
                             console.error('Copy failed', e);
                           }
                         }}
                       >
-                        {copyPathSuccess === path ? (
+                        {copiedPathLogId === logId ? (
                           <CheckCircle2 className="size-4" />
                         ) : (
                           <Copy className="size-4" />
@@ -375,10 +385,10 @@ export default function LogsManagementPage() {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="top">
-                      {copyPathSuccess === path ? t('copyDetailsSuccess') : t('copyPath')}
+                      {copiedPathLogId === logId ? t('copyDetailsSuccess') : t('copyPath')}
                     </TooltipContent>
                   </Tooltip>
-                  {copyPathSuccess === path && (
+                  {copiedPathLogId === logId && (
                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-emerald-600 dark:bg-emerald-500 text-white text-xs rounded-md whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-200 z-50">
                       {t('copyDetailsSuccess')}
                       <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-emerald-600 dark:bg-emerald-500 rotate-45"></div>
@@ -467,6 +477,49 @@ export default function LogsManagementPage() {
         },
       },
       {
+        accessorKey: 'statusCode',
+        header: ({ column }) => (
+          <SortableHeader column={column} className="justify-center">
+            <div className="flex items-center justify-center gap-2">
+              <Network className="size-4" />
+              {t('statusCode')}
+            </div>
+          </SortableHeader>
+        ),
+        cell: ({ row }) => {
+          const statusCode = row.original.statusCode;
+          if (statusCode === null || statusCode === undefined) {
+            return (
+              <div className="text-center">
+                <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+              </div>
+            );
+          }
+          
+          // Xác định màu sắc dựa trên status code
+          let badgeClass = '';
+          if (statusCode >= 200 && statusCode < 300) {
+            badgeClass = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+          } else if (statusCode >= 300 && statusCode < 400) {
+            badgeClass = 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+          } else if (statusCode >= 400 && statusCode < 500) {
+            badgeClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+          } else if (statusCode >= 500) {
+            badgeClass = 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300';
+          } else {
+            badgeClass = 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300';
+          }
+          
+          return (
+            <div className="text-center">
+              <span className={cn('inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold font-mono', badgeClass)}>
+                {statusCode}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: 'ipAddress',
         header: () => (
           <div className="flex items-center gap-2">
@@ -511,39 +564,17 @@ export default function LogsManagementPage() {
         },
       },
     ],
-    [t, copyPathSuccess],
+    [t, tApi, copiedPathLogId],
   );
-
-  const handleDateRangeChange = (value: { startDate: string; endDate: string }) => {
-    handleFilterChange({
-      ...filters,
-      startDate: value.startDate,
-      endDate: value.endDate,
-    });
-  };
-
-  const handleResetFilters = () => {
-    handleFilterChange({
-      searchQuery: '',
-      username: '',
-      method: 'all',
-      status: 'all',
-      startDate: undefined,
-      endDate: undefined,
-    });
-  };
-
-  const hasActiveFilters =
-    filters.searchQuery ||
-    filters.method !== 'all' ||
-    filters.status !== 'all' ||
-    filters.startDate ||
-    filters.endDate;
 
   const errorMessage = logsQuery.isError ? tCommon('errorLoadData') : null;
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
+      {/* Filter and Search - Always visible */}
+      <LogsFilter filters={filters} onFilterChange={handleFilterChange} />
+
+      {/* Logs Table */}
       <Card className="border-0 shadow-lg bg-white dark:bg-slate-900">
         <CardHeader>
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
@@ -555,178 +586,6 @@ export default function LogsManagementPage() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search + Filters */}
-          <div className="space-y-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-slate-400" />
-              <Input
-                placeholder={t('searchPlaceholder')}
-                value={filters.searchQuery}
-                onChange={(e) =>
-                  handleFilterChange({ ...filters, searchQuery: e.target.value })
-                }
-                className="h-12 pl-12 pr-4 text-base bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-md focus-visible:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500/20 transition-all"
-              />
-            </div>
-
-            {/* Filter row */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Method */}
-              <FloatingLabelSelect
-                label={t('filterByMethod')}
-                value={filters.method}
-                onValueChange={(value) =>
-                  handleFilterChange({ ...filters, method: value as AuditLogFilterState['method'] })
-                }
-                className="w-auto min-w-[140px]"
-              >
-                <SelectItem value="all">{t('filter_all_methods')}</SelectItem>
-                <SelectItem value="GET">
-                  <span className="text-blue-600 dark:text-blue-400 font-semibold">GET</span>
-                </SelectItem>
-                <SelectItem value="POST">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">POST</span>
-                </SelectItem>
-                <SelectItem value="PUT">
-                  <span className="text-amber-600 dark:text-amber-400 font-semibold">PUT</span>
-                </SelectItem>
-                <SelectItem value="PATCH">
-                  <span className="text-indigo-600 dark:text-indigo-400 font-semibold">PATCH</span>
-                </SelectItem>
-                <SelectItem value="DELETE">
-                  <span className="text-rose-600 dark:text-rose-400 font-semibold">DELETE</span>
-                </SelectItem>
-              </FloatingLabelSelect>
-
-              {/* Status */}
-              <FloatingLabelSelect
-                label={t('filterByStatus')}
-                value={filters.status}
-                onValueChange={(value) =>
-                  handleFilterChange({
-                    ...filters,
-                    status: value as AuditLogFilterState['status'],
-                  })
-                }
-                className="w-auto min-w-[160px]"
-              >
-                <SelectItem value="all">{t('filter_all_status')}</SelectItem>
-                <SelectItem value="success">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="size-4 text-emerald-500" />
-                    <span>{t('filter_status_success')}</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="failed">
-                  <div className="flex items-center gap-2">
-                    <CircleOff className="size-4 text-rose-500" />
-                    <span>{t('filter_status_failed')}</span>
-                  </div>
-                </SelectItem>
-              </FloatingLabelSelect>
-
-              {/* Date range */}
-              <DatePickerRange
-                label={t('filterByDate')}
-                placeholder={t('filterByDatePlaceholder')}
-                startDate={filters.startDate}
-                endDate={filters.endDate}
-                onChangeValue={handleDateRangeChange}
-              />
-
-              {/* Reset */}
-              {hasActiveFilters && (
-                <>
-                  <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleResetFilters}
-                    className="h-9 rounded-full text-slate-600 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-950/50 transition-all text-sm"
-                  >
-                    <X className="size-4 mr-1.5" />
-                    {t('clearFilters')}
-                  </Button>
-                </>
-              )}
-            </div>
-
-            {/* Active filter pills */}
-            {hasActiveFilters && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  {t('activeFilters')}
-                </span>
-                {filters.searchQuery && (
-                  <Badge
-                    variant="outline"
-                    className="text-xs gap-1.5 px-2.5 py-1 bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300"
-                  >
-                    <Search className="size-3" />
-                    {filters.searchQuery}
-                  </Badge>
-                )}
-                {filters.method !== 'all' && (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      'text-xs gap-1.5 px-2.5 py-1 font-semibold',
-                      filters.method === 'GET' &&
-                        'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300',
-                      filters.method === 'POST' &&
-                        'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-300',
-                      filters.method === 'PUT' &&
-                        'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300',
-                      filters.method === 'PATCH' &&
-                        'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-300',
-                      filters.method === 'DELETE' &&
-                        'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-300',
-                    )}
-                  >
-                    <ShieldCheck className="size-3" />
-                    {filters.method}
-                  </Badge>
-                )}
-                {filters.status !== 'all' && (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      'text-xs gap-1.5 px-2.5 py-1 font-semibold',
-                      filters.status === 'success'
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-300'
-                        : 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-300',
-                    )}
-                  >
-                    {filters.status === 'success' ? (
-                      <CheckCircle2 className="size-3" />
-                    ) : (
-                      <CircleOff className="size-3" />
-                    )}
-                    {filters.status === 'success' ? t('success') : t('failed')}
-                  </Badge>
-                )}
-                {(filters.startDate || filters.endDate) && (
-                  <Badge
-                    variant="outline"
-                    className="text-xs gap-1.5 px-2.5 py-1 bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-950/30 dark:border-purple-800 dark:text-purple-300"
-                  >
-                    <Calendar className="size-3" />
-                    {filters.startDate && filters.endDate
-                      ? t('dateFilter_range', {
-                          start: filters.startDate,
-                          end: filters.endDate,
-                        })
-                      : filters.startDate
-                      ? t('dateFilter_from', { date: filters.startDate })
-                      : t('dateFilter_to', { date: filters.endDate ?? '' })}
-                  </Badge>
-                )}
-              </div>
-            )}
-          </div>
-
           {/* Table */}
           <div>
             {logsQuery.isLoading ? (

@@ -106,8 +106,7 @@ public class PaymentController {
             // Set headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", 
-                "invoice_" + payment.getPaymentId() + ".pdf");
+            headers.setContentDispositionFormData("attachment", payment.getPaymentId() + ".pdf");
             headers.setContentLength(pdfBytes.length);
             
             return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);

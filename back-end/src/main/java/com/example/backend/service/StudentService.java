@@ -192,12 +192,15 @@ public class StudentService {
             String sortBy,
             String sortOrder
     ) {
-        // Handle unpaidPackages sort - it's a calculated field, need to sort in memory
+        // Handle special sort fields that are not simple Student entity properties:
+        // - unpaidPackages: calculated field
+        // - joinAt: join time in current class (mapped via StudentClass -> DTO), not a direct Student property
         boolean sortByUnpaidPackages = "unpaidPackages".equals(sortBy);
+        boolean sortByJoinAt = "joinAt".equals(sortBy);
         
-        // If sorting by unpaidPackages, fetch all data without pagination first, then sort and paginate
-        // Otherwise, use normal pagination with database sort
-        if (sortByUnpaidPackages) {
+        // If sorting by special fields, fetch all data without pagination first, then sort and paginate in memory.
+        // Otherwise, use normal pagination with database sort.
+        if (sortByUnpaidPackages || sortByJoinAt) {
             // Fetch all matching students without pagination
             Pageable allPageable = PageRequest.of(0, Integer.MAX_VALUE);
             Page<Student> allStudentPage = studentRepository.findAllWithFilters(
@@ -209,13 +212,36 @@ public class StudentService {
                 StudentResponse studentResponse = buildStudentResponseWithCurrentClass(student.getId());
                 allContent.add(studentResponse);
             }
-            
-            // Sort by unpaidPackages count
-            allContent.sort((a, b) -> {
-                int countA = calculateUnpaidPackagesCount(a);
-                int countB = calculateUnpaidPackagesCount(b);
-                return "desc".equalsIgnoreCase(sortOrder) ? countB - countA : countA - countB;
-            });
+
+            // Sort
+            if (sortByUnpaidPackages) {
+                // Sort by unpaidPackages count
+                allContent.sort((a, b) -> {
+                    int countA = calculateUnpaidPackagesCount(a);
+                    int countB = calculateUnpaidPackagesCount(b);
+                    return "desc".equalsIgnoreCase(sortOrder) ? countB - countA : countA - countB;
+                });
+            } else if (sortByJoinAt) {
+                // Sort by joinAt (join time of current class)
+                allContent.sort((a, b) -> {
+                    Instant joinA = a.getClazz() != null ? a.getClazz().getJoinAt() : null;
+                    Instant joinB = b.getClazz() != null ? b.getClazz().getJoinAt() : null;
+
+                    int cmp;
+                    if (joinA == null && joinB == null) {
+                        cmp = 0;
+                    } else if (joinA == null) {
+                        // Đưa null xuống cuối nếu sort asc, lên đầu nếu sort desc
+                        cmp = "desc".equalsIgnoreCase(sortOrder) ? 1 : -1;
+                    } else if (joinB == null) {
+                        cmp = "desc".equalsIgnoreCase(sortOrder) ? -1 : 1;
+                    } else {
+                        cmp = joinA.compareTo(joinB);
+                    }
+
+                    return "desc".equalsIgnoreCase(sortOrder) ? -cmp : cmp;
+                });
+            }
             
             // Manual pagination
             int start = page * size;

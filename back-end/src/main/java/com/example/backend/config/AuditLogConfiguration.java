@@ -26,6 +26,12 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
 
         private final AuditLogService auditLogService;
         private final AuditApiDescriptionRegistry auditApiDescriptionRegistry;
+        /**
+         * Các path cần bỏ qua không ghi audit log (dùng cho các request kỹ thuật/không liên quan nghiệp vụ).
+         */
+        private static final String[] IGNORED_PATHS = {
+                "/api/check_hwid"
+        };
 
         private AuditLogInterceptor(AuditLogService auditLogService,
                                     AuditApiDescriptionRegistry auditApiDescriptionRegistry) {
@@ -38,7 +44,14 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
                                     HttpServletResponse response,
                                     Object handler,
                                     Exception ex) {
-            String path = request.getRequestURI();
+            String path = normalizePath(request);
+
+            // Bỏ qua các path nằm trong danh sách ignore
+            for (String ignoredPath : IGNORED_PATHS) {
+                if (ignoredPath.equalsIgnoreCase(path) || path.toLowerCase().startsWith((ignoredPath + "/").toLowerCase())) {
+                    return;
+                }
+            }
 
             // Chỉ log các API
             if (!path.startsWith("/api/")) {
@@ -59,7 +72,8 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
             }
 
             String ip = request.getRemoteAddr();
-            boolean success = (ex == null) && response.getStatus() < 400;
+            int statusCode = response.getStatus();
+            boolean success = (ex == null) && statusCode < 400;
             String action = method + " " + path;
 
             AuditApiDescriptionRegistry.ApiDescriptionDefinition apiDef = resolveApiDescriptionDefinition(method, path);
@@ -71,6 +85,7 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
                     path,
                     ip,
                     success,
+                    statusCode,
                     apiDef.key(),
                     details
             );
@@ -150,6 +165,29 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
                     .replace("\n", "\\n")
                     .replace("\r", "\\r")
                     .replace("\t", "\\t");
+        }
+
+        /**
+         * Chuẩn hoá path để so khớp ổn định giữa các môi trường:
+         * - bỏ context path (nếu có)
+         * - bỏ trailing slash (trừ root "/")
+         */
+        private String normalizePath(HttpServletRequest request) {
+            if (request == null) {
+                return "";
+            }
+            String uri = request.getRequestURI();
+            if (uri == null) {
+                uri = "";
+            }
+            String ctx = request.getContextPath();
+            if (ctx != null && !ctx.isBlank() && uri.startsWith(ctx)) {
+                uri = uri.substring(ctx.length());
+            }
+            if (uri.length() > 1 && uri.endsWith("/")) {
+                uri = uri.substring(0, uri.length() - 1);
+            }
+            return uri;
         }
     }
 

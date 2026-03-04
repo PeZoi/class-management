@@ -115,7 +115,8 @@ const parseFiltersFromURL = (searchParams: URLSearchParams): FilterState => {
     studentStatus: (searchParams.get('studentStatus') as FilterState['studentStatus']) || 'ACTIVE',
     className: searchParams.get('class') || 'all',
     gender: (searchParams.get('gender') as FilterState['gender']) || 'all',
-    sortBy: (searchParams.get('sortBy') as FilterState['sortBy']) || 'name',
+    // Mặc định sort theo ngày tham gia
+    sortBy: (searchParams.get('sortBy') as FilterState['sortBy']) || 'joinedDate',
     sortOrder: (searchParams.get('sortOrder') as FilterState['sortOrder']) || 'asc',
   };
 };
@@ -129,7 +130,8 @@ const filtersToURLParams = (filters: FilterState): URLSearchParams => {
   if (filters.studentStatus && filters.studentStatus !== 'ACTIVE') params.set('studentStatus', filters.studentStatus);
   if (filters.className !== 'all') params.set('class', filters.className);
   if (filters.gender !== 'all') params.set('gender', filters.gender);
-  if (filters.sortBy !== 'name') params.set('sortBy', filters.sortBy);
+  // joinedDate là sort mặc định, chỉ đẩy lên URL nếu khác
+  if (filters.sortBy !== 'joinedDate') params.set('sortBy', filters.sortBy);
   if (filters.sortOrder !== 'asc') params.set('sortOrder', filters.sortOrder);
   
   return params;

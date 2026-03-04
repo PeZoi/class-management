@@ -65,6 +65,12 @@ public class AuditLog {
     private Boolean success;
 
     /**
+     * HTTP status code của response (ví dụ: 200, 400, 404, 500,...).
+     */
+    @Column(name = "status_code")
+    private Integer statusCode;
+
+    /**
      * Thông tin chi tiết (nếu cần) – có thể là JSON param/body, hoặc message ngắn.
      */
     @Lob
