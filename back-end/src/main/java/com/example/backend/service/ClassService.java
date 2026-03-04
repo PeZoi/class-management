@@ -191,6 +191,12 @@ public class ClassService {
     }
 
     public ClassResponse create(ClassRequest classRequest) {
+        // Không cho phép tạo mới nếu đã tồn tại lớp đang hoạt động cùng tên
+        classRepository.findActiveByName(classRequest.getName())
+                .ifPresent(existing -> {
+                    throw new CustomException("Tên lớp đã tồn tại", HttpStatus.BAD_REQUEST);
+                });
+
         User teacher = null;
         if (classRequest.getTeacherId() != null && !classRequest.getTeacherId().trim().isEmpty()) {
             teacher = userRepository.findById(classRequest.getTeacherId())
@@ -253,6 +259,18 @@ public class ClassService {
 
     public ClassResponse update(String classId, ClassRequest classRequest) {
         Class classDB = classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+
+        // Nếu đổi tên lớp, cần kiểm tra trùng với lớp đang hoạt động khác
+        String newName = classRequest.getName();
+        if (newName != null && !newName.equals(classDB.getName())) {
+            classRepository.findActiveByName(newName)
+                    .ifPresent(existing -> {
+                        if (!existing.getId().equals(classId)) {
+                            throw new CustomException("Tên lớp đã tồn tại", HttpStatus.BAD_REQUEST);
+                        }
+                    });
+        }
+
         classDB.setName(classRequest.getName());
         classDB.setDescription(classRequest.getDescription());
         classDB.setMonthlyFee(classRequest.getMonthlyFee());

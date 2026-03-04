@@ -89,6 +89,38 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Xử lý các lỗi nghiệp vụ do mình chủ động ném ra (CustomException).
+     * - Nếu là lỗi 4xx (BAD_REQUEST, FORBIDDEN, ...) thì chỉ log WARN, không gửi Telegram.
+     * - Nếu là lỗi 5xx (nếu bạn dùng CustomException cho 5xx) thì log ERROR và gửi Telegram.
+     */
+    @ExceptionHandler(CustomException.class)
+    public ResponseEntity<ApiErrorResponse> handleCustomException(CustomException ex,
+                                                                  HttpServletRequest request) {
+        HttpStatus status = ex.getHttpStatus() != null ? ex.getHttpStatus() : HttpStatus.BAD_REQUEST;
+
+        LogContext ctx = buildContext(request);
+        ctx.setStatusCode(status.value());
+
+        if (status.is4xxClientError()) {
+            // Lỗi do input/nghiệp vụ phía client => chỉ warn, không gửi Telegram
+            loggerService.warn(ctx, ex.getMessage());
+        } else {
+            // Nếu sau này dùng CustomException cho 5xx thì vẫn log error + Telegram
+            loggerService.error(ctx, ex);
+        }
+
+        ApiErrorResponse body = ApiErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(status.value())
+                .code("BUSINESS_ERROR")
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(status).body(body);
+    }
+
+    /**
      * Fallback cho mọi exception khác: trả 500 và log ERROR.
      */
     @ExceptionHandler(Exception.class)

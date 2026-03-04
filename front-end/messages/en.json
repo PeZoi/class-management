@@ -1184,7 +1184,8 @@
     "CLASS_SHIFT_UPDATE": "Update class shift",
     "CLASS_SHIFT_DELETE": "Delete class shift",
 
-    "ATTENDANCE_CREATE": "Create attendance",
+    "ATTENDANCE_CREATE": "Attendance student",
+    "ATTENDANCE_BULK_UPSERT": "Attendance students",
     "ATTENDANCE_UPDATE": "Update attendance",
     "ATTENDANCE_DELETE": "Delete attendance",
 

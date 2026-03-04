@@ -1191,7 +1191,8 @@
     "CLASS_SHIFT_UPDATE": "Cập nhật ca học",
     "CLASS_SHIFT_DELETE": "Xoá ca học",
 
-    "ATTENDANCE_CREATE": "Tạo điểm danh",
+    "ATTENDANCE_CREATE": "Điểm danh học viên",
+    "ATTENDANCE_BULK_UPSERT": "Điểm danh học viên",
     "ATTENDANCE_UPDATE": "Cập nhật điểm danh",
     "ATTENDANCE_DELETE": "Xoá điểm danh",
 

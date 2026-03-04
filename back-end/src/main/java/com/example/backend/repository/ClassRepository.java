@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ClassRepository extends JpaRepository<Class,String> {
@@ -31,4 +32,8 @@ public interface ClassRepository extends JpaRepository<Class,String> {
     // Lấy tất cả classes chưa bị xoá (dùng cho biểu đồ doanh thu)
     @Query("SELECT c FROM Class c WHERE c.isDeleted IS NULL OR c.isDeleted = false")
     List<Class> findAllActive();
+
+    // Tìm class đang hoạt động theo tên (không tính các lớp đã xoá mềm)
+    @Query("SELECT c FROM Class c WHERE c.name = :name AND (c.isDeleted IS NULL OR c.isDeleted = false)")
+    Optional<Class> findActiveByName(String name);
 }

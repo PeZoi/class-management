@@ -45,6 +45,7 @@ public class AuditApiDescriptionRegistry {
 
         // Attendance
         add(HttpMethod.POST, "/api/attendance/create", "ATTENDANCE_CREATE", "Tạo điểm danh");
+        add(HttpMethod.POST, "/api/attendance/bulk-upsert", "ATTENDANCE_BULK_UPSERT", "Điểm danh học viên");
         add(HttpMethod.PUT, "/api/attendance/**", "ATTENDANCE_UPDATE", "Cập nhật điểm danh");
         add(HttpMethod.DELETE, "/api/attendance/**", "ATTENDANCE_DELETE", "Xoá điểm danh");
 

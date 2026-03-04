@@ -31,7 +31,7 @@ public class Class extends Auditable {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(length = 45, nullable = false, unique = true)
+    @Column(length = 45, nullable = false)
     private String name;
 
     @Column(name = "description", length = 255)
