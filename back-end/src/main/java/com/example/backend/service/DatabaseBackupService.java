@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -67,6 +68,15 @@ public class DatabaseBackupService {
 
             String host = extractHost(datasourceUrl);
             int port = extractPort(datasourceUrl);
+
+            // Nếu host là localhost, 127.0.0.1, hoặc 172.17.0.1 (Docker gateway),
+            // thay bằng host.docker.internal để container có thể kết nối đến MySQL trên host VPS
+            // host.docker.internal đáng tin cậy hơn và hoạt động tốt trên cả Linux và Windows
+            if (host != null && (host.equals("localhost") || host.equals("127.0.0.1") || host.equals("172.17.0.1"))) {
+                String originalHost = host;
+                host = "host.docker.internal";
+                log.info("Đã thay đổi host từ {} thành host.docker.internal để kết nối từ container", originalHost);
+            }
 
             if (host != null) {
                 log.info("Host MySQL dùng để backup: {}:{}", host, port);
@@ -246,19 +256,36 @@ public class DatabaseBackupService {
             command.add("-u");
             command.add(datasourceUsername);
             
+            // Sử dụng -p (không có password sau -p) để mysqldump đọc từ stdin hoặc dùng MYSQL_PWD env
+            // Nhưng để đơn giản, dùng -p với password (có thể có vấn đề nếu password có ký tự đặc biệt)
+            // Nếu có vấn đề, có thể chuyển sang dùng MYSQL_PWD environment variable
             if (datasourcePassword != null && !datasourcePassword.isBlank()) {
                 command.add("-p" + datasourcePassword);
             }
             
             command.add(databaseName);
 
+            // Log command (không log password)
+            log.info("Đang thực thi mysqldump với host: {}, port: {}, user: {}, database: {}", 
+                    host, port, datasourceUsername, databaseName);
+
             // Thực thi command
             ProcessBuilder processBuilder = new ProcessBuilder(command);
             processBuilder.redirectOutput(outputFile);
-            processBuilder.redirectErrorStream(true);
+            // Tách stderr để đọc lỗi chi tiết
+            processBuilder.redirectErrorStream(false);
 
-            log.info("Đang thực thi mysqldump...");
             Process process = processBuilder.start();
+
+            // Đọc stderr để lấy thông báo lỗi chi tiết
+            StringBuilder errorOutput = new StringBuilder();
+            try (java.io.BufferedReader errorReader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = errorReader.readLine()) != null) {
+                    errorOutput.append(line).append("\n");
+                }
+            }
 
             int exitCode = process.waitFor();
 
@@ -266,7 +293,12 @@ public class DatabaseBackupService {
                 log.info("mysqldump hoàn thành thành công");
                 return true;
             } else {
-                log.error("mysqldump thất bại với exit code: {}", exitCode);
+                String errorMsg = errorOutput.toString().trim();
+                if (!errorMsg.isEmpty()) {
+                    log.error("mysqldump thất bại với exit code: {}. Chi tiết lỗi: {}", exitCode, errorMsg);
+                } else {
+                    log.error("mysqldump thất bại với exit code: {} (không có thông báo lỗi chi tiết)", exitCode);
+                }
                 return false;
             }
 
