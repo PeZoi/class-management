@@ -138,21 +138,30 @@ public class DatabaseBackupService {
 
     /**
      * Extract database name từ JDBC URL.
-     * Ví dụ: jdbc:mysql://localhost:3306/class_management -> class_management
+     * Ví dụ: jdbc:mysql://localhost:3306/class_management?params -> class_management
      */
     private String extractDatabaseName(String jdbcUrl) {
         if (jdbcUrl == null || jdbcUrl.isBlank()) {
             return null;
         }
 
-        // Tìm phần sau database name trong URL
-        // Format: jdbc:mysql://host:port/database?params
-        int lastSlash = jdbcUrl.lastIndexOf('/');
-        if (lastSlash == -1) {
+        // Bỏ prefix jdbc:mysql://
+        String prefix = "jdbc:mysql://";
+        String withoutPrefix = jdbcUrl;
+        if (jdbcUrl.startsWith(prefix)) {
+            withoutPrefix = jdbcUrl.substring(prefix.length());
+        }
+
+        // Tìm dấu / đầu tiên sau host:port (đây là database name)
+        // Format: host:port/database?params hoặc host/database?params
+        int slashIndex = withoutPrefix.indexOf('/');
+        if (slashIndex == -1) {
             return null;
         }
 
-        String afterSlash = jdbcUrl.substring(lastSlash + 1);
+        String afterSlash = withoutPrefix.substring(slashIndex + 1);
+        
+        // Tách database name trước dấu ? (query string)
         int questionMark = afterSlash.indexOf('?');
         if (questionMark != -1) {
             return afterSlash.substring(0, questionMark);
@@ -242,6 +251,8 @@ public class DatabaseBackupService {
             command.add("--lock-tables=false");
             command.add("--routines");
             command.add("--triggers");
+            // Bỏ qua SSL để tránh lỗi với self-signed certificate
+            command.add("--skip-ssl");
 
             // Thêm host/port nếu parse được từ JDBC URL
             if (host != null && !host.isBlank()) {
