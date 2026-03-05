@@ -19,15 +19,15 @@ services:
       JWT_KEY_SECRET: ${JWT_KEY_SECRET}
       
       # Telegram
-      APP_ENV: ${APP_ENV:production}
-      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:true}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:8319765133:AAFLSvSd83PnNE-VVvekAmI36znQkv0437c}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:1777363419}
+      APP_ENV: ${APP_ENV}
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
 
       # Backup database
-      BACKUP_ENABLED: ${BACKUP_ENABLED:true}
-      BACKUP_CRON: ${BACKUP_CRON:0 0 2 * * ?}
-      BACKUP_KEEP_FILES: ${BACKUP_KEEP_FILES:5}
+      BACKUP_ENABLED: ${BACKUP_ENABLED}
+      BACKUP_CRON: ${BACKUP_CRON}
+      BACKUP_KEEP_FILES: ${BACKUP_KEEP_FILES}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
