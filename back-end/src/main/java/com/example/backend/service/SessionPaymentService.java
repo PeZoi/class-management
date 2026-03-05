@@ -40,7 +40,7 @@ public class SessionPaymentService {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
 
-        Class clazz = classRepository.findById(classId)
+        Class clazz = classRepository.findActiveById(classId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
 
         // Tính package number
@@ -272,7 +272,7 @@ public class SessionPaymentService {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
 
-        Class clazz = classRepository.findById(classId)
+        Class clazz = classRepository.findActiveById(classId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
 
         // Lấy monthlyFee từ class

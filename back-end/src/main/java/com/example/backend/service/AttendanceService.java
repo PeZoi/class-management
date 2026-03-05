@@ -39,8 +39,8 @@ public class AttendanceService {
         Student student = studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
 
-        // Validate class
-        Class clazz = classRepository.findById(request.getClassId())
+        // Validate class (chỉ cho phép lớp chưa bị xoá mềm)
+        Class clazz = classRepository.findActiveById(request.getClassId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
 
         // Calculate session number based on sessionDate
@@ -105,8 +105,8 @@ public class AttendanceService {
             String classId = groupRequests.get(0).getClassId();
             LocalDate localDate = groupRequests.get(0).getSessionDate().atZone(ZoneId.systemDefault()).toLocalDate();
 
-            // Validate class 1 lần / group
-            Class clazz = classRepository.findById(classId)
+            // Validate class 1 lần / group (chỉ cho phép lớp chưa bị xoá mềm)
+            Class clazz = classRepository.findActiveById(classId)
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
 
             // Load students theo ids (1 query)
@@ -217,8 +217,8 @@ public class AttendanceService {
         Student student = studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
 
-        // Validate class
-        Class clazz = classRepository.findById(request.getClassId())
+        // Validate class (chỉ cho phép lớp chưa bị xoá mềm)
+        Class clazz = classRepository.findActiveById(request.getClassId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
 
         // Recalculate session number if date changed

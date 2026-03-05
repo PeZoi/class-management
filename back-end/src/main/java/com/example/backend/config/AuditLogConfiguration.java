@@ -1,6 +1,9 @@
 package com.example.backend.config;
 
 import com.example.backend.service.AuditLogService;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,14 +21,16 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
 
     private final AuditLogService auditLogService;
     private final AuditApiDescriptionRegistry auditApiDescriptionRegistry;
+    private final ObjectMapper objectMapper;
 
     /**
      * Interceptor nội bộ để ghi audit log cho các request API.
      */
-    private static class AuditLogInterceptor implements HandlerInterceptor {
+    private class AuditLogInterceptor implements HandlerInterceptor {
 
         private final AuditLogService auditLogService;
         private final AuditApiDescriptionRegistry auditApiDescriptionRegistry;
+        private final ObjectMapper objectMapper;
         /**
          * Các path cần bỏ qua không ghi audit log (dùng cho các request kỹ thuật/không liên quan nghiệp vụ).
          */
@@ -34,9 +39,11 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
         };
 
         private AuditLogInterceptor(AuditLogService auditLogService,
-                                    AuditApiDescriptionRegistry auditApiDescriptionRegistry) {
+                                    AuditApiDescriptionRegistry auditApiDescriptionRegistry,
+                                    ObjectMapper objectMapper) {
             this.auditLogService = auditLogService;
             this.auditApiDescriptionRegistry = auditApiDescriptionRegistry;
+            this.objectMapper = objectMapper;
         }
 
         @Override
@@ -71,7 +78,7 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
                 return; // bỏ qua GET và các method khác không quan trọng
             }
 
-            String ip = request.getRemoteAddr();
+            String ip = getClientIpAddress(request);
             int statusCode = response.getStatus();
             boolean success = (ex == null) && statusCode < 400;
             String action = method + " " + path;
@@ -103,12 +110,10 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
         /**
          * Xây dựng chuỗi JSON đơn giản chứa payload (body + query params).
          * Lưu dưới dạng String trong trường details.
+         * Đối với API login, sẽ loại bỏ trường password khỏi body.
          */
         private String buildDetailsJson(HttpServletRequest request, String path) {
-            // Không ghi body cho API đăng nhập để tránh lộ password
-            if (path != null && path.startsWith("/api/auth/login")) {
-                return null;
-            }
+            boolean isLoginApi = path != null && path.startsWith("/api/auth/login");
 
             StringBuilder sb = new StringBuilder();
             sb.append("{");
@@ -148,8 +153,25 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
             }
             sb.append("\"body\":");
             if (body != null && !body.isBlank()) {
-                // Giả sử body đã là JSON hợp lệ, lưu nguyên văn
-                sb.append(body);
+                if (isLoginApi) {
+                    // Đối với API login, loại bỏ trường password
+                    try {
+                        JsonNode jsonNode = objectMapper.readTree(body);
+                        if (jsonNode.isObject()) {
+                            ObjectNode objectNode = (ObjectNode) jsonNode;
+                            objectNode.remove("password");
+                            sb.append(objectMapper.writeValueAsString(objectNode));
+                        } else {
+                            sb.append(body);
+                        }
+                    } catch (Exception e) {
+                        // Nếu parse JSON thất bại, lưu nguyên văn
+                        sb.append(body);
+                    }
+                } else {
+                    // Giả sử body đã là JSON hợp lệ, lưu nguyên văn
+                    sb.append(body);
+                }
             } else {
                 sb.append("null");
             }
@@ -165,6 +187,58 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
                     .replace("\n", "\\n")
                     .replace("\r", "\\r")
                     .replace("\t", "\\t");
+        }
+
+        /**
+         * Lấy địa chỉ IP thực của client (browser), không phải IP của Docker container hoặc reverse proxy.
+         * Kiểm tra các header proxy phổ biến theo thứ tự ưu tiên.
+         */
+        private String getClientIpAddress(HttpServletRequest request) {
+            // 1. Kiểm tra X-Forwarded-For (header phổ biến nhất, được set bởi reverse proxy/load balancer)
+            String xForwardedFor = request.getHeader("X-Forwarded-For");
+            if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+                // X-Forwarded-For có thể chứa nhiều IP được phân tách bằng dấu phẩy
+                // IP đầu tiên là IP thực của client
+                String[] ips = xForwardedFor.split(",");
+                if (ips.length > 0) {
+                    String clientIp = ips[0].trim();
+                    if (!clientIp.isEmpty()) {
+                        return clientIp;
+                    }
+                }
+            }
+
+            // 2. Kiểm tra X-Real-IP (header được set bởi Nginx và một số reverse proxy khác)
+            String xRealIp = request.getHeader("X-Real-IP");
+            if (xRealIp != null && !xRealIp.isEmpty()) {
+                return xRealIp.trim();
+            }
+
+            // 3. Kiểm tra X-Forwarded (header chuẩn RFC 7239)
+            String xForwarded = request.getHeader("X-Forwarded");
+            if (xForwarded != null && !xForwarded.isEmpty()) {
+                // X-Forwarded có format: for=192.0.2.60;proto=http;by=203.0.113.43
+                String[] parts = xForwarded.split(";");
+                for (String part : parts) {
+                    if (part.trim().startsWith("for=")) {
+                        String ip = part.trim().substring(4).trim();
+                        if (!ip.isEmpty()) {
+                            // Có thể có dấu ngoặc kép hoặc IPv6 trong ngoặc vuông
+                            ip = ip.replace("\"", "").replace("[", "").replace("]", "");
+                            return ip;
+                        }
+                    }
+                }
+            }
+
+            // 4. Kiểm tra Forwarded-For (header chuẩn RFC 7239, ít dùng hơn)
+            String forwardedFor = request.getHeader("Forwarded-For");
+            if (forwardedFor != null && !forwardedFor.isEmpty()) {
+                return forwardedFor.trim();
+            }
+
+            // 5. Fallback: dùng getRemoteAddr() (có thể là IP của Docker container nếu không có proxy)
+            return request.getRemoteAddr();
         }
 
         /**
@@ -193,7 +267,7 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new AuditLogInterceptor(auditLogService, auditApiDescriptionRegistry))
+        registry.addInterceptor(new AuditLogInterceptor(auditLogService, auditApiDescriptionRegistry, objectMapper))
                 .addPathPatterns("/api/**");
     }
 }

@@ -258,7 +258,8 @@ public class ClassService {
     }
 
     public ClassResponse update(String classId, ClassRequest classRequest) {
-        Class classDB = classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+        Class classDB = classRepository.findActiveById(classId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
 
         // Nếu đổi tên lớp, cần kiểm tra trùng với lớp đang hoạt động khác
         String newName = classRequest.getName();

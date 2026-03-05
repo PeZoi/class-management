@@ -27,7 +27,7 @@ public class ClassShiftService {
 
     @Transactional
     public ClassShiftResponse create(ClassShiftRequest request) {
-        Class clazz = classRepository.findById(request.getClassId())
+        Class clazz = classRepository.findActiveById(request.getClassId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
 
         ClassShift shift = new ClassShift();
@@ -53,7 +53,7 @@ public class ClassShiftService {
 
     @Transactional(readOnly = true)
     public List<ClassShiftResponse> getByClassId(String classId) {
-        Class clazz = classRepository.findById(classId)
+        Class clazz = classRepository.findActiveById(classId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
 
         return classShiftRepository.findAllByClazz(clazz)

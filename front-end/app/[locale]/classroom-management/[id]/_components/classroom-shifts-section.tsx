@@ -370,7 +370,8 @@ export function ClassroomShiftsSection({ classId, shifts, isLoading, onRefresh }
       return;
     }
 
-    const typeLabel = shiftType === 'MORNING' ? tCommon('morningShift') : tCommon('eveningShift');
+    // Luôn dùng tiếng Việt cho tên ca học, không phụ thuộc vào locale
+    const typeLabel = shiftType === 'MORNING' ? 'Ca sáng' : 'Ca tối';
 
     const orderedDays = [...selectedDays].sort((a, b) => {
       const da = dayOptions.find((d) => d.key === a)?.order ?? 0;
@@ -378,8 +379,19 @@ export function ClassroomShiftsSection({ classId, shifts, isLoading, onRefresh }
       return da - db;
     });
 
+    // Lấy label tiếng Việt cho các thứ trong tuần
+    const dayLabelsVi: Record<string, string> = {
+      MON: 'T2',
+      TUE: 'T3',
+      WED: 'T4',
+      THU: 'T5',
+      FRI: 'T6',
+      SAT: 'T7',
+      SUN: 'CN',
+    };
+
     const dayLabel = orderedDays
-      .map((key) => dayOptions.find((d) => d.key === key)?.label ?? '')
+      .map((key) => dayLabelsVi[key] ?? '')
       .filter(Boolean)
       .join(', ');
 
@@ -430,12 +442,22 @@ export function ClassroomShiftsSection({ classId, shifts, isLoading, onRefresh }
       setShiftType('MORNING');
     }
 
-    // Thứ trong tuần
+    // Thứ trong tuần - parse từ label tiếng Việt (T2, T3, etc.)
     const daysLabel = parts[1] || '';
     if (daysLabel) {
       const labels = daysLabel.split(',').map((s) => s.trim());
+      // Map từ label tiếng Việt sang key
+      const dayLabelsViToKey: Record<string, string> = {
+        'T2': 'MON',
+        'T3': 'TUE',
+        'T4': 'WED',
+        'T5': 'THU',
+        'T6': 'FRI',
+        'T7': 'SAT',
+        'CN': 'SUN',
+      };
       const keys = labels
-        .map((label) => dayOptions.find((d) => d.label === label)?.key)
+        .map((label) => dayLabelsViToKey[label] ?? dayOptions.find((d) => d.label === label)?.key)
         .filter((k): k is string => !!k);
       setSelectedDays(keys);
     } else {

@@ -13,6 +13,10 @@ import java.util.Optional;
 public interface ClassRepository extends JpaRepository<Class,String> {
     List<Class> findAllByTeacher(User teacher);
     
+    // Lấy class chưa bị xoá mềm theo id
+    @Query("SELECT c FROM Class c WHERE c.id = :id AND (c.isDeleted IS NULL OR c.isDeleted = false)")
+    Optional<Class> findActiveById(String id);
+    
     // Fetch join classShifts để tránh lazy loading khi map sang DTO, chỉ lấy lớp chưa bị xoá
     @Query("SELECT DISTINCT c FROM Class c LEFT JOIN FETCH c.classShifts WHERE c.isDeleted IS NULL OR c.isDeleted = false")
     List<Class> findAllWithClassShifts();

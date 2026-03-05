@@ -324,9 +324,8 @@ public class StudentService {
     @Transactional(readOnly = true)
     public List<StudentResponse> getStudentsByClass(String classId) {
         List<StudentResponse> studentResponseList = new ArrayList<>();
-        classRepository.findById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy " +
-                "lớp" +
-                " học"));
+        // Chỉ cho phép lấy học viên của lớp chưa bị xoá mềm
+        classRepository.findActiveById(classId).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
         List<Student> studentList = studentClassRepository.findStudentsByClass(classId, StudentClassStatus.STUDYING, StudentStatus.ACTIVE);
 
 
@@ -523,7 +522,8 @@ public class StudentService {
 
         if (studentClassDB == null) {
             // Student has no current class, create new one
-            Class classDB = classRepository.findById(studentRequest.getClassId()).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+            Class classDB = classRepository.findActiveById(studentRequest.getClassId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
             StudentClass studentClass = new StudentClass();
             studentClass.setStudent(student);
             studentClass.setClazz(classDB);
@@ -556,7 +556,8 @@ public class StudentService {
             studentClassRepository.save(studentClassDB);
 
             StudentClass studentClass = new StudentClass();
-            Class classDB = classRepository.findById(studentRequest.getClassId()).orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
+            Class classDB = classRepository.findActiveById(studentRequest.getClassId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
             studentClass.setJoinedAt(Instant.now());
             studentClass.setStatus(StudentClassStatus.STUDYING);
             studentClass.setClazz(classDB);
@@ -626,8 +627,8 @@ public class StudentService {
         studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
 
-        // Ensure class exists
-        classRepository.findById(request.getClassId())
+        // Ensure class exists and is not soft-deleted
+        classRepository.findActiveById(request.getClassId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
 
         StudentClass studentClass = studentClassRepository.findCurrentClassByStudent(request.getStudentId(), StudentClassStatus.STUDYING);
@@ -663,8 +664,8 @@ public class StudentService {
             throw new NotFoundException("Thiếu danh sách học viên hoặc lớp học");
         }
 
-        // Ensure class exists once
-        classRepository.findById(request.getClassId())
+        // Ensure class exists once and is not soft-deleted
+        classRepository.findActiveById(request.getClassId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
 
         List<StudentResponse> results = new ArrayList<>();
@@ -692,9 +693,9 @@ public class StudentService {
             throw new NotFoundException("Thiếu danh sách học viên");
         }
 
-        // Validate class exists if caller provided classId
+        // Validate class exists if caller provided classId (and ensure not soft-deleted)
         if (!isBlank(request.getClassId())) {
-            classRepository.findById(request.getClassId())
+            classRepository.findActiveById(request.getClassId())
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
         }
 

@@ -65,10 +65,10 @@ public class PaymentService {
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy học viên"));
         }
 
-        // Validate class exists and get class info
+        // Validate class exists and get class info (chỉ cho phép lớp chưa bị xoá mềm)
         Class clazz = null;
         if (paymentRequest.getClassId() != null) {
-            clazz = classRepository.findById(paymentRequest.getClassId())
+            clazz = classRepository.findActiveById(paymentRequest.getClassId())
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy lớp học"));
         } else if (student != null) {
             // If no classId provided, get current class from student
