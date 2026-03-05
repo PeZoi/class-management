@@ -53,6 +53,24 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Xử lý lỗi khi endpoint không tồn tại (404).
+     */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoResourceFoundException(org.springframework.web.servlet.resource.NoResourceFoundException ex,
+                                                                          HttpServletRequest request) {
+        // Không log và không gửi Telegram cho 404 errors
+        ApiErrorResponse body = ApiErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND.value())
+                .code("NOT_FOUND")
+                .message("API không tồn tại")
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
      * Xử lý lỗi authentication (đăng nhập sai, tài khoản bị khoá, v.v.).
      * Ví dụ: BadCredentialsException, UsernameNotFoundException.
      */

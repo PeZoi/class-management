@@ -251,7 +251,7 @@ export default function LogsManagementPage() {
 
           // Chỉ cố gắng translate nếu key ở dạng "symbolic" (VIẾT HOA + GẠCH DƯỚI),
           // ví dụ: AUTH_LOGIN, STUDENT_CREATE,...
-          // Các key fallback kiểu "POST /api/check_hwid" sẽ không gọi i18n để
+          // Các key fallback kiểu "POST /api/..." sẽ không gọi i18n để
           // tránh lỗi MISSING_MESSAGE và hiển thị luôn chuỗi mặc định.
           const isSymbolicKey = !!key && /^[A-Z0-9_]+$/.test(key);
 

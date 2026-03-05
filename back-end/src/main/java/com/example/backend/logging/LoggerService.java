@@ -35,6 +35,11 @@ public class LoggerService {
         String prefix = buildMessagePrefix("ERROR", context);
         log.error(prefix + safeMessage(error), error);
 
+        // Không gửi Telegram cho 404 errors (API không tồn tại)
+        if (context != null && context.getStatusCode() != null && context.getStatusCode() == 404) {
+            return;
+        }
+
         // Gửi Telegram nếu đã bật trong cấu hình (không phụ thuộc appEnv)
         if (loggingProperties.getTelegram().isEnabled()) {
             telegramNotifier.sendErrorAlertAsync("ERROR", context, safeMessage(error), error);
@@ -44,6 +49,11 @@ public class LoggerService {
     public void critical(LogContext context, Throwable error) {
         String prefix = buildMessagePrefix("CRITICAL", context);
         log.error(prefix + safeMessage(error), error);
+
+        // Không gửi Telegram cho 404 errors (API không tồn tại)
+        if (context != null && context.getStatusCode() != null && context.getStatusCode() == 404) {
+            return;
+        }
 
         if (loggingProperties.getTelegram().isEnabled()) {
             telegramNotifier.sendErrorAlertAsync("CRITICAL", context, safeMessage(error), error);

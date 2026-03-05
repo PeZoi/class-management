@@ -35,7 +35,6 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
          * Các path cần bỏ qua không ghi audit log (dùng cho các request kỹ thuật/không liên quan nghiệp vụ).
          */
         private static final String[] IGNORED_PATHS = {
-                "/api/check_hwid"
         };
 
         private AuditLogInterceptor(AuditLogService auditLogService,
@@ -80,6 +79,12 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
 
             String ip = getClientIpAddress(request);
             int statusCode = response.getStatus();
+            
+            // Bỏ qua các request trả về 404 (không tồn tại API) - không log và không gửi Telegram
+            if (statusCode == 404) {
+                return;
+            }
+            
             boolean success = (ex == null) && statusCode < 400;
             String action = method + " " + path;
 

@@ -20,20 +20,24 @@ RUN ./mvnw clean package -DskipTests
 # =========================
 FROM eclipse-temurin:21-jre-alpine
 
-# Cài đặt font hỗ trợ Unicode (tiếng Việt)
+# Cài đặt font hỗ trợ Unicode (tiếng Việt) và mysql client (mysqldump) cho backup DB
 RUN apk add --no-cache \
     curl \
     font-noto \
     font-noto-extra \
     ttf-dejavu \
-    ttf-liberation
+    ttf-liberation \
+    mariadb-client
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
 COPY --from=builder /app/target/*.jar app.jar
-RUN chown appuser:appgroup app.jar
+
+# Tạo thư mục backup và gán quyền cho appuser để tránh lỗi khi ghi vào /app/ops trên Linux
+RUN mkdir -p /app/ops/backup && \
+    chown -R appuser:appgroup /app
 
 USER appuser
 EXPOSE 8080
