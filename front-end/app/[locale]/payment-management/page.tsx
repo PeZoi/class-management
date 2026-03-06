@@ -1,5 +1,8 @@
 import PaymentManagementPage from '@/app/[locale]/payment-management/payment-management-page';
 import { RoleGuard } from '@/components/role-guard';
+import { createPageMetadata } from '@/lib/metadata';
+
+export const { generateMetadata } = createPageMetadata('Payment Management');
 
 export default function Index() {
   return (

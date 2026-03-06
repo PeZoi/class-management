@@ -10,6 +10,8 @@ services:
       - "8080:8080"
     environment:
       JAVA_OPTS: ${JAVA_OPTS}
+      # Timezone (mặc định: Asia/Ho_Chi_Minh cho Việt Nam)
+      TZ: Asia/Ho_Chi_Minh
       # Kết nối với MySQL trên máy host thông qua host.docker.internal
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}

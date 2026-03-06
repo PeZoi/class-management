@@ -20,6 +20,7 @@ import './globals.css';
 //   fallback: ['ui-monospace', 'monospace'],
 // });
 
+// Metadata sẽ được override bởi [locale]/layout.tsx dựa trên locale
 export const metadata: Metadata = {
   title: 'Class Management',
   description: 'Class Management System',

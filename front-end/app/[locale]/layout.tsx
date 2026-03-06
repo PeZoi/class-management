@@ -4,13 +4,28 @@ import Header from '@/components/header';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { locales } from '@/i18n';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { getMessages, getTranslations } from 'next-intl/server';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { Providers } from './providers';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'common' });
+
+  return {
+    title: t('title_application'),
+    description: t('appDescription'),
+  };
 }
 
 export default async function LocaleLayout({

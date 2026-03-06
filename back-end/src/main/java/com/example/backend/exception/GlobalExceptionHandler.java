@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
@@ -49,7 +50,9 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .build();
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     /**
@@ -67,7 +70,37 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .build();
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
+    }
+
+    /**
+     * Xử lý lỗi khi Spring không tìm được message converter phù hợp (406).
+     * Lỗi này thường xảy ra khi exception handler không thể serialize response.
+     * Cần log và gửi Telegram vì đây là lỗi hệ thống.
+     */
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpMediaTypeNotAcceptableException(
+            org.springframework.web.HttpMediaTypeNotAcceptableException ex,
+            HttpServletRequest request) {
+        LogContext ctx = buildContext(request);
+        ctx.setStatusCode(HttpStatus.NOT_ACCEPTABLE.value());
+
+        // Đây là lỗi hệ thống, cần log và gửi Telegram
+        loggerService.error(ctx, ex);
+
+        ApiErrorResponse body = ApiErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_ACCEPTABLE.value())
+                .code("MEDIA_TYPE_NOT_ACCEPTABLE")
+                .message("Lỗi xử lý response, vui lòng thử lại sau.")
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     /**
@@ -103,7 +136,9 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .build();
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     /**
@@ -135,7 +170,9 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .build();
 
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     /**
@@ -157,7 +194,9 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .build();
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     /**
