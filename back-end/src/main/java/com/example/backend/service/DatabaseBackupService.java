@@ -25,6 +25,7 @@ import java.util.List;
 public class DatabaseBackupService {
 
     private final TelegramFileService telegramFileService;
+    private final NotificationService notificationService;
 
     @Value("${spring.datasource.url}")
     private String datasourceUrl;
@@ -122,9 +123,27 @@ public class DatabaseBackupService {
 
                 // Gửi thông báo thành công
                 telegramFileService.sendMessage("✅ Backup database thành công!\n📁 File: " + dumpFileName);
+                try {
+                    notificationService.createNotification(
+                            "success",
+                            "Sao lưu thành công",
+                            "Database đã được sao lưu thành công. File: " + dumpFileName
+                    );
+                } catch (Exception e) {
+                    log.error("Không thể lưu thông báo sao lưu vào DB: {}", e.getMessage());
+                }
             } else {
                 log.error("Gửi file dump qua Telegram thất bại");
                 telegramFileService.sendMessage("❌ Backup database thành công nhưng gửi qua Telegram thất bại\n📁 File (vẫn lưu trên server): " + dumpFilePath.toAbsolutePath());
+                try {
+                    notificationService.createNotification(
+                            "warning",
+                            "Lỗi tải lên Telegram",
+                            "Backup thành công nhưng gửi qua Telegram thất bại. File: " + dumpFileName
+                    );
+                } catch (Exception e) {
+                    log.error("Không thể lưu thông báo sao lưu vào DB: {}", e.getMessage());
+                }
             }
 
             return dumpFilePath.toAbsolutePath().toString();
@@ -132,6 +151,15 @@ public class DatabaseBackupService {
         } catch (Exception e) {
             log.error("Lỗi khi backup database: {}", e.getMessage(), e);
             telegramFileService.sendMessage("❌ Lỗi khi backup database: " + e.getMessage());
+            try {
+                notificationService.createNotification(
+                        "error",
+                        "Lỗi sao lưu database",
+                        "Quá trình sao lưu thất bại: " + e.getMessage()
+                );
+            } catch (Exception ex) {
+                log.error("Không thể lưu thông báo lỗi sao lưu vào DB: {}", ex.getMessage());
+            }
             return null;
         }
     }

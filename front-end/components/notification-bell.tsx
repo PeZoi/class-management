@@ -1,76 +1,36 @@
 'use client';
 
-import { useState } from 'react';
-import { Bell, Check, Info, TriangleAlert, CircleX, CircleCheck, BellOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, Check, Info, TriangleAlert, CircleX, CircleCheck, BellOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import http from '@/lib/http';
 
 // ========================
 // Types
 // ========================
-type NotificationType = 'info' | 'success' | 'warning' | 'error';
+type NotificationType = 'info' | 'success' | 'warning' | 'error' | string;
 
 interface Notification {
-  id: string;
+  id: string | number;
   type: NotificationType;
   title: string;
   message: string;
-  time: Date;
+  time: string | Date;
   read: boolean;
 }
 
 // ========================
-// Mock data (thay bằng API thực sau)
+// Mock data (đã xoá, sử dụng data từ API)
 // ========================
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: '1',
-    type: 'error',
-    title: 'Lỗi sao lưu database',
-    message: 'Backup lúc 02:00 AM thất bại. Vui lòng kiểm tra lại cấu hình.',
-    time: new Date(Date.now() - 1000 * 60 * 5),
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'warning',
-    title: 'Học sinh sắp nợ học phí',
-    message: '3 học sinh có học phí đến hạn trong 3 ngày tới.',
-    time: new Date(Date.now() - 1000 * 60 * 30),
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'success',
-    title: 'Sao lưu thành công',
-    message: 'Database đã được sao lưu thành công lúc 02:00 AM.',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    read: false,
-  },
-  {
-    id: '4',
-    type: 'info',
-    title: 'Hệ thống cập nhật',
-    message: 'Phiên bản mới đã được triển khai thành công.',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    read: true,
-  },
-  {
-    id: '5',
-    type: 'success',
-    title: 'Thanh toán xác nhận',
-    message: 'Nguyễn Văn A đã thanh toán học phí tháng 3.',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 25),
-    read: true,
-  },
-];
 
 // ========================
 // Helper: format thời gian
 // ========================
-function formatRelativeTime(date: Date): string {
+function formatRelativeTime(dateInput: Date | string): string {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -117,19 +77,46 @@ const TYPE_CONFIG: Record<
 // Main Component
 // ========================
 export function NotificationBell() {
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const data = await http.get<Notification[]>('/api/notifications/top5');
+      setNotifications(data || []);
+    } catch (error) {
+      console.error('Lỗi khi tải thông báo:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string | number) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
+    try {
+      await http.put(`/api/notifications/${id}/read`, {});
+    } catch (error) {
+      console.error('Lỗi khi đánh dấu đã đọc:', error);
+    }
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await http.put('/api/notifications/read-all', {});
+    } catch (error) {
+      console.error('Lỗi khi đánh dấu tất cả đã đọc:', error);
+    }
   };
 
   return (
@@ -174,7 +161,12 @@ export function NotificationBell() {
         </div>
 
         {/* Notification List */}
-        {notifications.length === 0 ? (
+        {loading && notifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+            <Loader2 className="size-8 animate-spin opacity-40" />
+            <p className="text-sm">Đang tải...</p>
+          </div>
+        ) : notifications.length === 0 ? (
           // Empty state
           <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
             <BellOff className="size-10 opacity-40" />
@@ -184,7 +176,7 @@ export function NotificationBell() {
           <ScrollArea className="max-h-[420px]">
             <div className="divide-y">
               {notifications.map((notification) => {
-                const config = TYPE_CONFIG[notification.type];
+                const config = TYPE_CONFIG[notification.type as NotificationType] || TYPE_CONFIG['info'];
                 const Icon = config.icon;
 
                 return (
