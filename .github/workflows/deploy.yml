@@ -98,13 +98,7 @@ jobs:
         if: needs.build-and-push.result == 'success' && steps.deploy.outcome == 'success'
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          TEXT="✅ <b>Deploy thành công!</b>
-
-🔖 Commit: <code>${SHORT_SHA}</code>
-👤 Author: ${{ github.actor }}
-📝 Message: ${{ github.event.head_commit.message }}
-🔗 <a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>Xem workflow</a>"
-
+          TEXT=$(printf "✅ <b>Deploy thành công!</b>\n\n🔖 Commit: <code>%s</code>\n👤 Author: ${{ github.actor }}\n📝 Message: ${{ github.event.head_commit.message }}\n🔗 <a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>Xem workflow</a>" "$SHORT_SHA")
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode "parse_mode=HTML" \
@@ -115,13 +109,7 @@ jobs:
         if: needs.build-and-push.result == 'failure' || steps.deploy.outcome == 'failure'
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          TEXT="❌ <b>Deploy thất bại!</b>
-
-🔖 Commit: <code>${SHORT_SHA}</code>
-👤 Author: ${{ github.actor }}
-📝 Message: ${{ github.event.head_commit.message }}
-🔗 <a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>Xem logs</a>"
-
+          TEXT=$(printf "❌ <b>Deploy thất bại!</b>\n\n🔖 Commit: <code>%s</code>\n👤 Author: ${{ github.actor }}\n📝 Message: ${{ github.event.head_commit.message }}\n🔗 <a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>Xem logs</a>" "$SHORT_SHA")
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode "parse_mode=HTML" \
