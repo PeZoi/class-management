@@ -84,8 +84,8 @@ export function NotificationBell() {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const data = await http.get<Notification[]>('/api/notifications/top5');
-      setNotifications(data || []);
+      const res = await http.get<{ data: Notification[] }>('/api/notifications/top5');
+      setNotifications(res?.data || []);
     } catch (error) {
       console.error('Lỗi khi tải thông báo:', error);
     } finally {
