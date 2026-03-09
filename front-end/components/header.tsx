@@ -12,12 +12,13 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store';
-import { Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react';
+import { ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useScrollToTopOnRouteChange } from '@/hooks/use-scroll-to-top';
 import { GlobalSearchBar } from '@/components/global-search-bar';
+import { NotificationBell } from '@/components/notification-bell';
 
 export default function Header() {
   const t = useTranslations('common');
@@ -56,10 +57,7 @@ export default function Header() {
             // Đã đăng nhập
             <>
               {/* Notification Bell */}
-              <Button variant="ghost" size="icon" className="relative size-9 lg:size-10">
-                <Bell className="size-5" />
-                <span className="absolute top-1.5 right-1.5 size-2 bg-destructive rounded-full" />
-              </Button>
+              <NotificationBell />
 
               {/* User Dropdown */}
               <DropdownMenu>
