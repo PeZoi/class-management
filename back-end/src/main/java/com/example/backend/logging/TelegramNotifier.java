@@ -130,7 +130,15 @@ public class TelegramNotifier {
             sb.append("\uD83D\uDCDD Body  : ").append(payload).append("\n"); // 📝
         }
 
-        sb.append("\u23F0 Time  : ").append(time); // ⏰
+        sb.append("\u23F0 Time  : ").append(time).append("\n"); // ⏰
+
+        // Hashtag để lọc thông báo trong Telegram
+        String tag = switch (level != null ? level.toUpperCase() : "") {
+            case "CRITICAL" -> "\n#error #critical";
+            case "WARN", "WARNING" -> "\n#error #warning";
+            default -> "\n#error";
+        };
+        sb.append(tag);
 
         String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
 

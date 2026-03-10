@@ -98,7 +98,8 @@ public class DatabaseBackupService {
                     "-------------------------\n" +
                     "🧩 Database: %s\n" +
                     "📅 Thời gian: %s\n" +
-                    "📁 File: %s",
+                    "📁 File: %s\n" +
+                    "\n#backup #success",
                     databaseName,
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
                     dumpFileName
@@ -122,7 +123,7 @@ public class DatabaseBackupService {
                 }
 
                 // Gửi thông báo thành công
-                telegramFileService.sendMessage("✅ Backup database thành công!\n📁 File: " + dumpFileName);
+                telegramFileService.sendMessage("✅ Backup database thành công!\n📁 File: " + dumpFileName + "\n\n#backup #success");
                 try {
                     notificationService.createNotification(
                             "success",
@@ -134,7 +135,7 @@ public class DatabaseBackupService {
                 }
             } else {
                 log.error("Gửi file dump qua Telegram thất bại");
-                telegramFileService.sendMessage("❌ Backup database thành công nhưng gửi qua Telegram thất bại\n📁 File (vẫn lưu trên server): " + dumpFilePath.toAbsolutePath());
+                telegramFileService.sendMessage("❌ Backup database thành công nhưng gửi qua Telegram thất bại\n📁 File (vẫn lưu trên server): " + dumpFilePath.toAbsolutePath() + "\n\n#backup #failed");
                 try {
                     notificationService.createNotification(
                             "warning",
@@ -150,7 +151,7 @@ public class DatabaseBackupService {
 
         } catch (Exception e) {
             log.error("Lỗi khi backup database: {}", e.getMessage(), e);
-            telegramFileService.sendMessage("❌ Lỗi khi backup database: " + e.getMessage());
+            telegramFileService.sendMessage("❌ Lỗi khi backup database: " + e.getMessage() + "\n\n#backup #failed #error");
             try {
                 notificationService.createNotification(
                         "error",
