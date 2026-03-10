@@ -97,6 +97,13 @@ export const queryKeys = {
     all: ['logs'] as const,
     listPaginated: (filters?: Record<string, unknown>) => ['logs', 'list', 'paginated', filters] as const,
   },
+
+  // Notification queries
+  notifications: {
+    all: ['notifications'] as const,
+    list: () => ['notifications', 'list'] as const,
+    top5: () => ['notifications', 'top5'] as const,
+  },
 } as const;
 
 /**

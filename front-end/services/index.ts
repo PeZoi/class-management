@@ -8,3 +8,4 @@ export * from './class-shift-service';
 export * from './profile-service';
 export * from './attendance-service';
 export * from './log-service';
+export * from './notification-service';

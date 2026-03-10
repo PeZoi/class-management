@@ -35,6 +35,7 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
          * Các path cần bỏ qua không ghi audit log (dùng cho các request kỹ thuật/không liên quan nghiệp vụ).
          */
         private static final String[] IGNORED_PATHS = {
+            "/api/notifications/*"
         };
 
         private AuditLogInterceptor(AuditLogService auditLogService,
@@ -52,10 +53,20 @@ public class AuditLogConfiguration implements WebMvcConfigurer {
                                     Exception ex) {
             String path = normalizePath(request);
 
-            // Bỏ qua các path nằm trong danh sách ignore
+            // Bỏ qua các path nằm trong danh sách ignore (hỗ trợ wildcard *)
             for (String ignoredPath : IGNORED_PATHS) {
-                if (ignoredPath.equalsIgnoreCase(path) || path.toLowerCase().startsWith((ignoredPath + "/").toLowerCase())) {
-                    return;
+                // Nếu pattern có wildcard *, convert thành regex
+                if (ignoredPath.contains("*")) {
+                    String regex = "^" + ignoredPath.replace("*", ".*") + "$";
+                    if (path.matches(regex)) {
+                        return;
+                    }
+                } else {
+                    // Không có wildcard, check exact match hoặc startsWith
+                    if (ignoredPath.equalsIgnoreCase(path) || 
+                        path.toLowerCase().startsWith((ignoredPath + "/").toLowerCase())) {
+                        return;
+                    }
                 }
             }
 
