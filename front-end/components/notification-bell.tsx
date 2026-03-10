@@ -1,48 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Bell, Check, Info, TriangleAlert, CircleX, CircleCheck, BellOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import http from '@/lib/http';
-
-// ========================
-// Types
-// ========================
-type NotificationType = 'info' | 'success' | 'warning' | 'error' | string;
-
-interface Notification {
-  id: string | number;
-  type: NotificationType;
-  title: string;
-  message: string;
-  time: string | Date;
-  read: boolean;
-}
-
-// ========================
-// Mock data (đã xoá, sử dụng data từ API)
-// ========================
-
-// ========================
-// Helper: format thời gian
-// ========================
-function formatRelativeTime(dateInput: Date | string): string {
-  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 1) return 'Vừa xong';
-  if (diffMins < 60) return `${diffMins} phút trước`;
-  if (diffHours < 24) return `${diffHours} giờ trước`;
-  if (diffDays === 1) return 'Hôm qua';
-  return `${diffDays} ngày trước`;
-}
+import { NotificationType } from '@/types';
+import {
+  useNotifications,
+  useMarkNotificationAsRead,
+  useMarkAllNotificationsAsRead,
+} from '@/hooks/use-notifications';
+import { useLocale, useTranslations } from 'next-intl';
+import { useState } from 'react';
+import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
+import { vi, enUS } from 'date-fns/locale';
 
 // ========================
 // Helper: icon & màu theo type
@@ -77,46 +49,30 @@ const TYPE_CONFIG: Record<
 // Main Component
 // ========================
 export function NotificationBell() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const t = useTranslations('notification-bell');
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const fetchNotifications = async () => {
-    try {
-      setLoading(true);
-      const res = await http.get<{ data: Notification[] }>('/api/notifications/top5');
-      setNotifications(res?.data || []);
-    } catch (error) {
-      console.error('Lỗi khi tải thông báo:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
+  const { data: notifications = [], isLoading } = useNotifications();
+  const markAsRead = useMarkNotificationAsRead();
+  const markAllAsRead = useMarkAllNotificationsAsRead();
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAsRead = async (id: string | number) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-    try {
-      await http.put(`/api/notifications/${id}/read`, {});
-    } catch (error) {
-      console.error('Lỗi khi đánh dấu đã đọc:', error);
-    }
+  // Helper: parse Instant ISO (UTC) thành local time giống DB (bỏ 'Z')
+  const parseNotificationTime = (value: string | Date): Date => {
+    if (value instanceof Date) return value;
+    const raw = value.endsWith('Z') ? value.slice(0, -1) : value;
+    return new Date(raw);
   };
 
-  const markAllAsRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    try {
-      await http.put('/api/notifications/read-all', {});
-    } catch (error) {
-      console.error('Lỗi khi đánh dấu tất cả đã đọc:', error);
-    }
+  // ── Helper: format thời gian tương đối (date-fns) ─────────────────────
+  const formatRelativeTime = (dateInput: Date | string): string => {
+    const date = parseNotificationTime(dateInput);
+    return formatDistanceToNow(date, {
+      addSuffix: true,
+      locale: locale === 'vi' ? vi : enUS,
+    });
   };
 
   return (
@@ -135,12 +91,12 @@ export function NotificationBell() {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-[380px] p-0 shadow-lg"
+        className="w-[380px] p-0 shadow-lg flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm">Thông báo</h3>
+            <h3 className="font-semibold text-sm">{t('title')}</h3>
             {unreadCount > 0 && (
               <span className="flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
                 {unreadCount}
@@ -152,37 +108,42 @@ export function NotificationBell() {
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={markAllAsRead}
+              onClick={() => markAllAsRead.mutate()}
+              disabled={markAllAsRead.isPending}
             >
               <Check className="size-3 mr-1" />
-              Đánh dấu tất cả đã đọc
+              {t('markAllRead')}
             </Button>
           )}
         </div>
 
         {/* Notification List */}
-        {loading && notifications.length === 0 ? (
+        {isLoading && notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
             <Loader2 className="size-8 animate-spin opacity-40" />
-            <p className="text-sm">Đang tải...</p>
+            <p className="text-sm">{t('loading')}</p>
           </div>
         ) : notifications.length === 0 ? (
-          // Empty state
           <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
             <BellOff className="size-10 opacity-40" />
-            <p className="text-sm">Không có thông báo nào</p>
+            <p className="text-sm">{t('empty')}</p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[420px]">
+          <div className="overflow-y-auto max-h-[60vh] min-h-0">
             <div className="divide-y">
               {notifications.map((notification) => {
-                const config = TYPE_CONFIG[notification.type as NotificationType] || TYPE_CONFIG['info'];
+                const config =
+                  TYPE_CONFIG[notification.type as NotificationType] ?? TYPE_CONFIG['info'];
                 const Icon = config.icon;
 
                 return (
                   <div
                     key={notification.id}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => {
+                      if (!notification.read) {
+                        markAsRead.mutate(notification.id);
+                      }
+                    }}
                     className={cn(
                       'flex gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50',
                       !notification.read && 'bg-muted/30'
@@ -207,14 +168,17 @@ export function NotificationBell() {
                         <p
                           className={cn(
                             'text-sm leading-snug',
-                            !notification.read ? 'font-semibold' : 'font-medium text-muted-foreground'
+                            !notification.read
+                              ? 'font-semibold'
+                              : 'font-medium text-muted-foreground'
                           )}
                         >
                           {notification.title}
                         </p>
-                        {/* Unread dot */}
                         {!notification.read && (
-                          <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', config.dotClass)} />
+                          <span
+                            className={cn('mt-1.5 size-2 shrink-0 rounded-full', config.dotClass)}
+                          />
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
@@ -228,23 +192,23 @@ export function NotificationBell() {
                 );
               })}
             </div>
-          </ScrollArea>
+          </div>
         )}
 
         {/* Footer */}
-        {notifications.length > 0 && (
-          <div className="border-t px-4 py-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Xem tất cả thông báo
-            </Button>
-          </div>
-        )}
+        <div className="border-t px-4 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
+            asChild
+          >
+            <Link href={`/${locale}/notifications`} onClick={() => setOpen(false)}>
+              {t('viewAll')}
+            </Link>
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );
 }
-

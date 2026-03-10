@@ -59,7 +59,7 @@ public class DatabaseBackupService {
                 return null;
             }
 
-            // Tạo tên file dump
+            // Tạo tên file dump theo giờ server (UTC hiện tại trên VPS của bạn)
             String timestamp = LocalDateTime.now().format(DATE_FORMATTER);
             String dumpFileName = String.format("%s_%s.sql", databaseName, timestamp);
             Path dumpFilePath = backupDir.resolve(dumpFileName);
@@ -123,7 +123,7 @@ public class DatabaseBackupService {
                 }
 
                 // Gửi thông báo thành công
-                telegramFileService.sendMessage("✅ Backup database thành công!\n📁 File: " + dumpFileName + "\n\n#backup #success");
+                // telegramFileService.sendMessage("✅ Backup database thành công!\n📁 File: " + dumpFileName + "\n\n#backup #success");
                 try {
                     notificationService.createNotification(
                             "success",

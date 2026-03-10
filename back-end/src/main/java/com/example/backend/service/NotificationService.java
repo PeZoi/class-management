@@ -1,12 +1,16 @@
 package com.example.backend.service;
 
+import com.example.backend.dto.notification.NotificationPageResponse;
 import com.example.backend.dto.notification.NotificationResponse;
 import com.example.backend.entity.Notification;
 import com.example.backend.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,6 +32,63 @@ public class NotificationService {
         return notificationRepository.findAllByOrderByTimeDesc().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all notifications wrapped in NotificationPageResponse (for backward compatibility)
+     * @return NotificationPageResponse with all items and hasMore=false
+     */
+    public NotificationPageResponse getAllNotificationsAsPageResponse() {
+        List<NotificationResponse> items = getAllNotifications();
+        return NotificationPageResponse.builder()
+                .items(items)
+                .nextCursor(null)
+                .hasMore(false)
+                .size(items.size())
+                .build();
+    }
+
+    /**
+     * Cursor-based pagination for infinite scroll
+     * @param cursor Cursor time (ISO string), null means get latest
+     * @param size Page size (default 20)
+     * @return NotificationPageResponse with items and next cursor
+     */
+    public NotificationPageResponse getAllNotificationsPaginated(String cursor, Integer size) {
+        int pageSize = (size != null && size > 0) ? Math.min(size, 100) : 20; // Max 100 items per page
+        Pageable pageable = PageRequest.of(0, pageSize);
+        
+        Instant beforeTime = null;
+        if (cursor != null && !cursor.isBlank()) {
+            try {
+                beforeTime = Instant.parse(cursor);
+            } catch (Exception e) {
+                // Invalid cursor, ignore and return latest
+            }
+        }
+        
+        List<Notification> notifications = notificationRepository.findAllBeforeTimeOrderByTimeDesc(beforeTime, pageable);
+        List<NotificationResponse> items = notifications.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+        
+        // Determine next cursor and hasMore
+        String nextCursor = null;
+        boolean hasMore = false;
+        if (!notifications.isEmpty()) {
+            Instant lastTime = notifications.get(notifications.size() - 1).getTime();
+            nextCursor = lastTime.toString();
+            // Check if there are more items after this cursor
+            List<Notification> checkMore = notificationRepository.findAllBeforeTimeOrderByTimeDesc(lastTime, PageRequest.of(0, 1));
+            hasMore = !checkMore.isEmpty();
+        }
+        
+        return NotificationPageResponse.builder()
+                .items(items)
+                .nextCursor(nextCursor)
+                .hasMore(hasMore)
+                .size(items.size())
+                .build();
     }
 
     public List<NotificationResponse> getTop5Notifications() {

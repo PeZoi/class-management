@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -27,7 +27,7 @@ public class Notification {
     private String message;
 
     @Column(name = "time", nullable = false, updatable = false)
-    private LocalDateTime time;
+    private Instant time;
 
     @Column(name = "is_read")
     private Boolean isRead = false;
@@ -35,7 +35,7 @@ public class Notification {
     @PrePersist
     public void prePersist() {
         if (time == null) {
-            time = LocalDateTime.now();
+            time = Instant.now();
         }
         if (isRead == null) {
             isRead = false;

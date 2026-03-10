@@ -9,3 +9,4 @@ export * from './attendance-type';
 export * from './dashboard-type';
 export * from './common-type';
 export * from './log-type';
+export * from './notification-type';
