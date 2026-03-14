@@ -43,6 +43,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_ENDPOINT: ''
+        NEXT_PUBLIC_CHATBOT_API_URL: ''
     # image: pezoi/class-management-frontend:latest
     container_name: class-management-frontend
     restart: always
@@ -50,6 +51,7 @@ services:
       - "80:80"
     depends_on:
       - backend
+      - chatbot
     networks:
       - class_management_network
     # Remove volume mounts to prevent overwriting built files
@@ -58,6 +60,31 @@ services:
     #   - ./front-end:/app
     #   - /app/node_modules
     #   - /app/.next
+
+  chatbot:
+    build:
+      context: ./chatbot
+      dockerfile: Dockerfile
+    container_name: class-management-chatbot
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      JAVA_OPTS: ${JAVA_OPTS}
+      # DB
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # AI
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_MODEL: ${GROQ_MODEL}
+      GROQ_BASE_URL: ${GROQ_BASE_URL}
+    networks:
+      - class_management_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   class_management_network:

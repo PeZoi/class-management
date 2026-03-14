@@ -66,6 +66,23 @@ const WELCOME_MESSAGE: Message = {
   timestamp: new Date(),
 };
 
+function resolveChatbotBaseUrl() {
+  const fromEnv = (CHATBOT_API_URL || "").trim().replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+
+  if (typeof window !== "undefined") {
+    const { hostname, port } = window.location;
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
+    if (isLocalhost) {
+      // Dev mode: Next chạy ở 3001, FastAPI chatbot thường ở 8000
+      return "http://localhost:8000";
+    }
+  }
+
+  // Prod (qua Nginx / Docker): dùng đường dẫn tương đối, đã được proxy trong nginx.conf
+  return "/chatbot";
+}
+
 export function Chatbot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
@@ -184,7 +201,7 @@ export function Chatbot() {
     ]);
 
     try {
-      const baseUrl = CHATBOT_API_URL.replace(/\/$/, "");
+      const baseUrl = resolveChatbotBaseUrl();
       const res = await fetch(`${baseUrl}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

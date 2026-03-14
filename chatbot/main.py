@@ -229,7 +229,8 @@ Bạn hãy đặt câu hỏi cụ thể, ví dụ:
 _HELP_PATTERNS = re.compile(
     r"bạn\s+(có\s+thể\s+)?(giúp|hỗ\s+trợ|làm)\s+(gì|được\s+gì|cho\s+tôi)|"
     r"bạn\s+giúp\s+(được\s+)?gì|bạn\s+làm\s+được\s+gì|"
-    r"bạn\s+biết\s+(những\s+)?gì|bạn\s+có\s+chức\s+năng\s+gì",
+    r"bạn\s+biết\s+(những\s+)?gì|bạn\s+có\s+chức\s+năng\s+gì|"
+    r"bạn\s+có\s+tác\s+dụng\s+gì",
     re.IGNORECASE,
 )
 
@@ -353,5 +354,15 @@ def chat(req: ChatRequest):
                     "Hiện tại hệ thống AI đang bị giới hạn quota nên chưa trả lời được. "
                     "Bạn hãy kiểm tra billing/quota của Groq (GROQ_API_KEY)."
                 )
+            }
+        if "Unsafe SQL" in msg or "unsafe sql" in msg.lower():
+            return {
+                "answer": (
+                    "Câu hỏi của bạn khiến AI sinh ra câu lệnh SQL không an toàn nên đã bị chặn. "
+                    "Vui lòng chỉ hỏi các truy vấn **xem dữ liệu** (danh sách, thống kê, tra cứu) "
+                    "liên quan lớp học, giáo viên, học viên, điểm danh, học phí."
+                ),
+                "sql": None,
+                "data": None,
             }
         return {"answer": msg}
