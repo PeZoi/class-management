@@ -70,7 +70,6 @@ services:
     ports:
       - "8000:8000"
     environment:
-      JAVA_OPTS: ${JAVA_OPTS}
       # DB
       DB_HOST: ${DB_HOST}
       DB_NAME: ${DB_NAME}
