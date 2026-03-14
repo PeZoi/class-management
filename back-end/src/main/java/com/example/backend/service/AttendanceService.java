@@ -32,6 +32,7 @@ public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final StudentRepository studentRepository;
     private final ClassRepository classRepository;
+    private final SessionPaymentService sessionPaymentService;
 
     @Transactional
     public AttendanceResponse createAttendance(AttendanceRequest request) {
@@ -72,8 +73,8 @@ public class AttendanceService {
 
         Attendance savedAttendance = attendanceRepository.save(attendance);
 
-        // Note: Việc tự động tạo gói thanh toán sẽ được xử lý ở một service riêng
-        // để tránh circular dependency
+        // Buổi đầu tiên của mỗi gói (1, 9, 17...) → tạo package đó luôn (UNPAID) để query nợ nhanh, học viên mới vào điểm danh ngày đầu đã có gói
+        tryCreatePackageWhenFirstSessionOfBlock(request.getStudentId(), request.getClassId(), savedAttendance.getSessionNumber());
 
         return mapToResponse(savedAttendance);
     }
@@ -131,13 +132,14 @@ public class AttendanceService {
                 Student student = studentMap.get(req.getStudentId());
 
                 Attendance existing = existingByStudentId.get(req.getStudentId());
+                Attendance saved;
                 if (existing != null) {
                     // Update
                     existing.setStatus(req.getStatus());
                     existing.setNotes(req.getNotes());
                     // normalize sessionDate về request (nếu FE gửi time khác nhau)
                     existing.setSessionDate(req.getSessionDate());
-                    Attendance saved = attendanceRepository.save(existing);
+                    saved = attendanceRepository.save(existing);
                     result.add(mapToResponse(saved));
                 } else {
                     // Create
@@ -150,9 +152,11 @@ public class AttendanceService {
                             .status(req.getStatus())
                             .notes(req.getNotes())
                             .build();
-                    Attendance saved = attendanceRepository.save(attendance);
+                    saved = attendanceRepository.save(attendance);
                     result.add(mapToResponse(saved));
                 }
+                // Buổi đầu của mỗi gói (1, 9, 17...) → tạo package ngay (UNPAID)
+                tryCreatePackageWhenFirstSessionOfBlock(req.getStudentId(), classId, saved.getSessionNumber());
             }
         }
 
@@ -237,7 +241,27 @@ public class AttendanceService {
 
         Attendance updatedAttendance = attendanceRepository.save(attendance);
 
+        tryCreatePackageWhenFirstSessionOfBlock(request.getStudentId(), request.getClassId(), updatedAttendance.getSessionNumber());
+
         return mapToResponse(updatedAttendance);
+    }
+
+    /**
+     * Khi điểm danh đúng buổi đầu tiên của một gói (buổi 1, 9, 17, 25...) thì tạo package đó luôn (UNPAID) lưu DB.
+     * Học viên mới vào lớp điểm danh ngày đầu đã có gói 1 → query danh sách nợ nhanh (session_payment_package) đã bao gồm họ.
+     * Không tạo nếu package đã tồn tại (vd: học viên đóng trước gói 9-16 rồi thì khi điểm danh buổi 9 không tạo lại).
+     */
+    private void tryCreatePackageWhenFirstSessionOfBlock(String studentId, String classId, int sessionNumber) {
+        // Buổi đầu của gói: 1, 9, 17, 25... tức (sessionNumber - 1) % 8 == 0
+        if ((sessionNumber - 1) % 8 != 0) {
+            return;
+        }
+        int packageNumber = (sessionNumber - 1) / 8 + 1;
+        int startSessionNumber = (packageNumber - 1) * 8 + 1;
+        // Chỉ tạo khi chưa có: nếu đã đóng trước (PaymentService đã gọi createPackageWithNumber) thì bỏ qua
+        if (!sessionPaymentService.packageExists(studentId, classId, packageNumber)) {
+            sessionPaymentService.createNewPackage(studentId, classId, startSessionNumber);
+        }
     }
 
     @Transactional
