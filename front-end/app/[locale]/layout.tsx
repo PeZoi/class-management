@@ -9,7 +9,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Providers } from './providers';
-import { Chatbot } from '@/components/chatbot';
+import { AdminChatbot } from '@/components/admin-chatbot';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -58,7 +58,6 @@ export default async function LocaleLayout({
             <AuthGuard>{children}</AuthGuard>
           </SidebarProvider>
         </Providers>
-        <Chatbot />
       </NextIntlClientProvider>
     );
   }
@@ -77,7 +76,7 @@ export default async function LocaleLayout({
           </AuthGuard>
         </SidebarProvider>
       </Providers>
-      <Chatbot />
+      <AdminChatbot />
     </NextIntlClientProvider>
   );
 }
