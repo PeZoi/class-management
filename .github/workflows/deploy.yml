@@ -53,6 +53,19 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
+      # ---------- Build & Push Chatbot ----------
+      - name: Build & Push Chatbot image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./chatbot
+          file: ./chatbot/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/class-management-chatbot:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/class-management-chatbot:${{ github.sha }}
+          cache-from: type=gha,scope=chatbot
+          cache-to: type=gha,mode=max,scope=chatbot
+
   # ===================================================
   # JOB 2: Deploy lên VPS (sau khi build xong)
   # ===================================================
