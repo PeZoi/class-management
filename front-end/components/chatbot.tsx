@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageCircle, Send, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { useTranslations } from "next-intl";
 import {
   Sheet,
   SheetContent,
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { CHATBOT_API_URL } from "@/constants/env";
+import { generateId } from "@/utils/helper";
 
 /** Render câu trả lời dạng markdown, giống con người (đầu dòng, in đậm, danh sách). */
 function AnswerContent({ text }: { text: string }) {
@@ -59,19 +61,21 @@ type Message = {
 
 type Position = { side: "left" | "right"; bottom: number };
 
-const WELCOME_MESSAGE: Message = {
-  id: "welcome",
-  role: "assistant",
-  content: "Xin chào! Tôi có thể giúp gì cho bạn?",
-  timestamp: new Date(),
-};
+function createWelcomeMessage(text: string): Message {
+  return {
+    id: "welcome",
+    role: "assistant",
+    content: text,
+    timestamp: new Date(),
+  };
+}
 
 function resolveChatbotBaseUrl() {
   const fromEnv = (CHATBOT_API_URL || "").trim().replace(/\/$/, "");
   if (fromEnv) return fromEnv;
 
   if (typeof window !== "undefined") {
-    const { hostname, port } = window.location;
+    const { hostname } = window.location;
     const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
     if (isLocalhost) {
       // Dev mode: Next chạy ở 3001, FastAPI chatbot thường ở 8000
@@ -84,8 +88,12 @@ function resolveChatbotBaseUrl() {
 }
 
 export function Chatbot() {
+  const t = useTranslations("chatbot");
+  const tCommon = useTranslations("common");
+  const welcomeMessage = createWelcomeMessage(t("welcome"));
+
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState<Message[]>(() => [welcomeMessage]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -167,7 +175,7 @@ export function Chatbot() {
   };
 
   const handleClearHistory = () => {
-    setMessages([WELCOME_MESSAGE]);
+    setMessages([createWelcomeMessage(t("welcome"))]);
     setInputValue("");
   };
 
@@ -180,7 +188,7 @@ export function Chatbot() {
     if (!text) return;
 
     const userMessage: Message = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: "user",
       content: text,
       timestamp: new Date(),
@@ -189,13 +197,13 @@ export function Chatbot() {
     setInputValue("");
     setIsLoading(true);
 
-    const placeholderId = crypto.randomUUID();
+    const placeholderId = generateId();
     setMessages((prev) => [
       ...prev,
       {
         id: placeholderId,
         role: "assistant",
-        content: "Đang xử lý...",
+        content: tCommon("processing"),
         timestamp: new Date(),
       },
     ]);
@@ -211,7 +219,7 @@ export function Chatbot() {
       const answer =
         typeof data?.answer === "string" && data.answer.trim()
           ? data.answer.trim()
-          : "Xin lỗi, tôi không thể trả lời câu hỏi này.";
+          : t("cannotAnswer");
 
       setMessages((prev) =>
         prev.map((m) =>
@@ -226,8 +234,7 @@ export function Chatbot() {
           m.id === placeholderId
             ? {
                 ...m,
-                content:
-                  "Không kết nối được chatbot. Kiểm tra NEXT_PUBLIC_CHATBOT_API_URL và CORS.",
+                content: t("cannotConnect"),
               }
             : m
         )
@@ -281,7 +288,7 @@ export function Chatbot() {
                   !dragView && "cursor-grab active:cursor-grabbing"
                 )}
                 style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
-                aria-label="Mở chat"
+                aria-label={t("ariaOpen")}
                 onClick={(e) => {
                   if (didDragRef.current) {
                     e.preventDefault();
@@ -295,7 +302,7 @@ export function Chatbot() {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="left" sideOffset={12} className="font-medium">
-              Mở chat hỗ trợ
+              {t("tooltipOpen")}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -308,7 +315,7 @@ export function Chatbot() {
               <span className="flex size-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                 <MessageCircle className="size-4" />
               </span>
-              Chat hỗ trợ
+              {t("sheetTitle")}
             </SheetTitle>
           </SheetHeader>
 
@@ -352,7 +359,7 @@ export function Chatbot() {
           <div className="border-t border-border/80 bg-muted/30 p-3">
             <div className="flex items-center gap-2 rounded-xl bg-background border border-input shadow-sm p-1.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
               <Input
-                placeholder="Nhập tin nhắn..."
+                placeholder={t("inputPlaceholder")}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -365,14 +372,14 @@ export function Chatbot() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    aria-label="Xóa lịch sử chat"
+                    aria-label={t("ariaClearHistory")}
                     onClick={handleClearHistory}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={6} className="text-xs">
-                  Xóa lịch sử chat
+                  {t("tooltipClearHistory")}
                 </TooltipContent>
               </Tooltip>
               <Button
@@ -380,7 +387,7 @@ export function Chatbot() {
                 size="icon"
                 onClick={handleSend}
                 disabled={!inputValue.trim() || isLoading}
-                aria-label="Gửi"
+                aria-label={t("ariaSend")}
                 className="shrink-0 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white disabled:opacity-50"
               >
                 <Send className={cn("size-4", isLoading && "animate-pulse")} />

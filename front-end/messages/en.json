@@ -1131,6 +1131,18 @@
     "errorLoadPaymentData": "Cannot load payment data",
     "successPaySalary": "Successfully paid salary to teacher"
   },
+  "chatbot": {
+    "welcome": "Hello! How can I help you?",
+    "sheetTitle": "Support chat",
+    "tooltipOpen": "Open support chat",
+    "ariaOpen": "Open chat",
+    "inputPlaceholder": "Type a message...",
+    "ariaClearHistory": "Clear chat history",
+    "tooltipClearHistory": "Clear chat history",
+    "ariaSend": "Send",
+    "cannotAnswer": "Sorry, I cannot answer this question.",
+    "cannotConnect": "Unable to connect to chatbot. Please check NEXT_PUBLIC_CHATBOT_API_URL and CORS."
+  },
   "logs-management": {
     "title": "System Logs Management",
     "description": "Monitor detailed user actions and critical API calls across the system",
