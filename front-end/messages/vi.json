@@ -1138,6 +1138,18 @@
     "errorLoadPaymentData": "Không thể tải dữ liệu thanh toán",
     "successPaySalary": "Đã trả lương cho giáo viên thành công"
   },
+  "chatbot": {
+    "welcome": "Xin chào! Tôi có thể giúp gì cho bạn?",
+    "sheetTitle": "Chat hỗ trợ",
+    "tooltipOpen": "Mở chat hỗ trợ",
+    "ariaOpen": "Mở chat",
+    "inputPlaceholder": "Nhập tin nhắn...",
+    "ariaClearHistory": "Xóa lịch sử chat",
+    "tooltipClearHistory": "Xóa lịch sử chat",
+    "ariaSend": "Gửi",
+    "cannotAnswer": "Xin lỗi, tôi không thể trả lời câu hỏi này.",
+    "cannotConnect": "Không kết nối được chatbot. Kiểm tra NEXT_PUBLIC_CHATBOT_API_URL và CORS."
+  },
   "logs-management": {
     "title": "Quản Lý Logs Hệ Thống",
     "description": "Theo dõi chi tiết các hành động người dùng và API quan trọng trong hệ thống",
