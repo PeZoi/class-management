@@ -9,10 +9,13 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Providers } from './providers';
+import { Chatbot } from '@/components/chatbot';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
+
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -55,6 +58,7 @@ export default async function LocaleLayout({
             <AuthGuard>{children}</AuthGuard>
           </SidebarProvider>
         </Providers>
+        <Chatbot />
       </NextIntlClientProvider>
     );
   }
@@ -73,6 +77,7 @@ export default async function LocaleLayout({
           </AuthGuard>
         </SidebarProvider>
       </Providers>
+      <Chatbot />
     </NextIntlClientProvider>
   );
 }

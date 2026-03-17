@@ -4,6 +4,7 @@ import { createPageMetadata } from '@/lib/metadata'
 import React from 'react'
 
 export const { generateMetadata } = createPageMetadata('Teacher Management');
+export const dynamic = 'force-dynamic';
 
 export default function Index() {
   return (
