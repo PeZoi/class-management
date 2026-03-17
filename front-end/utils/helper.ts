@@ -43,7 +43,9 @@ export const generateId = () => {
   const cryptoObj =
     typeof globalThis !== 'undefined' ? (globalThis as { crypto: Crypto }).crypto : undefined;
 
-  if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
+  if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
+    return cryptoObj.randomUUID();
+  }
 
   const getRandomValues: undefined | ((arr: Uint8Array) => Uint8Array) =
     cryptoObj?.getRandomValues?.bind(cryptoObj);
