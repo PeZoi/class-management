@@ -166,6 +166,40 @@ Câu hỏi: {question}
 # ======================
 def generate_sql(question):
     q_lower = (question or "").lower()
+    # "Thông tin hoá đơn INC-xxxx" / "invoice INC-xxxx" → tra theo payment.payment_id
+    # (Trong schema, payment_id là business id dạng INC-...)
+    if ("hoá đơn" in q_lower or "hoa don" in q_lower or "invoice" in q_lower) and re.search(r"\binc-[a-z0-9]+\b", q_lower):
+        m = re.search(r"\b(inc-[a-z0-9]+)\b", q_lower)
+        invoice_id = (m.group(1).upper() if m else "").replace("'", "''")
+        return (
+            "SELECT "
+            "p.payment_id, p.payment_type, p.payment_status, p.payment_method, "
+            "p.direction, p.amount, p.paid, p.created_at, p.note, "
+            "s.full_name AS student_name, s.email AS student_email, "
+            "t.full_name AS teacher_name, t.email AS teacher_email, "
+            "c.name AS class_name "
+            "FROM payment p "
+            "LEFT JOIN student s ON s.id = p.student_id "
+            "LEFT JOIN `user` t ON t.id = p.teacher_id "
+            "LEFT JOIN class c ON c.id = p.class_id "
+            f"WHERE p.payment_id = '{invoice_id}' "
+            "LIMIT 20"
+        )
+    # "Hoàn thành học phí đúng hạn" → hiểu là đã đóng đủ (PAID) cho các gói học phí.
+    # (DB hiện không có cột "due_date/paid_at" chuẩn, nên tránh suy đoán mốc hạn.)
+    if (
+        ("hoàn thành" in q_lower or "hoan thanh" in q_lower)
+        and ("học phí" in q_lower or "hoc phi" in q_lower)
+        and ("đúng hạn" in q_lower or "dung han" in q_lower)
+        and ("bao nhiêu" in q_lower or "có bao nhiêu" in q_lower or "co bao nhieu" in q_lower)
+    ):
+        return (
+            "SELECT "
+            "COUNT(DISTINCT pkg.student_id) AS so_nguoi_hoan_thanh_hoc_phi "
+            "FROM session_payment_package pkg "
+            "WHERE pkg.status = 'PAID' "
+            "LIMIT 20"
+        )
     # "Thu và chi trong tháng X" → tính theo số tiền đã thực sự thanh toán (paid), theo ngày giờ tạo (created_at), không theo billing_month.
     if ("thu" in q_lower and "chi" in q_lower) or "thu và chi" in q_lower:
         thang_match = re.search(r"tháng\s*(\d{1,2})", q_lower)
@@ -276,6 +310,9 @@ RULES:
 - The query MUST start with SELECT
 - ONLY SELECT queries (no WITH, no multiple statements)
 - Do NOT use window functions (no OVER()).
+- Do NOT use PostgreSQL-only functions like DATE_TRUNC, NOW() with precision, or ::type casts.
+- Use only pure MySQL functions for dates: DATE(), DATE_FORMAT(), YEAR(), MONTH(), DAY(), etc.
+- Do NOT invent columns. Only use columns that exist in DB_SCHEMA (e.g. avoid paid_at/paidAt).
 - If you need both "total count" and "list rows" in one query, use a scalar subquery for the total.
 - NEVER modify database
 - ALWAYS LIMIT 20
@@ -363,6 +400,132 @@ QUESTION:
             "LIMIT 20"
         )
     return "SELECT * FROM student LIMIT 1"
+
+
+# ======================
+# TABLE SELECTOR
+# ======================
+def select_tables(question: str) -> list[str]:
+    """
+    Table Selector: xác định bảng nào trong DB_SCHEMA có liên quan nhất
+    tới câu hỏi để giúp bước sinh SQL tập trung hơn.
+    """
+    prompt = f"""
+Bạn là chuyên gia MySQL, nhiệm vụ của bạn là CHỈ CHỌN CÁC BẢNG liên quan
+trong schema dưới đây cho câu hỏi của người dùng.
+
+SCHEMA (tóm tắt):
+{DB_SCHEMA}
+
+YÊU CẦU:
+- Trả về danh sách tên bảng dạng JSON array, ví dụ:
+  ["student", "class", "attendance"]
+- KHÔNG giải thích gì thêm ngoài JSON.
+
+CÂU HỎI:
+{question}
+"""
+    text = _call_llm(prompt)
+    raw = (text or "").strip()
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list):
+            return [str(x).strip() for x in data if str(x).strip()]
+    except Exception:
+        pass
+    # Fallback an toàn: không lọc bảng nếu LLM trả về không đúng JSON.
+    return []
+
+
+# ======================
+# SQL REVIEWER
+# ======================
+def review_sql(question: str, sql: str, feedback: str | None = None) -> str:
+    """
+    SQL Reviewer: dùng LLM để rà soát lại câu lệnh SQL do bước sinh SQL trả về
+    (kiểm tra đúng bảng/cột, đủ điều kiện lọc cơ bản, không mâu thuẫn với câu hỏi).
+    Chỉ trả về MỘT câu lệnh SELECT cuối cùng.
+    """
+    feedback_section = f"\nLỖI THỰC THI / FEEDBACK:\n{feedback}\n" if feedback else ""
+    prompt = f"""
+Bạn là chuyên gia MySQL, nhiệm vụ của bạn là RÀ SOÁT và SỬA CÂU LỆNH SQL dưới đây
+cho phù hợp hơn với câu hỏi, dựa trên schema.
+
+SCHEMA:
+{DB_SCHEMA}
+
+CÂU HỎI:
+{question}
+
+SQL GỐC:
+{sql}
+
+{feedback_section}
+
+YÊU CẦU:
+- Nếu SQL đã hợp lý → chỉ cần trả lại nguyên câu SQL đó.
+- Nếu cần chỉnh sửa (bổ sung điều kiện, chọn đúng bảng/cột) → sửa trực tiếp SQL.
+- LUÔN trả về CHÍNH XÁC MỘT câu SELECT duy nhất.
+- KHÔNG giải thích gì thêm, KHÔNG bọc ```sql``` – chỉ trả về SQL.
+"""
+    text = _call_llm(prompt)
+    raw = (text or "").strip()
+    raw = re.sub(r"(?is)```(?:sql|mysql)?\s*", "", raw)
+    raw = re.sub(r"(?is)```", "", raw).strip()
+    m = re.search(r"(?is)\bselect\b[\s\S]*?(;|$)", raw)
+    if m:
+        return _cut_after_first_statement(m.group(0).strip())
+    # Nếu LLM trả về linh tinh → fallback dùng SQL gốc
+    return sql
+
+
+# ======================
+# REFLEXION AI
+# ======================
+def reflexion_fix_sql(question: str, sql: str, sample_rows, feedback: str | None = None):
+    """
+    Reflexion AI: xem thử dữ liệu (LIMIT 5) rồi quyết định có cần chỉnh SQL nữa không.
+    Nếu thấy kết quả chưa đúng ý câu hỏi, hãy tự sửa SQL (SELECT duy nhất) và trả lại.
+    Nếu thấy ổn thì trả nguyên SQL cũ.
+    """
+    try:
+        data_json = json.dumps(sample_rows, ensure_ascii=False, indent=2)
+    except Exception:
+        data_json = "null"
+
+    feedback_section = f"\nLỖI THỰC THI / FEEDBACK:\n{feedback}\n" if feedback else ""
+    prompt = f"""
+Bạn là trợ lý phân tích dữ liệu cho hệ thống quản lý lớp học.
+
+CÂU HỎI:
+{question}
+
+SQL HIỆN TẠI:
+{sql}
+
+KẾT QUẢ THỬ (tối đa 5 dòng, dạng JSON):
+{data_json}
+
+{feedback_section}
+
+NHIỆM VỤ:
+- ĐÁNH GIÁ xem kết quả trên đã TRẢ LỜI ĐÚNG câu hỏi chưa.
+- Nếu CHƯA ĐÚNG hoặc còn thiếu thông tin quan trọng → hãy SỬA lại câu lệnh SQL để phù hợp hơn.
+- Nếu ĐÃ ỔN → giữ nguyên SQL hiện tại.
+
+YÊU CẦU:
+- Luôn trả về DUY NHẤT một câu SELECT.
+- Không bọc trong ```sql```, không kèm giải thích – CHỈ trả về SQL cuối cùng.
+"""
+    text = _call_llm(prompt)
+    raw = (text or "").strip()
+    raw = re.sub(r"(?is)```(?:sql|mysql)?\s*", "", raw)
+    raw = re.sub(r"(?is)```", "", raw).strip()
+    m = re.search(r"(?is)\bselect\b[\s\S]*?(;|$)", raw)
+    if m:
+        return _cut_after_first_statement(m.group(0).strip())
+    # Nếu không bắt được SELECT nào, giữ nguyên
+    return sql
 
 
 # ======================

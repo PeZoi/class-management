@@ -11,6 +11,9 @@ from ai import (
     generate_answer,
     check_domain,
     LLMQuotaError,
+    select_tables,
+    review_sql,
+    reflexion_fix_sql,
 )
 
 from validator import validate_sql
@@ -39,7 +42,7 @@ app.add_middleware(
 _MONEY_KEYS = frozenset({
     "amount", "paid", "expected_amount", "paid_amount", "fee_snapshot",
     "monthly_fee", "bonus", "deduction", "thu", "chi",
-    "tong_con_no", "total", "so_tien", "hoc_phi",
+    "tong_con_no", "total", "so_tien", "hoc_phi", "doanh_thu",
 })
 
 
@@ -169,6 +172,36 @@ def _try_build_teacher_class_answer(data) -> str | None:
             lines.append(f"- {t['name']} – (chưa có lớp)")
     return "\n".join(lines).strip()
 
+
+def _try_build_revenue_answer(question: str, data) -> str | None:
+    """
+    Trả lời nhanh cho câu hỏi doanh thu/thu-chi mà không cần gọi LLM.
+    Hữu ích khi LLM bị quota hoặc người dùng chỉ cần số liệu.
+    """
+    if not isinstance(data, list) or not data or not isinstance(data[0], dict):
+        return None
+    q = (question or "").lower()
+    row0 = data[0]
+
+    if "doanh thu" in q and "doanh_thu" in row0:
+        v = row0.get("doanh_thu")
+        if isinstance(v, str) and v.strip():
+            return f"**Doanh thu tháng này:** {v}"
+        return "**Doanh thu tháng này:** 0 VNĐ"
+
+    if ("thu" in q and "chi" in q) and ("thu" in row0 or "chi" in row0):
+        thu = row0.get("thu") or "0 VNĐ"
+        chi = row0.get("chi") or "0 VNĐ"
+        return "\n".join(
+            [
+                "**Thu và chi trong tháng:**",
+                f"- **Thu:** {thu}",
+                f"- **Chi:** {chi}",
+            ]
+        ).strip()
+
+    return None
+
 _IN_SCOPE_KEYWORDS = [
     "lớp",
     "lop",
@@ -263,7 +296,19 @@ def _is_short_greeting(question: str) -> bool:
         return False
     if "?" in q:
         return False
-    return any(g in q for g in _GREETINGS)
+    # Tránh match kiểu "hi" nằm trong "tháng này" (substring). Chỉ match theo từ/cụm từ riêng.
+    q_norm = re.sub(r"\s+", " ", q).strip()
+    tokens = set(re.findall(r"[a-zà-ỹ]+", q_norm))
+    for g in _GREETINGS:
+        g_norm = re.sub(r"\s+", " ", g.strip().lower())
+        # cụm nhiều từ: match theo word-boundary
+        if " " in g_norm:
+            if re.search(rf"(?<!\w){re.escape(g_norm)}(?!\w)", q_norm):
+                return True
+        else:
+            if g_norm in tokens:
+                return True
+    return False
 
 
 class ChatRequest(BaseModel):
@@ -310,15 +355,56 @@ def chat(req: ChatRequest):
                 "data": None,
             }
 
-        # 2️⃣ Generate SQL
-        sql = generate_sql(question)
+        # 2️⃣ Table Selector
+        tables = select_tables(question)
 
+        # 3️⃣ SQL Generator
+        sql = generate_sql(question)
         print("AI SQL:", sql)
 
-        # 3️⃣ Validate SQL
-        safe_sql = validate_sql(sql)
+        # 4️⃣ SQL Reviewer
+        sql = review_sql(question, sql)
+        print("Reviewed SQL:", sql)
 
-        # 4️⃣ Query MySQL
+        # 5️⃣ Trial Execute (LIMIT 5) + Reflexion AI (loop ≤ 3)
+        def _with_limit(sql_text: str, n: int) -> str:
+            """
+            Force a single trailing LIMIT n for MySQL.
+            Removes an existing trailing LIMIT clause if present (LIMIT x / LIMIT x,y / LIMIT x OFFSET y).
+            """
+            s = (sql_text or "").strip()
+            if s.endswith(";"):
+                s = s[:-1].rstrip()
+            # Remove ONLY the trailing LIMIT clause (avoid touching subqueries).
+            s = re.sub(
+                r"(?is)\s+\blimit\b\s+\d+\s*(?:,\s*\d+\s*)?(?:\boffset\b\s+\d+\s*)?$",
+                "",
+                s,
+            ).rstrip()
+            return f"{s} LIMIT {n}"
+
+        trial_sql = _with_limit(sql, 5)
+
+        current_sql = sql
+        last_feedback: str | None = None
+        for _ in range(3):
+            try:
+                trial_data = execute_query(trial_sql)
+                current_sql_new = reflexion_fix_sql(question, current_sql, trial_data, last_feedback)
+                last_feedback = None
+            except Exception as e:
+                # If trial execution fails (unknown table/column/syntax), ask reviewer to fix SQL.
+                last_feedback = str(e)
+                current_sql_new = review_sql(question, current_sql, feedback=last_feedback)
+
+            if current_sql_new.strip() == current_sql.strip():
+                break
+            current_sql = current_sql_new
+            # Cập nhật trial_sql cho vòng sau (vẫn giữ LIMIT 5)
+            trial_sql = _with_limit(current_sql, 5)
+
+        # 6️⃣ Final Execute (sau validator)
+        safe_sql = validate_sql(current_sql)
         data = execute_query(safe_sql)
         # Chuẩn hóa datetime/Decimal để json.dumps trong generate_answer và response không lỗi
         data_clean = _json_serializable(data) if data is not None else None
@@ -327,7 +413,11 @@ def chat(req: ChatRequest):
             data_clean = _format_money_in_data(data_clean)
 
         # 5️⃣ Generate answer
-        answer = generate_answer(question, data_clean)
+        fast_answer = _try_build_revenue_answer(question, data_clean)
+        if fast_answer:
+            answer = fast_answer
+        else:
+            answer = generate_answer(question, data_clean)
         auto_answer = _try_build_teacher_class_answer(data_clean)
         if auto_answer:
             answer = auto_answer
