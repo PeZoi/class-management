@@ -180,8 +180,13 @@ export function Chatbot() {
   };
 
   useEffect(() => {
-    if (open) scrollToBottom();
-  }, [open, messages]);
+    if (!open) return;
+    // Đảm bảo đã render xong nội dung sheet rồi mới scroll
+    const id = window.requestAnimationFrame(() => {
+      scrollToBottom();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [open, messages.length]);
 
   const handleSend = async () => {
     const text = inputValue.trim();
